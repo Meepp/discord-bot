@@ -2,7 +2,7 @@ import discord
 from discord.ext.commands import Bot
 from discord.ext import commands
 
-Client = discord.Client()
+client = discord.Client()
 # bot_prefix = "!bot "
 # client = commands.Bot(command_prefix=bot_prefix)
 
@@ -12,11 +12,11 @@ async def on_message(message):
     cmd = msg_array[0]
     args = msg_array[1:]
 
-    if cmd == '!ree'
-        await client.say("<:REE:394490500960354304> <:REE:394490500960354304> \
+    if cmd == '!ree':
+        await client.send_message(message.channel, "<:REE:394490500960354304> <:REE:394490500960354304> \
                           <:REE:394490500960354304> <:REE:394490500960354304>")
-    elif cmd == '!pubg'
-        await client.say("<@&385799510879895552> time to die")
+    elif cmd == '!pubg':
+        await client.send_message(message.channel, "<@&385799510879895552> time to die")
 
 # @client.command(pass_context=True)
 # async def ree():
