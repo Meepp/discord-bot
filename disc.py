@@ -64,14 +64,5 @@ async def on_message(message):
     elif cmd == "!music":
         await command_music(message, args)
 
-# @client.command(pass_context=True)
-# async def ree():
-#     await client.say("<:REE:394490500960354304> <:REE:394490500960354304> \
-#                       <:REE:394490500960354304> <:REE:394490500960354304>")
-#
-# @client.command(pass_context=True)
-# async def pubg():
-#     await client.say("<@&385799510879895552> time to die")
-
-
-client.run("MzQwMTk3NjgxMzExNzc2NzY4.DSQ39A.sGYDQgt8-5lbOK7N0L5EDQRAatk")
+with open('file', 'r') as f:
+    client.run(f.readline())
