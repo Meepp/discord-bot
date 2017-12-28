@@ -18,6 +18,18 @@ async def command_roll(message, args):
 
     await client.send_message(message.channel, message.author.nick + " rolled a " + (str)(randint(0, nmax)))
 
+async def command_join(message, args):
+    if message.author.voice_channel is not None:
+        try:
+            await client.join_voice_channel(message.author.voice_channel)
+        except:
+            await client.send_message(message.channel, "I have already joined a voice channel nibba.")
+
+async def command_fuckoff(message):
+    for x in client.voice_clients:
+        if(x.server == message.server):
+            return await x.disconnect()
+
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
@@ -32,6 +44,12 @@ async def on_message(message):
 
     elif cmd == "!roll":
         await command_roll(message, args)
+
+    elif cmd == "!join":
+        await command_join(message, args)
+
+    elif cmd == "!fuckoff":
+        await command_fuckoff(message)
 
 # @client.command(pass_context=True)
 # async def ree():
