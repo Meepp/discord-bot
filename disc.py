@@ -1,10 +1,22 @@
 import discord
 from discord.ext.commands import Bot
 from discord.ext import commands
+from random import randint
 
 client = discord.Client()
 # bot_prefix = "!bot "
 # client = commands.Bot(command_prefix=bot_prefix)
+
+async def command_roll(message, args):
+    if len(args) < 1:
+        nmax = 100
+    else:
+        try:
+            nmax = (int)(args[0])
+        except:
+            nmax = 100
+
+    await client.send_message(message.channel, message.author.nick + " rolled a " + (str)(randint(0, nmax)))
 
 @client.event
 async def on_message(message):
@@ -17,6 +29,9 @@ async def on_message(message):
                           <:REE:394490500960354304> <:REE:394490500960354304>")
     elif cmd == '!pubg':
         await client.send_message(message.channel, "<@&385799510879895552> time to die")
+
+    elif cmd == "!roll":
+        await command_roll(message, args)
 
 # @client.command(pass_context=True)
 # async def ree():
