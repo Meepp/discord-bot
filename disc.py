@@ -20,19 +20,25 @@ async def command_roll(message, args):
 
 async def command_join(message, args):
     if message.author.voice_channel is not None:
-        #try:
+        try:
             await client.join_voice_channel(message.author.voice_channel)
-            for voice in client.voice_clients:
-                if voice.server == message.server:
-                    player = await voice.create_ytdl_player('https://www.youtube.com/watch?v=5jHy0ZjkdiM')
-                    player.start()
-        #except:
-        #    await client.send_message(message.channel, "I have already joined a voice channel nibba.")
+        except:
+            await client.send_message(message.channel, "I have already joined a voice channel nibba.")
 
 async def command_fuckoff(message):
     for x in client.voice_clients:
         if x.server == message.server:
             return await x.disconnect()
+
+async def command_music(message, args):
+    if len(args) < 1:
+        return
+
+    for voice in client.voice_clients:
+        if voice.server == message.server:
+            player = await voice.create_ytdl_player(args[0])
+            player.volume = 0.2
+            player.start()
 
 @client.event
 async def on_message(message):
@@ -54,6 +60,9 @@ async def on_message(message):
 
     elif cmd == "!fuckoff":
         await command_fuckoff(message)
+
+    elif cmd == "!music":
+        await command_music(message, args)
 
 # @client.command(pass_context=True)
 # async def ree():
