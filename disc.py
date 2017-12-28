@@ -64,5 +64,5 @@ async def on_message(message):
     elif cmd == "!music":
         await command_music(message, args)
 
-with open('file', 'r') as f:
-    client.run(f.readline())
+with open('key', 'r') as f:
+    client.run(f.readline().strip())
