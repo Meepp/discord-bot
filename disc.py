@@ -40,17 +40,24 @@ async def command_music(message, args):
             player.volume = 0.2
             player.start()
 
+async def command_joinpub(message):
+    for role in message.server.roles:
+        print(role.name)
+        if role.name == "@Pubmannen":
+            print(role.name)
+            client.add_roles(message.author, [role])
+
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
     cmd = msg_array[0]
     args = msg_array[1:]
 
-    if cmd == '!ree':
+    if cmd == "!ree":
         await client.send_message(message.channel, "<:REE:394490500960354304> <:REE:394490500960354304> \
                           <:REE:394490500960354304> <:REE:394490500960354304>")
-    elif cmd == '!pubg':
-        await client.send_message(message.channel, "<@&385799510879895552> time to die")
+    elif cmd == "!pubg":
+        await client.send_message(message.channel, "<@&385799510879895552> time for <:dinner:392014108498722826>")
 
     elif cmd == "!roll":
         await command_roll(message, args)
@@ -63,6 +70,8 @@ async def on_message(message):
 
     elif cmd == "!music":
         await command_music(message, args)
+    elif cmd == "!joinpub":
+        await command_joinpub(message)
 
 # @client.command(pass_context=True)
 # async def ree():
