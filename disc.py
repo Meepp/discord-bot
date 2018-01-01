@@ -133,18 +133,18 @@ async def command_kill(message):
     await client.logout()
 
 async def command_help(channel):
-    help_text = "```Available commands:\n \
-    !ree      : Let the bot REEEEEEEEEEEEEEEEEEEEEEEEEEE\
-    !pubg     : Roept de pubmannen op voor een heerlijk maaltijd kippendinner! \
-    !roll     : Rol een dobbelsteen, !roll 5 rolt tussen de 0 en de 5\
-    !join     : De bot joint je voice channel\
-    !fuckoff  : De bot verlaat je voice channel\
-    !music    : De bot voegt een youtube filmpje aan de queue (geef een link als argument mee) \
-    !pause    : Pauzeert het huidige youtube filmpje\
-    !unpause  : Resumes het huidige youtube filmpje\
-    !joinpub  : Met deze commando join je de Pubmannen groep\
-    !leavepub : Met deze commando verlaat je de Pubmannen groep\
-    !skip     : Skipt het huidige youtube filmpje \"
+    help_text = "```Available commands:\n\
+  !ree     : Let the bot REEEEEEEEEEEEEEEEEEEEEEEEEEE\n\
+  !pubg    : Roept de pubmannen op voor een heerlijk maaltijd kippendinner!\n\
+  !roll    : Rol een dobbelsteen, !roll 5 rolt tussen de 0 en de 5\n\
+  !join    : De bot joint je voice channel\n\
+  !fuckoff : De bot verlaat je voice channel\n\
+  !music   : De bot voegt een youtube filmpje aan de queue (geef een link als argument mee)\n\
+  !pause   : Pauzeert het huidige youtube filmpje\n\
+  !unpause : Resumes het huidige youtube filmpje\n\
+  !joinpub : Met deze commando join je de Pubmannen groep\n\
+  !leavepub: Met deze commando verlaat je de Pubmannen groep\n\
+  !skip    : Skipt het huidige youtube filmpje ```"
     await client.send_message(channel, help_text)
 
 @client.event
