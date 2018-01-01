@@ -3,7 +3,9 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 from random import randint
 import queue
+import time
 import youtube_dl
+import os.path
 
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -46,9 +48,21 @@ class MusicPlayer:
         self.is_playing = False
         self.player = None
 
+    async def pause(self, channel):
+        if self.player and not self.player.is_done():
+            self.player.pause()
+        else:
+            await client.send_message(channel, "There is no music playing currently.")
+
+    async def unpause(self, channel):
+        if self.player and not self.player.is_done():
+            self.player.resume()
+        else:
+            await client.send_message(channel, "There is no music playing currently.")
+
     def done(self, error):
         print(error)
-        if self.player:
+        if self.player and not self.player.is_done():
             self.player.stop()
 
         self.is_playing = False
@@ -59,25 +73,23 @@ class MusicPlayer:
 
     def play(self):
         # If player is none and the queue is empty.
-        if self.queue.empty():
-            pass
+        self.is_playing = True
 
         # Download the youtube file and store in temp
         # TODO: Remove file when done.
         voice, url = self.queue.get();
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
         code = url.split("=")[1];
 
-        self.is_playing = True
+        if not os.path.isfile("temp/"+code):
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+
         self.player = voice.create_ffmpeg_player("temp/"+code, after=lambda e: self.done(e))
         self.player.volume = 0.2
         self.player.start()
 
 musicplayer = MusicPlayer()
 
-import time
 async def add_queue(url):
     musicplayer.queue.put(url)
 
@@ -85,6 +97,13 @@ async def add_queue(url):
         return
 
     musicplayer.play()
+
+async def command_pause(channel):
+    await musicplayer.pause(channel)
+
+async def command_unpause(channel):
+    await musicplayer.unpause(channel)
+
 
 # Adds a song to a queue
 async def command_music(message, args):
@@ -106,7 +125,8 @@ async def command_leavepub(message):
             await client.remove_roles(message.author, role)
 
 async def command_skip(message):
-    musicplayer.done(None)
+    # musicplayer.done(None)
+    musicplayer.player.stop()
 
 async def command_kill(message):
     if musicplayer.is_playing:
@@ -136,6 +156,12 @@ async def on_message(message):
 
     elif cmd == "!music":
         await command_music(message, args)
+
+    elif cmd == "!pause":
+        await command_pause(message.channel)
+
+    elif cmd == "!unpause":
+        await command_unpause(message.channel)
 
     elif cmd == "!joinpub":
         await command_joinpub(message)
