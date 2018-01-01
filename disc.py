@@ -3,13 +3,7 @@ from discord.ext.commands import Bot
 from discord.ext import commands
 from random import randint
 import queue
-import youtube_dl
 
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(id)s',
-    'noplaylist' : True,
-}
 
 client = discord.Client()
 # bot_prefix = "!bot "
@@ -36,50 +30,34 @@ async def command_join(message, args):
 async def command_fuckoff(message):
     for x in client.voice_clients:
         if x.server == message.server:
-            musicplayer.player.stop()
             return await x.disconnect()
 
 class MusicPlayer:
     def __init__(self):
         self.queue = queue.Queue()
-        self.is_playing = False
+        self.player = None
 
-    async def done(self, error):
-        print(error)
-        self.is_playing = False
-
-        # continue playing from the queue
-        if not self.queue.empty():
-            self.play()
-
-    async def play(self):
+    def play(self):
         # If player is none and the queue is empty.
-        if self.queue.empty():
+        if not self.player and self.queue.empty():
             pass
 
-        # Download the youtube file and store in temp
-        # TODO: Remove file when done.
-        voice, url = self.queue.get();
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        code = url.split("=")[1];
-
-        self.is_playing = True
-        self.player = voice.create_ffmpeg_player(code, after=lambda e: self.done(e))
-        self.player.volume = 0.2
-        self.player.start()
+        # Player is none or player is done you may overwrite the player
+        if not self.player or self.player.is_done():
+            if self.player:
+                self.player.stop()
+                print(self.player.error)
+            self.player = self.queue.get();
+            self.player.start()
 
 musicplayer = MusicPlayer()
 
-import time
-async def add_queue(url):
-    musicplayer.queue.put(url)
-
-    if musicplayer.is_playing:
-        return
-
-    await musicplayer.play()
+def add_queue(player):
+    musicplayer.queue.put(player)
+    # stall thread
+    while musicplayer.player and musicplayer.player.is_playing():
+        pass # do nothing
+    musicplayer.play()
 
 # Adds a song to a queue
 async def command_music(message, args):
@@ -88,7 +66,9 @@ async def command_music(message, args):
 
     for voice in client.voice_clients:
         if voice.server == message.server:
-            await add_queue((voice, args[0]))
+            player = await voice.create_ytdl_player(args[0])
+            player.volume = 0.2
+            add_queue(player)
 
 async def command_joinpub(message):
     for role in message.server.roles:
