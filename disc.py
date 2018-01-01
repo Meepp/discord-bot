@@ -103,6 +103,9 @@ async def command_leavepub(message):
         if role.name == "@Pubmannen":
             await client.remove_roles(message.author, role)
 
+async def command_skip(message):
+    musicplayer.done(None)
+
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
@@ -132,6 +135,8 @@ async def on_message(message):
 
     elif cmd == "!leavepub":
         await command_leavepub(message)
+    elif cmd == "!skip":
+        await command_skip(message)
 
 
 with open('key', 'r') as f:
