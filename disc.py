@@ -104,8 +104,7 @@ async def command_pause(channel):
 async def command_unpause(channel):
     await musicplayer.unpause(channel)
 
-
-# Adds a song to a queue
+# Adds a song to the queue
 async def command_music(message, args):
     if len(args) < 1:
         return
@@ -131,7 +130,7 @@ async def command_skip(message):
 async def command_kill(message):
     if musicplayer.is_playing:
         musicplayer.player.stop()
-    client.close()
+    await client.logout()
 
 @client.event
 async def on_message(message):
