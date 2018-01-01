@@ -50,7 +50,7 @@ class MusicPlayer:
         print(error)
         if self.player:
             self.player.stop()
-            
+
         self.is_playing = False
 
         # Continue playing from the queue
@@ -108,6 +108,11 @@ async def command_leavepub(message):
 async def command_skip(message):
     musicplayer.done(None)
 
+async def command_kill(message):
+    if musicplayer.is_playing:
+        musicplayer.player.stop()
+    client.close()
+
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
@@ -137,8 +142,12 @@ async def on_message(message):
 
     elif cmd == "!leavepub":
         await command_leavepub(message)
+
     elif cmd == "!skip":
         await command_skip(message)
+
+    elif cmd == "!kill":
+        await command_kill(message)
 
 
 with open('key', 'r') as f:
