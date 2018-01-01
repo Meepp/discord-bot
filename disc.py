@@ -48,7 +48,9 @@ class MusicPlayer:
 
     def done(self, error):
         print(error)
-        self.player.stop()
+        if self.player:
+            self.player.stop()
+            
         self.is_playing = False
 
         # Continue playing from the queue
