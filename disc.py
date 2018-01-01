@@ -7,7 +7,7 @@ import youtube_dl
 
 ydl_opts = {
     'format': 'bestaudio/best',
-    'outtmpl': '%(id)s',
+    'outtmpl': 'temp/%(id)s',
     'noplaylist' : True,
 }
 
@@ -36,23 +36,26 @@ async def command_join(message, args):
 async def command_fuckoff(message):
     for x in client.voice_clients:
         if x.server == message.server:
-            musicplayer.player.stop()
+            if musicplayer.player:
+                musicplayer.player.stop()
             return await x.disconnect()
 
 class MusicPlayer:
     def __init__(self):
         self.queue = queue.Queue()
         self.is_playing = False
+        self.player = None
 
-    async def done(self, error):
+    def done(self, error):
         print(error)
+        self.player.stop()
         self.is_playing = False
 
-        # continue playing from the queue
+        # Continue playing from the queue
         if not self.queue.empty():
             self.play()
 
-    async def play(self):
+    def play(self):
         # If player is none and the queue is empty.
         if self.queue.empty():
             pass
@@ -66,7 +69,7 @@ class MusicPlayer:
         code = url.split("=")[1];
 
         self.is_playing = True
-        self.player = voice.create_ffmpeg_player(code, after=lambda e: self.done(e))
+        self.player = voice.create_ffmpeg_player("temp/"+code, after=lambda e: self.done(e))
         self.player.volume = 0.2
         self.player.start()
 
@@ -79,7 +82,7 @@ async def add_queue(url):
     if musicplayer.is_playing:
         return
 
-    await musicplayer.play()
+    musicplayer.play()
 
 # Adds a song to a queue
 async def command_music(message, args):
