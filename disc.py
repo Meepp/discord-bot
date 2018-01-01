@@ -153,9 +153,9 @@ async def on_message(message):
     cmd = msg_array[0]
     args = msg_array[1:]
 
-    if cmd == "!ree":
+    if message.mention_everyone or cmd == "!ree":
         await client.send_message(message.channel, "<:REE:394490500960354304> <:REE:394490500960354304> \
-                          <:REE:394490500960354304> <:REE:394490500960354304>")
+<:REE:394490500960354304> <:REE:394490500960354304>")
     elif cmd == "!pubg":
         await client.send_message(message.channel, "<@&385799510879895552> time for <:dinner:392014108498722826>")
 
