@@ -6,6 +6,9 @@ import queue
 import time
 import youtube_dl
 import os.path
+from PIL import Image
+import requests
+from io import BytesIO
 
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -132,6 +135,24 @@ async def command_kill(message):
         musicplayer.player.stop()
     await client.logout()
 
+async def command_explode(image, message):
+    # hacky
+    if "@" in image:
+        for user in client.get_all_members():
+            if user.mention == image:
+                em = discord.Embed()
+                em.set_image(url=user.avatar_url)
+                await client.send_message(message.channel, embed=em)
+    else:
+        for emoji in client.get_all_emojis():
+            if str(emoji) == image:
+                # response = requests.get(emoji.url)
+                # img = Image.open(BytesIO(response.content))
+                em = discord.Embed()
+                em.set_image(url=emoji.url)
+                await client.send_message(message.channel, embed=em)
+
+
 async def command_help(channel):
     help_text = "```Available commands:\n\
   !ree     : Let the bot REEEEEEEEEEEEEEEEEEEEEEEEEEE\n\
@@ -150,6 +171,9 @@ async def command_help(channel):
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
+    if len(msg_array) == 0:
+        return
+
     cmd = msg_array[0]
     args = msg_array[1:]
 
@@ -188,8 +212,12 @@ async def on_message(message):
 
     elif cmd == "!kill":
         await command_kill(message)
+
     elif cmd == "!help":
         await command_help(message.channel)
+
+    elif cmd == "!explode":
+        await command_explode(args[0], message)
 
 
 with open('key', 'r') as f:
