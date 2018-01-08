@@ -154,11 +154,8 @@ async def command_explode(image, message):
                 await client.send_message(message.channel, embed=em)
 
 async def command_stats(player, channel):
-    print(pubgapi)
-    api = core.PUBGAPI(pubgapi)
-    player_stats = api.player(player)
-    print(player_stats)
-    #await client.send_message(channel, player_stat)
+    data = pubgapi.player(player)
+    print(data)
 
 
 async def command_help(channel):
@@ -232,5 +229,8 @@ async def on_message(message):
 
 pubgapi = None
 with open('key', 'r') as f:
-    client.run(f.readline().strip())
-    pubgapi = core.PUBGAPI(f.readline().strip())
+    keys = f.readlines()
+keys = [x.strip() for x in keys]
+
+pubgapi = core.PUBGAPI(keys[1])
+client.run(keys[0])
