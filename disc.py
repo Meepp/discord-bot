@@ -152,6 +152,10 @@ async def command_explode(image, message):
                 em.set_image(url=emoji.url)
                 await client.send_message(message.channel, embed=em)
 
+ascyn def command_stats(channel, name):
+    data = pubgapi.player(name)
+    print(data)
+
 
 async def command_help(channel):
     help_text = "```Available commands:\n\
