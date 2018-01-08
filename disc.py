@@ -9,6 +9,7 @@ import os.path
 from PIL import Image
 import requests
 from io import BytesIO
+from pypubg import core
 
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -152,6 +153,13 @@ async def command_explode(image, message):
                 em.set_image(url=emoji.url)
                 await client.send_message(message.channel, embed=em)
 
+async def command_stats(player, channel):
+    print(pubgapi)
+    api = core.PUBGAPI(pubgapi)
+    player_stats = api.player(player)
+    print(player_stats)
+    #await client.send_message(channel, player_stat)
+
 
 async def command_help(channel):
     help_text = "```Available commands:\n\
@@ -218,6 +226,9 @@ async def on_message(message):
 
     elif cmd == "!explode":
         await command_explode(args[0], message)
+
+    elif cmd == "!stats":
+        await command_stats(args[0], message.channel)
 
 pubgapi = None
 with open('key', 'r') as f:
