@@ -225,5 +225,8 @@ async def on_message(message):
 
 pubgapi = None
 with open('key', 'r') as f:
-    client.run(f.readline().strip())
-    pubgapi = core.PUBGAPI(f.readline().strip())
+    keys = f.readlines()
+keys = [x.strip() for x in keys]
+
+client.run(keys[0])
+pubgapi = core.PUBGAPI(keys[1])
