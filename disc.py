@@ -219,6 +219,7 @@ async def on_message(message):
     elif cmd == "!explode":
         await command_explode(args[0], message)
 
-
+pubgapi = None
 with open('key', 'r') as f:
     client.run(f.readline().strip())
+    pubgapi = core.PUBGAPI(f.readline().strip())
