@@ -75,7 +75,7 @@ class MusicPlayer:
         if not self.queue.empty():
             self.play()
 
-    def play(self):
+    async def play(self, message):
         # If player is none and the queue is empty.
         self.is_playing = True
 
@@ -83,6 +83,14 @@ class MusicPlayer:
         # TODO: Remove file when done.
         voice, url = self.queue.get();
         code = url.split("=")[1];
+
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(url, download=False)
+            video_title = info_dict.get('title', None)
+
+            await client.send_message(message.channel, "Now playing: " + video_title)
+            await client.delete_message(message)
+
 
         if not os.path.isfile("temp/"+code):
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -94,13 +102,13 @@ class MusicPlayer:
 
 musicplayer = MusicPlayer()
 
-async def add_queue(url):
+async def add_queue(url, message):
     musicplayer.queue.put(url)
 
     if musicplayer.is_playing:
         return
 
-    musicplayer.play()
+    await musicplayer.play(message)
 
 async def command_pause(channel):
     await musicplayer.pause(channel)
@@ -115,7 +123,7 @@ async def command_music(message, args):
 
     for voice in client.voice_clients:
         if voice.server == message.server:
-            await add_queue((voice, args[0]))
+            await add_queue((voice, args[0]), message)
 
 async def command_joinpub(message):
     for role in message.server.roles:
@@ -151,7 +159,8 @@ async def command_explode(image, message):
                 # img = Image.open(BytesIO(response.content))
                 em = discord.Embed()
                 em.set_image(url=emoji.url)
-                await client.send_message(message.channel, embed=em)
+                await client.send_message(message.channel, message.author.nick+":", embed=em)
+                await client.delete_message(message)
 
 async def command_stats(player, channel):
     data = pubgapi.player(player)
