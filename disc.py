@@ -75,7 +75,7 @@ class MusicPlayer:
         if not self.queue.empty():
             self.play()
 
-    async def play(self, message):
+    async def play(self):
         # If player is none and the queue is empty.
         self.is_playing = True
 
@@ -83,14 +83,6 @@ class MusicPlayer:
         # TODO: Remove file when done.
         voice, url = self.queue.get();
         code = url.split("=")[1];
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            video_title = info_dict.get('title', None)
-
-            await client.send_message(message.channel, "Now playing: " + video_title)
-            await client.delete_message(message)
-
 
         if not os.path.isfile("temp/"+code):
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -105,10 +97,17 @@ musicplayer = MusicPlayer()
 async def add_queue(url, message):
     musicplayer.queue.put(url)
 
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info_dict = ydl.extract_info(url, download=False)
+        video_title = info_dict.get('title', None)
+
+        await client.send_message(message.channel, "Queueing: " + video_title)
+        await client.delete_message(message)
+
     if musicplayer.is_playing:
         return
 
-    await musicplayer.play(message)
+    musicplayer.play()
 
 async def command_pause(channel):
     await musicplayer.pause(channel)
