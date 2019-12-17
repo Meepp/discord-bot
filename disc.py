@@ -9,7 +9,14 @@ import os.path
 from PIL import Image
 import requests
 from io import BytesIO
-from pypubg import core
+import json
+from pprint import pprint
+
+with open('key', 'r') as f:
+    keys = f.readlines()
+keys = [x.strip() for x in keys]
+
+import requests
 
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -30,21 +37,27 @@ async def command_roll(message, args):
         except:
             nmax = 100
 
-    await client.send_message(message.channel, message.author.nick + " rolled a " + (str)(randint(0, nmax)))
+    await message.channel.send(message.author.nick + " rolled a " + (str)(randint(0, nmax)))
 
 async def command_join(message, args):
-    if message.author.voice_channel is not None:
+    if message.author.voice.channel is not None:
         try:
-            await client.join_voice_channel(message.author.voice_channel)
-        except:
-            await client.send_message(message.channel, "I have already joined a voice channel nibba.")
+            await message.author.voice.channel.connect()
+        except Exception as e:
+            print("Hallo", e)
+            await message.channel.send("I have already joined a voice channel nibba.")
 
 async def command_fuckoff(message):
     for x in client.voice_clients:
-        if x.server == message.server:
+        if x.guild == message.guild:
             if musicplayer.player:
                 musicplayer.player.stop()
             return await x.disconnect()
+
+def get_voice_by_guild(guild):
+    for voice in client.voice_clients: # TODO: Dont put a voice object in the queue
+        if voice.guild == guild:
+            return voice
 
 class MusicPlayer:
     def __init__(self):
@@ -52,57 +65,58 @@ class MusicPlayer:
         self.is_playing = False
         self.player = None
 
-    async def pause(self, channel):
-        if self.player and not self.player.is_done():
-            self.player.pause()
-        else:
-            await client.send_message(channel, "There is no music playing currently.")
+    async def pause(self, message):
+        voice = get_voice_by_guild(message.guild)
 
-    async def unpause(self, channel):
-        if self.player and not self.player.is_done():
-            self.player.resume()
+        if voice.is_connected() and voice.is_playing():
+            voice.pause()
         else:
-            await client.send_message(channel, "There is no music playing currently.")
+            await message.channel.send("There is no music playing currently.")
+
+    async def unpause(self, message):
+        voice = get_voice_by_guild(message.guild)
+
+        if voice.is_connected() and not voice.is_playing():
+            voice.resume()
+        else:
+            await message.channel.send("There is no music playing currently.")
 
     def done(self, error):
-        print(error)
-        if self.player and not self.player.is_done():
-            self.player.stop()
-
         self.is_playing = False
 
         # Continue playing from the queue
         if not self.queue.empty():
             self.play()
 
-    async def play(self):
+    def play(self):
         # If player is none and the queue is empty.
         self.is_playing = True
 
         # Download the youtube file and store in temp
         # TODO: Remove file when done.
-        voice, url = self.queue.get();
-        code = url.split("=")[1];
+        voice, url = self.queue.get()
+        code = url.split("=")[1]
 
         if not os.path.isfile("temp/"+code):
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
-        self.player = voice.create_ffmpeg_player("temp/"+code, after=lambda e: self.done(e))
-        self.player.volume = 0.2
-        self.player.start()
+        source = discord.FFmpegPCMAudio("temp/"+code)
+        voice.play(source, after=lambda e: self.done(e))
 
 musicplayer = MusicPlayer()
 
 async def add_queue(url, message):
     musicplayer.queue.put(url)
 
+    _, lnk = url
+
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(url, download=False)
+        info_dict = ydl.extract_info(lnk, download=False)
         video_title = info_dict.get('title', None)
 
-        await client.send_message(message.channel, "Queueing: " + video_title)
-        await client.delete_message(message)
+        await message.channel.send("Queueing: " + video_title)
+        await message.delete()
 
     if musicplayer.is_playing:
         return
@@ -120,19 +134,19 @@ async def command_music(message, args):
     if len(args) < 1:
         return
 
-    for voice in client.voice_clients:
-        if voice.server == message.server:
+    for voice in client.voice_clients: # TODO: Dont put a voice object in the queue
+        if voice.guild == message.guild:
             await add_queue((voice, args[0]), message)
 
 async def command_joinpub(message):
-    for role in message.server.roles:
+    for role in message.guild.roles:
         if role.name == "@Pubmannen":
-            await client.add_roles(message.author, role)
+            await message.author.add_roles(role)
 
 async def command_leavepub(message):
-    for role in message.server.roles:
+    for role in message.guild.roles:
         if role.name == "@Pubmannen":
-            await client.remove_roles(message.author, role)
+            await message.author.add_roles(role)
 
 async def command_skip(message):
     # musicplayer.done(None)
@@ -150,7 +164,7 @@ async def command_explode(image, message):
             if user.mention == image:
                 em = discord.Embed()
                 em.set_image(url=user.avatar_url)
-                await client.send_message(message.channel, embed=em)
+                await message.channel.send(embed=em)
     else:
         for emoji in client.get_all_emojis():
             if str(emoji) == image:
@@ -158,8 +172,8 @@ async def command_explode(image, message):
                 # img = Image.open(BytesIO(response.content))
                 em = discord.Embed()
                 em.set_image(url=emoji.url)
-                await client.send_message(message.channel, message.author.nick+":", embed=em)
-                await client.delete_message(message)
+                await message.channel.send(message.author.nick+":", embed=em)
+                await message.delete()
 
 async def command_stats(player, channel):
     data = pubgapi.player(player)
@@ -179,7 +193,7 @@ async def command_help(channel):
   !joinpub : Met deze commando join je de Pubmannen groep\n\
   !leavepub: Met deze commando verlaat je de Pubmannen groep\n\
   !skip    : Skipt het huidige youtube filmpje ```"
-    await client.send_message(channel, help_text)
+    await channel.send(help_text)
 
 @client.event
 async def on_message(message):
@@ -191,10 +205,10 @@ async def on_message(message):
     args = msg_array[1:]
 
     if message.mention_everyone or cmd == "!ree":
-        await client.send_message(message.channel, "<:REE:394490500960354304> <:REE:394490500960354304> \
+        await message.channel.send("<:REE:394490500960354304> <:REE:394490500960354304> \
 <:REE:394490500960354304> <:REE:394490500960354304>")
     elif cmd == "!pubg":
-        await client.send_message(message.channel, "<@&385799510879895552> time for <:dinner:392014108498722826>")
+        await message.channel.send("<@&385799510879895552> time for <:dinner:392014108498722826>")
 
     elif cmd == "!roll":
         await command_roll(message, args)
@@ -209,10 +223,10 @@ async def on_message(message):
         await command_music(message, args)
 
     elif cmd == "!pause":
-        await command_pause(message.channel)
+        await command_pause(message)
 
     elif cmd == "!unpause":
-        await command_unpause(message.channel)
+        await command_unpause(message)
 
     elif cmd == "!joinpub":
         await command_joinpub(message)
@@ -235,10 +249,4 @@ async def on_message(message):
     elif cmd == "!stats":
         await command_stats(args[0], message.channel)
 
-pubgapi = None
-with open('key', 'r') as f:
-    keys = f.readlines()
-keys = [x.strip() for x in keys]
-
-pubgapi = core.PUBGAPI(keys[1])
 client.run(keys[0])
