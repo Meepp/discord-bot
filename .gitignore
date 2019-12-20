@@ -1,3 +1,5 @@
 discord
 key
 temp/*
+env/*
+database.db

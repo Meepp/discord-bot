@@ -1,32 +1,25 @@
+import os.path
+import re
 import discord
 from discord.ext.commands import Bot
 from discord.ext import commands
 from random import randint
-import queue
+from musicplayer import MusicPlayer
 import time
-import youtube_dl
-import os.path
 from PIL import Image
 import requests
 from io import BytesIO
 import json
 from pprint import pprint
+import requests
+from database import DataBase
 
 with open('key', 'r') as f:
     keys = f.readlines()
 keys = [x.strip() for x in keys]
 
-import requests
-
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': 'temp/%(id)s',
-    'noplaylist' : True,
-}
-
 client = discord.Client()
-# bot_prefix = "!bot "
-# client = commands.Bot(command_prefix=bot_prefix)
+musicplayer = MusicPlayer(client)
 
 async def command_roll(message, args):
     if len(args) < 1:
@@ -50,78 +43,19 @@ async def command_join(message, args):
 async def command_fuckoff(message):
     for x in client.voice_clients:
         if x.guild == message.guild:
-            if musicplayer.player:
-                musicplayer.player.stop()
+            musicplayer.clear(message)
             return await x.disconnect()
 
-def get_voice_by_guild(guild):
-    for voice in client.voice_clients: # TODO: Dont put a voice object in the queue
-        if voice.guild == guild:
-            return voice
+async def add_queue(guild, url, message):    
+    try:
+        speed = float(message.content.split(' ')[-1])
+    except:
+        speed = 1.0
 
-class MusicPlayer:
-    def __init__(self):
-        self.queue = queue.Queue()
-        self.is_playing = False
-        self.player = None
-
-    async def pause(self, message):
-        voice = get_voice_by_guild(message.guild)
-
-        if voice.is_connected() and voice.is_playing():
-            voice.pause()
-        else:
-            await message.channel.send("There is no music playing currently.")
-
-    async def unpause(self, message):
-        voice = get_voice_by_guild(message.guild)
-
-        if voice.is_connected() and not voice.is_playing():
-            voice.resume()
-        else:
-            await message.channel.send("There is no music playing currently.")
-
-    def done(self, error):
-        self.is_playing = False
-
-        # Continue playing from the queue
-        if not self.queue.empty():
-            self.play()
-
-    def play(self):
-        # If player is none and the queue is empty.
-        self.is_playing = True
-
-        # Download the youtube file and store in temp
-        # TODO: Remove file when done.
-        voice, url = self.queue.get()
-        code = url.split("=")[1]
-
-        if not os.path.isfile("temp/"+code):
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-
-        source = discord.FFmpegPCMAudio("temp/"+code)
-        voice.play(source, after=lambda e: self.done(e))
-
-musicplayer = MusicPlayer()
-
-async def add_queue(url, message):
-    musicplayer.queue.put(url)
-
-    _, lnk = url
-
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(lnk, download=False)
-        video_title = info_dict.get('title', None)
-
-        await message.channel.send("Queueing: " + video_title)
-        await message.delete()
-
-    if musicplayer.is_playing:
-        return
-
-    musicplayer.play()
+    title = musicplayer.add_queue(guild, url, speed)
+    
+    await message.channel.send("Queueing: " + title)
+    await message.delete()
 
 async def command_pause(channel):
     await musicplayer.pause(channel)
@@ -134,9 +68,7 @@ async def command_music(message, args):
     if len(args) < 1:
         return
 
-    for voice in client.voice_clients: # TODO: Dont put a voice object in the queue
-        if voice.guild == message.guild:
-            await add_queue((voice, args[0]), message)
+    await add_queue(message.guild, args[0], message)
 
 async def command_joinpub(message):
     for role in message.guild.roles:
@@ -149,35 +81,90 @@ async def command_leavepub(message):
             await message.author.add_roles(role)
 
 async def command_skip(message):
-    # musicplayer.done(None)
-    musicplayer.player.stop()
+    musicplayer.skip(message.guild)
 
 async def command_kill(message):
-    if musicplayer.is_playing:
-        musicplayer.player.stop()
+    if musicplayer and musicplayer.is_playing:
+        musicplayer.clear(message)
     await client.logout()
 
 async def command_explode(image, message):
     # hacky
     if "@" in image:
-        for user in client.get_all_members():
-            if user.mention == image:
+        for member in message.guild.members:
+            if member.mention.replace("!", "") == image.replace("!", ""):
                 em = discord.Embed()
-                em.set_image(url=user.avatar_url)
+                em.set_image(url=member.avatar_url)
                 await message.channel.send(embed=em)
     else:
-        for emoji in client.get_all_emojis():
+        for emoji in message.guild.emojis:
             if str(emoji) == image:
-                # response = requests.get(emoji.url)
-                # img = Image.open(BytesIO(response.content))
                 em = discord.Embed()
                 em.set_image(url=emoji.url)
-                await message.channel.send(message.author.nick+":", embed=em)
+                await message.channel.send((message.author.nick or message.author.name)+":", embed=em)
                 await message.delete()
 
 async def command_stats(player, channel):
     data = pubgapi.player(player)
     print(data)
+
+
+async def command_kerstpuzzel(number, message):
+    filename = os.path.join("kerstpuzzel", number + ".png")
+    await message.channel.send("Kerstpuzzel " + number, file=discord.File(filename))
+
+
+async def command_add_trigger(message):
+    global triggers
+    arr = message.content.split(" ", 2)[2].split("|", 1)
+    name = message.author.name
+
+    trig = arr[0].strip()
+    resp = arr[1].strip()
+
+    if len(trig) < 3 or len(trig) > 50:
+        await message.channel.send("Trigger length must be   50 > n > 3 ")
+        return 
+
+    try:
+        db.execute("INSERT INTO triggers VALUES ('" + trig + "', '" + resp + "', '" + name + "')")
+        triggers = [trigger for trigger in db.select_all()]
+        await message.channel.send("Trigger added")
+    except Exception as e:
+        print(e)
+        await message.channel.send("Trigger failed to add")
+
+
+async def command_remove_trigger(message):
+    global triggers
+    trig = message.content.split(" ", 2)[2]
+    name = message.author.name  # TODO: Only users can self-delete
+
+    if len(trig) < 3 or len(trig) > 50:
+        await message.channel.send("Trigger length must be   50 > n > 3 ")
+        return 
+
+    try:
+        db.delete_trigger(trig)
+        triggers = [trigger for trigger in db.select_all()]
+        await message.channel.send("Trigger '" + trig + "' removed")
+    except:
+        await message.channel.send("Failed to remove trigger. Doesn't exist?")
+
+
+async def command_show_triggers(message):
+    global triggers
+
+    triggers = [trigger for trigger in db.select_all()]
+
+    out = "```"
+    out += "{0: <50} | {1: <32} | {2: <16}\n".format("Trigger"[:50], "Response"[:32], "Creator"[:16])
+    for trig, resp, user in triggers:
+        out += "{0: <50} | {1: <32} | {2: <16}\n".format(trig[:50], resp[:32], user[:16])
+    out += "```"
+    await message.channel.send(out)
+
+
 
 
 async def command_help(channel):
@@ -191,6 +178,7 @@ async def command_help(channel):
   !pause   : Pauzeert het huidige youtube filmpje\n\
   !unpause : Resumes het huidige youtube filmpje\n\
   !joinpub : Met deze commando join je de Pubmannen groep\n\
+  !trigger <add|remove|show>: Add or remove trigger words.\n\
   !leavepub: Met deze commando verlaat je de Pubmannen groep\n\
   !skip    : Skipt het huidige youtube filmpje ```"
     await channel.send(help_text)
@@ -198,6 +186,7 @@ async def command_help(channel):
 @client.event
 async def on_message(message):
     msg_array = message.content.split()
+
     if len(msg_array) == 0:
         return
 
@@ -249,4 +238,26 @@ async def on_message(message):
     elif cmd == "!stats":
         await command_stats(args[0], message.channel)
 
+    elif cmd == "!kp":
+        await command_kerstpuzzel(args[0], message)
+    
+    elif cmd == "!trigger":
+        if args[0] == "add":
+            await command_add_trigger(message)
+        elif args[0] == "remove":
+            await command_remove_trigger(message)
+        elif args[0] == "show":
+            await command_show_triggers(message)
+
+    else:
+        global triggers
+        if message.author.bot:
+            return
+        for trigger, response_message, sender in triggers:
+            if trigger in message.content:
+                await message.channel.send(response_message)
+
+db = DataBase("database.db")
+triggers = [trigger for trigger in db.select_all()]
+print(triggers)
 client.run(keys[0])
