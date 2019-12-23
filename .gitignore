@@ -4,3 +4,4 @@ temp/*
 env/*
 database.db
 kerstpuzzel/*
+config.conf

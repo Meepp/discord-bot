@@ -4,29 +4,31 @@ import os.path
 import youtube_dl
 
 
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': 'temp/%(id)s',
-    'noplaylist' : True,
-}
-
 class MusicPlayer:
-    def __init__(self, client):
+    def __init__(self, client, download_folder):
         self.queue = queue.Queue()
         self.is_playing = False
         self.client = client
+        self.download_folder = download_folder
+        self.ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': download_folder + '/%(id)s',
+            'noplaylist': True,
+        }
 
     def get_voice_by_guild(self, guild):
-        for voice in self.client.voice_clients: # TODO: Dont put a voice object in the queue
+        for voice in self.client.voice_clients:
             if voice.guild == guild:
                 return voice
 
-    def add_queue(self, guild, url, speed) -> str:
+    def add_queue(self, guild, url, speed, downloaded=False) -> str:
         self.queue.put((guild, url, speed))
 
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            video_title = info_dict.get('title', None)
+        video_title = "Unknown"
+        if not downloaded:
+            with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
+                video_title = info_dict.get('title', None)
 
         if not self.is_playing:
             self.play()
@@ -70,18 +72,18 @@ class MusicPlayer:
         # If player is none and the queue is empty.
         self.is_playing = True
 
-        # Download the youtube file and store in temp
-        # TODO: Remove file when done.
+        # Download the youtube file and store in defined folder
         guild, url, speed = self.queue.get()
         voice = self.get_voice_by_guild(guild)
         if voice is None:
             return
-            
-        code = url.split("=")[1]
 
-        if not os.path.isfile("temp/"+code):
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        code = url.split("=")[1]
+        file_location = os.path.join(self.download_folder, code)
+
+        if not os.path.isfile(file_location):
+            with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
                 ydl.download([url])
 
-        source = discord.FFmpegPCMAudio("temp/"+code, options='-filter:a "atempo=' + str(speed) + '"')
+        source = discord.FFmpegPCMAudio(file_location, options='-filter:a "atempo=' + str(speed) + '"')
         voice.play(source, after=lambda e: self.done(e))

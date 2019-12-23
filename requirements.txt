@@ -1,4 +1,6 @@
+discord
 pillow
 discord.py[voice]
 youtube_dl
 requests
+sqlalchemy
