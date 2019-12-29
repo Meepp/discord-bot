@@ -1,11 +1,6 @@
 import configparser
-from collections import defaultdict
-
 import discord
-from sqlalchemy.ext.declarative import declarative_base
-
-from src.database.database import Database
-from src.musicplayer.musicplayer import MusicPlayer
+from src.database.database import Database  # noqa
 
 
 class Bot:
@@ -43,3 +38,4 @@ bot = Bot()
 
 from src.commands.commands import *  # noqa
 from src.event_handlers.messages import *  # noqa
+from src.musicplayer.musicplayer import MusicPlayer  # noqa

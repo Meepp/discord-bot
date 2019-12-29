@@ -15,7 +15,6 @@ def add_report(report: Report):
     except Exception as e:
         print(e)
         session.rollback()
-    return None
 
 
 def get_reports(guild):
@@ -37,7 +36,7 @@ def get_last_reports(guild, reporting):
         .filter(Report.guild_id == guild.id) \
         .filter(Report.reporting == reporting) \
         .order_by(Report.time.desc()) \
-        .one_or_none()
+        .first()
 
 
 def report_allowed(guild, reporting):

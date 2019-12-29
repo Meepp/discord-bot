@@ -2,6 +2,7 @@ discord
 key
 temp/*
 env/*
+media/music
 database.db
 kerstpuzzel/*
 config.conf

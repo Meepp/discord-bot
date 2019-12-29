@@ -1,5 +1,5 @@
 import os
-from random import randint
+from random import randint, shuffle
 
 import discord
 from discord import Message, Guild
@@ -40,6 +40,13 @@ async def command_fuckoff(args, message):
             return await x.disconnect()
 
 
+@bot.register_command("delete")
+async def command_delete(args, message):
+    filename = os.path.join(bot.music_player.download_folder, bot.music_player.currently_playing.file)
+    bot.music_player.skip(message.guild)
+    bot.music_player.deletables.append(filename)
+
+
 @bot.register_command("pause")
 async def command_pause(channel):
     await bot.music_player.pause(channel)
@@ -56,24 +63,22 @@ async def command_music(args, message):
         return
 
     try:
-        speed = float(message.content.split(' ')[-1])
-    except Exception as e:
+        speed = float(args[-1])
+    except ValueError as e:
         speed = 1.0
 
     if args[0] == "random":
-        onlyfiles = ["a=" + f for f in os.listdir(bot.music_player.download_folder) if
-                     os.path.isfile(os.path.join(bot.music_player.download_folder, f))]
+        # TODO: Pull all music from db
+        onlyfiles = []
 
+        shuffle(onlyfiles)
         for file in onlyfiles:
-            bot.music_player.add_queue(message.guild, file, speed, downloaded=True)
+            await bot.music_player.add_queue(message, file, speed, downloaded=True)
 
         await message.channel.send("Queueing: Everything")
         await message.delete()
-
     else:
-        title = bot.music_player.add_queue(message.guild, args[0], speed)
-
-        await message.channel.send("Queueing: " + title)
+        await bot.music_player.add_queue(message, args[0], speed)
         await message.delete()
 
 
@@ -198,6 +203,13 @@ async def command_help(args, message: Message):
             out += "%s %d\n" % (report.reportee, n)
         out += "```"
         await message.channel.send(out)
+    elif args[0] == "time":
+        reporting = message.author
+        time = report_repository.report_allowed(message.guild, reporting)
+        if time > 0:
+            await message.channel.send("Wait %d minutes to report again." % time)
+        else:
+            await message.channel.send("You have no report downtime.")
     else:
         id = args[0].replace("<", "").replace(">", "").replace("@", "").replace("!", "")
         reportee = message.guild.get_member(int(id))
