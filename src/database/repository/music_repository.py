@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 from discord import Member
@@ -30,11 +31,13 @@ def get_music(owner: Member = None) -> List[Song]:
 def get_song(url: str):
     session = bot.db.session()
 
-    return session.query(Song).filter(Song.url == url).one_or_none()
+    return session.query(Song).filter(Song.url == url).first()
 
 
-def update_song_data(song: Song):
+def remove_by_file(filename: str):
+    full_filename = os.path.join(bot.music_player.download_folder, filename)
+    if os.path.exists(full_filename):
+        os.remove(full_filename)
+
     session = bot.db.session()
-
-    session.add(song)
-    session.commit()
+    session.query(Song).filter(Song.file == filename).delete()

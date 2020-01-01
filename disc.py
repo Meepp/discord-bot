@@ -1,6 +1,14 @@
+import asyncio
+
 from src import bot
 
-if __name__ == "__main__":
+
+def main():
     bot.set_config("config.conf")
+    bot.start_handlers()
 
     bot.start()
+
+
+if __name__ == "__main__":
+    main()

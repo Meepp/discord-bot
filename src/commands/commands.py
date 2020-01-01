@@ -6,7 +6,7 @@ from discord import Message, Guild
 
 from src import bot
 from src.database.models.models import Trigger, Report
-from src.database.repository import trigger_repository, report_repository
+from src.database.repository import trigger_repository, report_repository, music_repository
 
 
 @bot.register_command("roll")
@@ -42,14 +42,13 @@ async def command_fuckoff(args, message):
 
 @bot.register_command("delete")
 async def command_delete(args, message):
-    filename = os.path.join(bot.music_player.download_folder, bot.music_player.currently_playing.file)
     bot.music_player.skip(message.guild)
-    bot.music_player.deletables.append(filename)
+    bot.music_player.deletables.append(bot.music_player.currently_playing)
 
 
 @bot.register_command("pause")
-async def command_pause(channel):
-    await bot.music_player.pause(channel)
+async def command_pause(args, message):
+    await bot.music_player.pause(message.channel)
 
 
 @bot.register_command("unpause")
@@ -67,18 +66,29 @@ async def command_music(args, message):
     except ValueError as e:
         speed = 1.0
 
-    if args[0] == "random":
-        # TODO: Pull all music from db
-        onlyfiles = []
+    if args[0] == "all":
+        songs = []
+        if len(message.mentions) == 0:
+            songs = music_repository.get_music()
+        else:
+            for member in message.mentions:
+                songs.extend(music_repository.get_music(member))
 
-        shuffle(onlyfiles)
-        for file in onlyfiles:
-            await bot.music_player.add_queue(message, file, speed, downloaded=True)
+        shuffle(songs)
+        for song in songs:
+            bot.music_player.add_queue(message, song.url, speed, True)
 
-        await message.channel.send("Queueing: Everything")
+        await message.channel.send("Queueing " + str(len(songs)) + " songs.")
         await message.delete()
     else:
-        await bot.music_player.add_queue(message, args[0], speed)
+
+        # TODO: Make an actual regex here
+        if not args[0].startswith("http"):
+            url = bot.youtube_api.search(" ".join(args))
+        else:
+            url = args[0]
+
+        bot.music_player.add_queue(message, url, speed)
         await message.delete()
 
 
@@ -167,11 +177,11 @@ async def command_show_triggers(message):
         return
 
     out = "```"
-    out += "{0: <50} | {1: <32} | {2: <16}\n".format("Trigger"[:50], "Response"[:32], "Creator"[:16])
+    out += "{0: <20}  | {2: <16}\n".format("Trigger"[:50], "Creator"[:16])
     for trigger in bot.triggers[message.guild]:
         if trigger is None:
             continue
-        out += "{0: <50} | {1: <32} | {2: <16}\n".format(trigger.trigger[:50], trigger.response[:32], trigger.author[:16])
+        out += "{0: <20}  | {2: <16}\n".format(trigger.trigger[:50], trigger.author[:16])
     out += "```"
     await message.channel.send(out)
 
