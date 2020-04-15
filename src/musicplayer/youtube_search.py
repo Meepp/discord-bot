@@ -10,6 +10,7 @@ class YoutubeAPI:
             "part": "id,snippet",
             "maxResults": 1,
             "q": query,
+            "type": "video",
             "key": self.key
         }
 

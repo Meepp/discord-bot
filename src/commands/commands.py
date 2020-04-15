@@ -1,12 +1,19 @@
 import os
+import queue
+import re
 from random import randint, shuffle
 
 import discord
 from discord import Message, Guild
 
 from src import bot
-from src.database.models.models import Trigger, Report
-from src.database.repository import trigger_repository, report_repository, music_repository
+from src.database.models.models import Trigger, Report, Honor
+from src.database.repository import trigger_repository, report_repository, music_repository, honor_repository
+from src.database.repository.music_repository import remove_from_owner
+
+
+def is_valid_youtube_url(input):
+    return re.match(r"(http(s)?://)?(www\.)?(youtube\.com|youtu\.be)/.*$", input)
 
 
 @bot.register_command("roll")
@@ -42,8 +49,13 @@ async def command_fuckoff(args, message):
 
 @bot.register_command("delete")
 async def command_delete(args, message):
+    """
+    !delete: deletes the currently playing song from your playlist.
+
+    :type message: Message
+    """
+    remove_from_owner(bot.music_player.currently_playing, message.author.id)
     bot.music_player.skip(message.guild)
-    bot.music_player.deletables.append(bot.music_player.currently_playing)
 
 
 @bot.register_command("pause")
@@ -52,14 +64,20 @@ async def command_pause(args, message):
 
 
 @bot.register_command("unpause")
-async def command_unpause(channel):
-    await bot.music_player.unpause(channel)
+async def command_unpause(args, message):
+    await bot.music_player.unpause(message.channel)
 
 
 @bot.register_command("music")
 async def command_music(args, message):
+    voice = bot.get_voice_by_guild(message.guild)
+    if voice is None:
+        await message.channel.send("I am not in a voice channel yet, invite me with !join before playing music.")
+        return
+
     if len(args) < 1:
         return
+
 
     try:
         speed = float(args[-1])
@@ -80,21 +98,34 @@ async def command_music(args, message):
 
         await message.channel.send("Queueing " + str(len(songs)) + " songs.")
         await message.delete()
-    else:
-
-        # TODO: Make an actual regex here
-        if not args[0].startswith("http"):
-            url = bot.youtube_api.search(" ".join(args))
-        else:
-            url = args[0]
-
+    elif is_valid_youtube_url(args[0]):
+        url = args[0]
         bot.music_player.add_queue(message, url, speed)
         await message.delete()
+    elif args[0] == "search":
+        url = bot.youtube_api.search(" ".join(args))
+        bot.music_player.add_queue(message, url, speed)
+        await message.delete()
+    else:
+        await message.channel.send("Invalid youtube url. Did you mean !music all @user or !music search <query>?")
 
 
 @bot.register_command("skip")
 async def command_skip(args, message):
     bot.music_player.skip(message.guild)
+
+
+@bot.register_command("clear")
+async def command_clear(args, message):
+    """
+    !clear: Clears the queue of all songs, does not kill the currently playing song.
+
+    :param args:
+    :param message:
+    :return:
+    """
+    if bot.music_player:
+        bot.music_player.queue = queue.Queue()
 
 
 @bot.register_command("kill")
@@ -106,7 +137,16 @@ async def command_kill(args, message):
 
 @bot.register_command("explode")
 async def command_explode(args, message):
-    image = message.content.split(" ")[1:]
+    """
+    !explode <[emote] | [user]>: prints a larger version of the emote, or the user's profile picture.
+
+    Explode pulls the source image for the emote or the original user profile image from the discord servers.
+    This gets printed in a code block, and the original message gets removed.
+
+    :param args:
+    :param message:
+    """
+    image = message.content.split(" ")[1]
     # hacky
     if "@" in image:
         for member in message.guild.members:
@@ -125,6 +165,15 @@ async def command_explode(args, message):
 
 @bot.register_command("trigger")
 async def command_trigger(args, message):
+    """
+    !trigger <add | show | remove>: Trigger words make the bot say a predefined sentence.
+
+    Add adds a new trigger word: !trigger add <trigger> | <response>
+    Show prints a list of all existing trigger words for the current server.
+    Remove allows the removal of a trigger word based on trigger word. Note: This is case sensitive.
+    :param args:
+    :param message:
+    """
     if args[0] == "add":
         await command_add_trigger(message)
     elif args[0] == "show":
@@ -177,35 +226,27 @@ async def command_show_triggers(message):
         return
 
     out = "```"
-    out += "{0: <20}  | {2: <16}\n".format("Trigger"[:50], "Creator"[:16])
+    out += "{0: <20}  | {1: <16}\n".format("Trigger"[:20], "Creator"[:16])
     for trigger in bot.triggers[message.guild]:
         if trigger is None:
             continue
-        out += "{0: <20}  | {2: <16}\n".format(trigger.trigger[:50], trigger.author[:16])
+        out += "{0: <20}  | {1: <16}\n".format(trigger.trigger[:20], trigger.author[:16])
     out += "```"
     await message.channel.send(out)
 
 
-@bot.register_command("help")
-async def command_help(args, message):
-    help_text = "```Available commands:\n\
-  !ree     : Let the bot REEEEEEEEEEEEEEEEEEEEEEEEEEE\n\
-  !pubg    : Roept de pubmannen op voor een heerlijk maaltijd kippendinner!\n\
-  !roll    : Rol een dobbelsteen, !roll 5 rolt tussen de 0 en de 5\n\
-  !join    : De bot joint je voice channel\n\
-  !fuckoff : De bot verlaat je v oice channel\n\
-  !music   : De bot voegt een youtube filmpje aan de queue (geef een link als argument mee)\n\
-  !pause   : Pauzeert het huidige youtube filmpje\n\
-  !unpause : Resumes het huidige youtube filmpje\n\
-  !joinpub : Met deze commando join je de Pubmannen groep\n\
-  !trigger <add|remove|show>: Add or remove trigger words.\n\
-  !leavepub: Met deze commando verlaat je de Pubmannen groep\n\
-  !skip    : Skipt het huidige youtube filmpje ```"
-    await message.channel.send(help_text)
-
-
 @bot.register_command("report")
-async def command_help(args, message: Message):
+async def command_report(args, message: Message):
+    """
+    !report <show | time | [user tag]>: Contains all interaction with the report functionality.
+
+    Show shows a list counting the reports per user.
+    Time shows the time left until a user may report again.
+    [user tag] is the to be reported user in the current guild, can be done once per 30 minutes.
+
+    :param args:
+    :param message:
+    """
     if args[0] == "show":
         out = "```"
         reports = report_repository.get_reports(message.guild)
@@ -221,9 +262,14 @@ async def command_help(args, message: Message):
         else:
             await message.channel.send("You have no report downtime.")
     else:
-        id = args[0].replace("<", "").replace(">", "").replace("@", "").replace("!", "")
-        reportee = message.guild.get_member(int(id))
+        uid = args[0].replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        reportee = message.guild.get_member(int(uid))
         reporting = message.author
+
+        # Not allowed to report the bot.
+        if uid == "340197681311776768":
+            await message.channel.send("I don't think so, bro.")
+            reportee = message.author
 
         time = report_repository.report_allowed(message.guild, reporting)
         if time is None:
@@ -232,3 +278,44 @@ async def command_help(args, message: Message):
         else:
             await message.channel.send("Wait %d minutes to report again." % time)
 
+
+@bot.register_command("honor")
+async def command_report(args, message: Message):
+    """
+    !honor <show | time | [user tag]>: Contains all interaction with the honor functionality.
+
+    Show shows a list counting the honor per user.
+    Time shows the time left until a user may honor again.
+    [user tag] is the to be honored user in the current guild, can be done once per 30 minutes.
+
+    :param args:
+    :param message:
+    """
+    if args[0] == "show":
+        out = "```"
+        honors = honor_repository.get_honors(message.guild)
+        for honor, n in honors:
+            out += "%s %d\n" % (honor.honoree, n)
+        out += "```"
+        await message.channel.send(out)
+    elif args[0] == "time":
+        honoring = message.author
+        time = honor_repository.honor_allowed(message.guild, honoring)
+        if time > 0:
+            await message.channel.send("Wait %d minutes to honor again." % time)
+        else:
+            await message.channel.send("You have no honor downtime.")
+    else:
+        uid = args[0].replace("<", "").replace(">", "").replace("@", "").replace("!", "")
+        honoree = message.guild.get_member(int(uid))
+        honoring = message.author
+
+        if honoring == honoree:
+            return
+
+        time = honor_repository.honor_allowed(message.guild, honoring)
+        if time is None:
+            honor = Honor(message.guild, honoree, honoring)
+            honor_repository.add_honor(honor)
+        else:
+            await message.channel.send("Wait %d minutes to honor again." % time)

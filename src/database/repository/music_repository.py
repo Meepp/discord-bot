@@ -34,6 +34,15 @@ def get_song(url: str):
     return session.query(Song).filter(Song.url == url).first()
 
 
+def remove_from_owner(yt_id: str, owner_id: str):
+    session = bot.db.session()
+    song = session.query(Song) \
+        .filter(Song.owner_id == owner_id and Song.yt_id == yt_id).first()
+
+    song.owner_id = -1
+    session.commit()
+
+
 def remove_by_file(filename: str):
     full_filename = os.path.join(bot.music_player.download_folder, filename)
     if os.path.exists(full_filename):
@@ -41,3 +50,4 @@ def remove_by_file(filename: str):
 
     session = bot.db.session()
     session.query(Song).filter(Song.file == filename).delete()
+    session.commit()

@@ -1,4 +1,19 @@
+import threading
+
 from src import bot
+
+
+async def generate_help(channel):
+    docs = "```"
+    for key in bot.commands.keys():
+        fun = bot.commands[key]
+        # Catch if there is no documentation known for this function.
+        try:
+            docs += fun.__doc__.strip().split("\n", 1)[0] + "\n"
+        except AttributeError as e:
+            docs += "!%s: ???\n" % key
+
+    await channel.send(docs + "```")
 
 
 @bot.client.event
@@ -6,7 +21,8 @@ async def on_message(message):
     if message.guild not in bot.triggers:
         bot.update_triggers(message)
 
-    if message.content.startswith("!"):
+    # Command handling
+    if message.content.startswith(bot.PREFIX):
         msg_array = message.content.split(" ")
 
         if len(msg_array) == 0:
@@ -14,8 +30,11 @@ async def on_message(message):
 
         cmd = msg_array[0][1:]
         args = msg_array[1:]
-        if cmd in bot.commands:
+        if cmd == "help":
+            await generate_help(message.channel)
+        elif cmd in bot.commands:
             await bot.commands[cmd](args, message)
+    # Default message handler
     else:
         if message.author.bot:
             return

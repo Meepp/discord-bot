@@ -10,6 +10,8 @@ from src.musicplayer.youtube_search import YoutubeAPI
 class Bot:
     commands = {}
 
+    PREFIX = "!"
+
     def __init__(self):
         self._running = True
         self.config = configparser.ConfigParser()
@@ -19,6 +21,12 @@ class Bot:
         self.music_player: MusicPlayer = None
         self.youtube_api: YoutubeAPI = None
         self.awaitables = None
+
+    def get_voice_by_guild(self, guild):
+        for voice in self.client.voice_clients:
+            if voice.guild == guild:
+                return voice
+        return None
 
     async def _awaitable_handler(self):
         self.awaitables = asyncio.Queue()
@@ -48,10 +56,14 @@ class Bot:
 
     @classmethod
     def register_command(cls, *args):
-        def decorator(fn):
-            cls.commands[args[0]] = fn
+        def wrapper(fn):
+            for arg in args:
+                if arg in cls.commands:
+                    print("Warning: overwriting function with name %s." % arg)
+                cls.commands[arg] = fn
+            return fn
 
-        return decorator
+        return wrapper
 
 
 bot = Bot()

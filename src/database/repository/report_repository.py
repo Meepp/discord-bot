@@ -20,10 +20,10 @@ def add_report(report: Report):
 def get_reports(guild):
     session = bot.db.session()
 
-    sub = session.query(Report, func.count(Report.reportee)) \
+    sub = session.query(Report, func.count(Report.reportee_id)) \
         .filter(Report.guild_id == guild.id) \
-        .group_by(Report.reportee) \
-        .order_by(func.count(Report.reportee).desc()) \
+        .group_by(Report.reportee_id) \
+        .order_by(func.count(Report.reportee_id).desc()) \
         .all()
 
     return sub

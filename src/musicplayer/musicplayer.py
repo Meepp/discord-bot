@@ -4,7 +4,6 @@ import discord
 import queue
 import os.path
 import youtube_dl
-from IPython.terminal.pt_inputhooks.asyncio import loop
 
 from src import bot
 from src.database.models.models import Song
@@ -17,18 +16,12 @@ class MusicPlayer:
         self.is_playing = False
         self.client = client
         self.currently_playing = None
-        self.deletables = []
         self.download_folder = download_folder
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': download_folder + '/%(id)s',
             'noplaylist': True,
         }
-
-    def get_voice_by_guild(self, guild):
-        for voice in self.client.voice_clients:
-            if voice.guild == guild:
-                return voice
 
     def add_queue(self, message, url: str, speed, downloaded=False) -> str:
         video_title = "Unknown"
@@ -56,15 +49,15 @@ class MusicPlayer:
     def clear(self, message):
         self.queue = queue.Queue()
         self.is_playing = False
-        voice = self.get_voice_by_guild(message.guild)
+        voice = bot.get_voice_by_guild(message.guild)
         voice.stop()
 
     def skip(self, guild):
-        voice = self.get_voice_by_guild(guild)
+        voice = bot.get_voice_by_guild(guild)
         voice.stop()
 
     async def pause(self, message):
-        voice = self.get_voice_by_guild(message.guild)
+        voice = bot.get_voice_by_guild(message.guild)
 
         if voice.is_connected() and voice.is_playing():
             voice.pause()
@@ -72,9 +65,10 @@ class MusicPlayer:
             await message.channel.send("There is no music playing currently.")
 
     async def unpause(self, message):
-        voice = self.get_voice_by_guild(message.guild)
-
-        if voice.is_connected() and not voice.is_playing():
+        voice = bot.get_voice_by_guild(message.guild)
+        print("Im in", voice)
+        print(voice.is_playing(), voice.is_connected())
+        if voice.is_connected() and voice.is_playing():
             voice.resume()
         else:
             await message.channel.send("There is no music playing currently.")
@@ -84,13 +78,6 @@ class MusicPlayer:
             print(error)
 
         self.is_playing = False
-
-        for deletable in self.deletables:
-            print("Deleting: ", deletable)
-            music_repository.remove_by_file(deletable)
-
-        self.deletables = []
-        print("Queue length: ", self.queue.qsize())
 
         # Continue playing from the queue
         if not self.queue.empty():
@@ -109,11 +96,13 @@ class MusicPlayer:
         song = music_repository.get_song(url)
 
         # Download the youtube file and store in defined folder
-        voice = self.get_voice_by_guild(guild)
+        voice = bot.get_voice_by_guild(guild)
         if voice is None:
+            print("Warning: attempted playing music without being in a voice channel.")
             return
 
         file_location = os.path.join(self.download_folder, song.yt_id)
+        session = bot.db.session()
 
         # Download song if not yet downloaded
         if not os.path.isfile(file_location) or song.file is None:
@@ -121,8 +110,9 @@ class MusicPlayer:
                 with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
                     ydl.download([song.url])
                 song.file = song.yt_id
+                session.commit()
             except Exception as e:
-                print("Exception while downloading song:", e)
+                print("Error: exception while downloading song:", e)
                 self.done(e)
                 return
 
@@ -131,8 +121,6 @@ class MusicPlayer:
         # Update latest playtime to currently.
         # TODO: Use latest playtime to remove unplayed songs from the db
         song.latest_playtime = datetime.now()
-        session = bot.db.session()
-        session.commit()
 
         # Add bot status change to currently playing song
         coroutine = bot.client.change_presence(activity=discord.Game(name=song.title))
@@ -142,5 +130,4 @@ class MusicPlayer:
         source = discord.FFmpegPCMAudio(file_location, options='-filter:a "atempo=' + str(speed) + '"')
 
         voice.play(source, after=lambda e: self.done(e))
-
-
+        session.commit()
