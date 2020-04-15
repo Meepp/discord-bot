@@ -8,6 +8,7 @@ import youtube_dl
 from src import bot
 from src.database.models.models import Song
 from src.database.repository import music_repository
+from src.musicplayer.downloader import Downloader
 
 
 class MusicPlayer:
@@ -17,26 +18,17 @@ class MusicPlayer:
         self.client = client
         self.currently_playing = None
         self.download_folder = download_folder
-        self.ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': download_folder + '/%(id)s',
-            'noplaylist': True,
-        }
+        self.downloader = Downloader(download_folder)
 
     def add_queue(self, message, url: str, speed, downloaded=False) -> str:
         video_title = "Unknown"
 
         song = music_repository.get_song(url)
         if not song:
-            # Creates a new entry for this song in the db.
-            with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
-                info_dict = ydl.extract_info(url, download=False)
-                video_title = info_dict.get('title', None)
+            print("Song not in db, downloading remote.")
+            self.downloader.get(url, message.author)
 
-            song = Song(message.author, video_title, url, info_dict['id'])
-            music_repository.add_music(song)
-
-        self.queue.put((message.guild, song.url, speed))
+        self.queue.put((message.guild, url, speed))
 
         if not self.is_playing:
             try:
@@ -66,8 +58,6 @@ class MusicPlayer:
 
     async def unpause(self, message):
         voice = bot.get_voice_by_guild(message.guild)
-        print("Im in", voice)
-        print(voice.is_playing(), voice.is_connected())
         if voice.is_connected() and voice.is_playing():
             voice.resume()
         else:
@@ -106,15 +96,7 @@ class MusicPlayer:
 
         # Download song if not yet downloaded
         if not os.path.isfile(file_location) or song.file is None:
-            try:
-                with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
-                    ydl.download([song.url])
-                song.file = song.yt_id
-                session.commit()
-            except Exception as e:
-                print("Error: exception while downloading song:", e)
-                self.done(e)
-                return
+            self.downloader.lock.wait()
 
         self.currently_playing = song.file or song.yt_id
 

@@ -20,7 +20,7 @@ class Bot:
         self.triggers = dict()
         self.music_player: MusicPlayer = None
         self.youtube_api: YoutubeAPI = None
-        self.awaitables = None
+        self.awaitables = asyncio.Queue()
 
     def get_voice_by_guild(self, guild):
         for voice in self.client.voice_clients:
@@ -28,8 +28,10 @@ class Bot:
                 return voice
         return None
 
+    def is_running(self):
+        return self._running
+
     async def _awaitable_handler(self):
-        self.awaitables = asyncio.Queue()
         print("Starting awaitable handler thread.")
         while self._running:
             awaitable = await self.awaitables.get()

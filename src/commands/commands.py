@@ -60,12 +60,12 @@ async def command_delete(args, message):
 
 @bot.register_command("pause")
 async def command_pause(args, message):
-    await bot.music_player.pause(message.channel)
+    await bot.music_player.pause(message)
 
 
 @bot.register_command("unpause")
 async def command_unpause(args, message):
-    await bot.music_player.unpause(message.channel)
+    await bot.music_player.unpause(message)
 
 
 @bot.register_command("music")
