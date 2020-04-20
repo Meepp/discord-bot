@@ -1,6 +1,7 @@
+import asyncio
 import configparser
 import threading
-import asyncio
+import queue
 
 import discord
 from src.database.database import Database  # noqa
@@ -20,7 +21,11 @@ class Bot:
         self.triggers = dict()
         self.music_player: MusicPlayer = None
         self.youtube_api: YoutubeAPI = None
-        self.awaitables = asyncio.Queue()
+        self.downloader = None
+
+        self.awaitables = queue.Queue()
+
+        self.handler = threading.Thread(target=self._awaitable_handler)
 
     def get_voice_by_guild(self, guild):
         for voice in self.client.voice_clients:
@@ -31,15 +36,16 @@ class Bot:
     def is_running(self):
         return self._running
 
-    async def _awaitable_handler(self):
+    def _awaitable_handler(self):
         print("Starting awaitable handler thread.")
         while self._running:
-            awaitable = await self.awaitables.get()
+            try:
+                awaitable = self.awaitables.get(timeout=1)
 
-            await asyncio.ensure_future(awaitable)
-
-    def start_handlers(self):
-        asyncio.ensure_future(self._awaitable_handler())
+                asyncio.run(awaitable)
+            except queue.Empty as e:
+                pass
+        print("Gracefully terminated awaitable handler thread.")
 
     def update_triggers(self, message):
         self.triggers[message.guild] = trigger_repository.get_triggers(message.guild)
@@ -48,13 +54,24 @@ class Bot:
         self.config.read(name)
 
     def start(self):
-        self.music_player = MusicPlayer(self.client, self.config["DEFAULT"]["AudioDownloadFolder"])
+        from src.musicplayer.downloader import Downloader
+
+        self.handler.start()
+
+        dl_folder = self.config["DEFAULT"]["AudioDownloadFolder"]
+        self.downloader = Downloader(dl_folder)
+        self.music_player = MusicPlayer(self.client, dl_folder)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
         self.client.run(self.config["DEFAULT"]["DiscordAPIKey"])
 
-    def kill(self):
+    async def kill(self):
         self._running = False
-        self.client.logout()
+
+        # Wait for download to finish
+        self.downloader.kill()
+        # Waiting for handler thread to finish.
+        self.handler.join()
+        await self.client.logout()
 
     @classmethod
     def register_command(cls, *args):

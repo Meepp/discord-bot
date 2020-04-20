@@ -2,6 +2,7 @@ import os
 from typing import List
 
 from discord import Member
+from sqlalchemy import and_
 
 from src import bot
 from src.database.models.models import Song
@@ -14,7 +15,6 @@ def add_music(song: Song):
         session.add(song)
         session.commit()
     except Exception as e:
-        print(e)
         session.rollback()
 
 
@@ -34,11 +34,19 @@ def get_song(url: str):
     return session.query(Song).filter(Song.url == url).first()
 
 
-def remove_from_owner(yt_id: str, owner_id: str):
+def get_song_by_id(yt_id: str):
+    session = bot.db.session()
+
+    return session.query(Song).filter(Song.yt_id == yt_id).first()
+
+
+def remove_from_owner(url: str, owner_id: int):
     session = bot.db.session()
     song = session.query(Song) \
-        .filter(Song.owner_id == owner_id and Song.yt_id == yt_id).first()
+        .filter(and_(Song.owner_id == owner_id, Song.url == url)).first()
 
+    if song is None:
+        return
     song.owner_id = -1
     session.commit()
 

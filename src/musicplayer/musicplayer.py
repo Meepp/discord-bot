@@ -16,9 +16,17 @@ class MusicPlayer:
         self.queue = queue.Queue()
         self.is_playing = False
         self.client = client
-        self.currently_playing = None
+        self.currently_playing = None  # Url of the song
         self.download_folder = download_folder
-        self.downloader = Downloader(download_folder)
+
+    def skip_queue(self, num):
+        temp = queue.Queue()
+        for i in range(self.queue.qsize()):
+            if i == num:
+                continue
+            temp.put(self.queue.queue[i])
+
+        self.queue = temp
 
     def add_queue(self, message, url: str, speed, downloaded=False) -> str:
         video_title = "Unknown"
@@ -26,7 +34,7 @@ class MusicPlayer:
         song = music_repository.get_song(url)
         if not song:
             print("Song not in db, downloading remote.")
-            self.downloader.get(url, message.author)
+            bot.downloader.get(url, message.author)
 
         self.queue.put((message.guild, url, speed))
 
@@ -35,7 +43,6 @@ class MusicPlayer:
                 self.play()
             except Exception as e:
                 self.done(e)
-
         return video_title
 
     def clear(self, message):
@@ -96,9 +103,11 @@ class MusicPlayer:
 
         # Download song if not yet downloaded
         if not os.path.isfile(file_location) or song.file is None:
-            self.downloader.lock.wait()
+            print("Waiting for song to finish downloading...")
+            bot.downloader.lock.wait()
+            print("Song finished downloading successfully.")
 
-        self.currently_playing = song.file or song.yt_id
+        self.currently_playing = song.url
 
         # Update latest playtime to currently.
         # TODO: Use latest playtime to remove unplayed songs from the db

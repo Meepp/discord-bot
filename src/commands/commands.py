@@ -47,15 +47,73 @@ async def command_fuckoff(args, message):
             return await x.disconnect()
 
 
+@bot.register_command("queue")
+async def command_queue(args, message):
+    size = bot.music_player.queue.qsize()
+
+    page = 0
+    if len(args) > 0:
+        try:
+            page = int(args[0])
+        except ValueError as e:
+            pass
+
+    PAGE_SIZE = 6
+
+    out = "```\nComing up page (%d / %d):\n" % (page, bot.music_player.queue.qsize() / PAGE_SIZE)
+    for i in range(page * PAGE_SIZE, min(size, (page + 1) * PAGE_SIZE)):
+        _, url, _ = bot.music_player.queue.queue[i]
+        song = music_repository.get_song(url)
+        out += "%d: %s | %s\n" % (i, song.title, song.owner)
+    out += "```"
+    await message.channel.send(out)
+
+
+@bot.register_command("playlist")
+async def command_playlist(args, message):
+    if len(message.mentions) == 0:
+        await message.channel.send("Mention a player to see his playlist.")
+        return
+
+    songs = music_repository.get_music(message.mentions[0])
+
+    page = 0
+    if len(args) > 0:
+        try:
+            page = int(args[0])
+        except ValueError as e:
+            pass
+
+    PAGE_SIZE = 6
+
+    out = "```\nSongs (%d / %d):\n" % (page, len(songs) / PAGE_SIZE)
+    for i in range(page * PAGE_SIZE, min(len(songs), (page + 1) * PAGE_SIZE)):
+        song = songs[i]
+        out += "%d: %s | %s\n" % (i, song.title, song.owner)
+    out += "```"
+    await message.channel.send(out)
+
+
 @bot.register_command("delete")
 async def command_delete(args, message):
     """
     !delete: deletes the currently playing song from your playlist.
 
+    :param args:
     :type message: Message
     """
-    remove_from_owner(bot.music_player.currently_playing, message.author.id)
-    bot.music_player.skip(message.guild)
+
+    if len(args) > 0:
+        try:
+            num = int(args[0])
+        except ValueError as e:
+            num = 0
+        _, url, _ = bot.music_player.queue.queue[num]
+        remove_from_owner(url, message.author.id)
+        bot.music_player.skip_queue(num)
+    else:
+        remove_from_owner(bot.music_player.currently_playing, message.author.id)
+        bot.music_player.skip(message.guild)
 
 
 @bot.register_command("pause")
@@ -77,7 +135,6 @@ async def command_music(args, message):
 
     if len(args) < 1:
         return
-
 
     try:
         speed = float(args[-1])
@@ -132,7 +189,7 @@ async def command_clear(args, message):
 async def command_kill(args, message):
     if bot.music_player and bot.music_player.is_playing:
         bot.music_player.clear(message)
-    await bot.client.logout()
+    await bot.kill()
 
 
 @bot.register_command("explode")
@@ -262,12 +319,15 @@ async def command_report(args, message: Message):
         else:
             await message.channel.send("You have no report downtime.")
     else:
-        uid = args[0].replace("<", "").replace(">", "").replace("@", "").replace("!", "")
-        reportee = message.guild.get_member(int(uid))
+        if len(message.mentions) == 0:
+            await message.channel.send("Tag someone in your message to report them.")
+            return
+
+        reportee = message.guild.get_member(message.mentions[0].id)
         reporting = message.author
 
         # Not allowed to report the bot.
-        if uid == "340197681311776768":
+        if message.mentions[0] == "340197681311776768":
             await message.channel.send("I don't think so, bro.")
             reportee = message.author
 
