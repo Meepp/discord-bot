@@ -104,7 +104,12 @@ class MusicPlayer:
         # Download song if not yet downloaded
         if not os.path.isfile(file_location) or song.file is None:
             print("Waiting for song to finish downloading...")
-            bot.downloader.lock.wait()
+            if bot.downloader.lock.locked():
+                bot.downloader.event.wait()
+            else:
+                self.done("This song could not be downloaded.")
+                return
+
             print("Song finished downloading successfully.")
 
         self.currently_playing = song.url

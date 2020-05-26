@@ -4,8 +4,11 @@ import threading
 import queue
 
 import discord
+
+from src import settings
 from src.database.database import Database  # noqa
 from src.musicplayer.youtube_search import YoutubeAPI
+from src.settings import Settings
 
 
 class Bot:
@@ -22,6 +25,7 @@ class Bot:
         self.music_player: MusicPlayer = None
         self.youtube_api: YoutubeAPI = None
         self.downloader = None
+        self.settings = Settings()
 
         self.awaitables = queue.Queue()
 
@@ -53,6 +57,8 @@ class Bot:
     def set_config(self, name):
         self.config.read(name)
 
+        self.settings.page_size = int(self.config["DEFAULT"]["PageSize"])
+
     def start(self):
         from src.musicplayer.downloader import Downloader
 
@@ -71,6 +77,9 @@ class Bot:
         self.downloader.kill()
         # Waiting for handler thread to finish.
         self.handler.join()
+
+        music_repository.remove_unused()
+
         await self.client.logout()
 
     @classmethod

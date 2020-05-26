@@ -59,3 +59,29 @@ def remove_by_file(filename: str):
     session = bot.db.session()
     session.query(Song).filter(Song.file == filename).delete()
     session.commit()
+
+
+def remove_unused():
+    session = bot.db.session()
+    songs = session.query(Song).filter(Song.owner_id == -1).all()
+
+    for song in songs:
+        # This is the only entry of the song, so remove the file.
+        if len(session.query(Song)
+               .filter(and_(Song.yt_id == song.yt_id, Song.owner_id != -1))
+               .all()) == 0:
+            print("Deleting %s" % song.file)
+            remove_by_file(song.file)
+
+    session.query(Song).filter(Song.owner_id == -1).delete()
+    session.commit()
+
+
+def remove_by_id(user: Member, lower, upper):
+    ids = [song.id for song in get_music(user)[lower:upper]]
+    session = bot.db.session()
+    session.commit()
+
+    session.query(Song).filter(Song.id.in_(ids)).delete(synchronize_session=False)
+    session.commit()
+    print('Done...')

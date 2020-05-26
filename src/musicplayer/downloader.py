@@ -16,7 +16,8 @@ class Downloader:
             'outtmpl': folder + '/%(id)s',
             'noplaylist': True,
         }
-        self.lock = threading.Event()
+        self.event: threading.Event = threading.Event()
+        self.lock: threading.Lock = threading.Lock()
         self.download_queue = queue.Queue()
 
         self.is_running = True
@@ -32,7 +33,8 @@ class Downloader:
 
                 print("Async download of url %s" % url, flush=True)
 
-                self.lock.clear()
+                self.event.clear()
+                self.lock.acquire()
                 song = music_repository.get_song(url)
                 session = bot.db.session()
 
@@ -46,7 +48,8 @@ class Downloader:
 
                 session.commit()
 
-                self.lock.set()
+                self.lock.release()
+                self.event.set()
             except queue.Empty as e:
                 pass
         print("Gracefully terminated downloader thread.")

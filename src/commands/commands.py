@@ -7,6 +7,7 @@ import discord
 from discord import Message, Guild
 
 from src import bot
+from src.custom_emoji import CustomEmoji
 from src.database.models.models import Trigger, Report, Honor
 from src.database.repository import trigger_repository, report_repository, music_repository, honor_repository
 from src.database.repository.music_repository import remove_from_owner
@@ -31,12 +32,13 @@ async def command_roll(args, message):
 
 @bot.register_command("join")
 async def command_join(args, message):
-    if message.author.voice.channel is not None:
+    if message.author.voice is not None:
         try:
             await message.author.voice.channel.connect()
-        except Exception as e:
-            print("Hallo", e)
+        except discord.ClientException as e:
             await message.channel.send("I have already joined a voice channel nibba.")
+    else:
+        await message.channel.send("You are not in a voice channel.")
 
 
 @bot.register_command("fuckoff")
@@ -58,40 +60,70 @@ async def command_queue(args, message):
         except ValueError as e:
             pass
 
-    PAGE_SIZE = 6
+    page_size = bot.settings.page_size
 
-    out = "```\nComing up page (%d / %d):\n" % (page, bot.music_player.queue.qsize() / PAGE_SIZE)
-    for i in range(page * PAGE_SIZE, min(size, (page + 1) * PAGE_SIZE)):
+    out = "```\nComing up page (%d / %d):\n" % (page, bot.music_player.queue.qsize() / page_size)
+    for i in range(page * page_size, min(size, (page + 1) * page_size)):
         _, url, _ = bot.music_player.queue.queue[i]
         song = music_repository.get_song(url)
         out += "%d: %s | %s\n" % (i, song.title, song.owner)
     out += "```"
-    await message.channel.send(out)
+    await message.channel.send(out, delete_after=30)
 
 
 @bot.register_command("playlist")
-async def command_playlist(args, message):
+async def command_playlist(args, message: Message):
+    """
+    !playlist (@user | delete @user <id>)
+
+    !playlist @user: shows the playlist of the given user in order of addition (oldest first).
+    !playlist delete @user <id>: deletes a song from a players playlist.
+       Id can be a range (e.g. 0:10) which will delete all numbers in the range [0, 10)
+    """
     if len(message.mentions) == 0:
-        await message.channel.send("Mention a player to see his playlist.")
+        await message.channel.send("Mention a player to change or see their playlist.")
         return
 
-    songs = music_repository.get_music(message.mentions[0])
+    if args[0] == "delete":
+        if message.author != message.mentions[0]:
+            await message.channel.send("Cannot delete songs from another user's playlist.")
+            return
 
-    page = 0
-    if len(args) > 0:
         try:
-            page = int(args[0])
+            if ":" in args[2]:
+                data = args[2].split(":", 1)
+                low, upp = int(data[0]), int(data[1])
+            else:
+                low = int(args[2])
+                upp = low + 1
         except ValueError as e:
-            pass
+            await message.channel.send("Invalid number or range, should be either a single number or a range in the form 'n:m'.")
+            return
 
-    PAGE_SIZE = 6
+        music_repository.remove_by_id(message.mentions[0], lower=low, upper=upp)
 
-    out = "```\nSongs (%d / %d):\n" % (page, len(songs) / PAGE_SIZE)
-    for i in range(page * PAGE_SIZE, min(len(songs), (page + 1) * PAGE_SIZE)):
-        song = songs[i]
-        out += "%d: %s | %s\n" % (i, song.title, song.owner)
-    out += "```"
-    await message.channel.send(out)
+        await message.channel.send("Successfully deleted %d songs from the playlist." % (upp - low))
+    else:
+        songs = music_repository.get_music(message.mentions[0])
+
+        page = 0
+        for arg in args:
+            try:
+                page = int(arg)
+                break
+            except ValueError:
+                pass
+
+        page_size = bot.settings.page_size
+
+        out = "```\n%ss playlist (%d / %d):\n" % (message.mentions[0].nick, page, len(songs) / page_size)
+        for i in range(page * page_size, min(len(songs), (page + 1) * page_size)):
+            song = songs[i]
+            out += "%d: %s | %s\n" % (i, song.title, song.owner)
+        out += "```"
+        await message.delete()
+        message = await message.channel.send(out, delete_after=30)
+        await message.add_reaction(CustomEmoji.jimbo)
 
 
 @bot.register_command("delete")
@@ -155,6 +187,39 @@ async def command_music(args, message):
 
         await message.channel.send("Queueing " + str(len(songs)) + " songs.")
         await message.delete()
+    elif args[0] == "playlist":
+        if len(message.mentions) == 0:
+            await message.channel.send("No players playlist selected.")
+            await message.delete()
+            return
+            
+        member = message.mentions[0]
+        
+        songs = music_repository.get_music(member)
+        nums = []
+
+        for arg in args[1:]:
+            try:
+                if ":" in arg:
+                    data = arg.split(":", 1)
+                    low, upp = int(data[0]), int(data[1])
+                    nums.extend(n for n in range(low, upp + 1))
+                else:
+                    nums.append(int(arg))
+            except ValueError as e:
+                pass
+        
+        err = False
+        for num in nums:
+            if num >= len(songs) or num < 0:
+                if not err:
+                    await message.channel.send("Playlist id should be between %d and %d" % (0, len(songs)))
+                continue
+
+            bot.music_player.add_queue(message, songs[num].url, 1, True)
+        
+        await message.channel.send("Added %d songs" % len([num for num in nums if num < len(songs) and num >= 0]))
+        await message.delete()
     elif is_valid_youtube_url(args[0]):
         url = args[0]
         bot.music_player.add_queue(message, url, speed)
@@ -206,11 +271,12 @@ async def command_explode(args, message):
     image = message.content.split(" ")[1]
     # hacky
     if "@" in image:
-        for member in message.guild.members:
-            if member.mention.replace("!", "") == image.replace("!", ""):
-                em = discord.Embed()
-                em.set_image(url=member.avatar_url)
-                await message.channel.send(embed=em)
+        for member in message.mentions:
+            em = discord.Embed()
+            url = member.avatar_url_as(size=512)
+            print(url)
+            em.set_image(url=str(url))
+            await message.channel.send(embed=em)
     else:
         for emoji in message.guild.emojis:
             if str(emoji) == image:
