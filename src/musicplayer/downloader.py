@@ -1,19 +1,32 @@
 import asyncio
 import queue
+import string
 import threading
 
 import youtube_dl
 
-from src import bot
+from src import bot, randint
 from src.database.models.models import Song
 from src.database.repository import music_repository
+
+ALLOWED_CHARS = string.digits + string.ascii_letters
+
+
+def generate_code():
+    """
+    Generates a random string of 32 chars long. Can be used for file names.
+    :return:
+    """
+    length = 32
+    return "".join(ALLOWED_CHARS[randint(0, len(ALLOWED_CHARS) - 1)] for _ in range(length))
 
 
 class Downloader:
     def __init__(self, folder):
+        self.folder = folder
+
         self.ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': folder + '/%(id)s',
             'noplaylist': True,
         }
         self.event: threading.Event = threading.Event()
@@ -29,7 +42,7 @@ class Downloader:
         print("Starting asynchronous downloader thread.")
         while self.is_running:
             try:
-                url = self.download_queue.get(timeout=1)
+                url, file = self.download_queue.get(timeout=1)
 
                 print("Async download of url %s" % url, flush=True)
 
@@ -39,10 +52,9 @@ class Downloader:
                 session = bot.db.session()
 
                 try:
+                    self.ydl_opts["outtmpl"] = self.folder + "/" + file
                     with youtube_dl.YoutubeDL(self.ydl_opts) as ydl:
                         ydl.download([url])
-
-                    song.file = song.yt_id
                 except Exception as e:
                     print("Error: exception while downloading song:", e, flush=True)
 
@@ -62,10 +74,13 @@ class Downloader:
 
         print("Got here with title: %s" % video_title)
 
-        song = Song(author, video_title, url, info_dict['id'])
+        random_code = generate_code()
+
+        song = Song(author, video_title, url)
+        song.file = random_code
         music_repository.add_music(song)
 
-        self.download_queue.put_nowait(url)
+        self.download_queue.put_nowait((url, random_code))
 
     def kill(self):
         self.is_running = False

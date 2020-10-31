@@ -1,4 +1,4 @@
-from src import bot
+from src import bot, music_repository
 from src.custom_emoji import CustomEmoji
 
 
@@ -55,3 +55,13 @@ async def on_reaction_add(reaction, user):
 
     if str(reaction.emoji)[1:-1] == CustomEmoji.jimbo:
         await reaction.message.delete()
+
+    lc = str(reaction.emoji) == CustomEmoji.arrow_left
+    rc = str(reaction.emoji) == CustomEmoji.arrow_right
+    if lc or rc:
+        mention, page = music_repository.playlists[reaction.message.id]
+        page = page - 1 if lc else page + 1
+        out = music_repository.show_playlist(mention, page)
+        music_repository.playlists[reaction.message.id] = (mention, page)
+        await reaction.message.edit(content=out)
+

@@ -17,6 +17,17 @@ def add_report(report: Report):
         session.rollback()
 
 
+def get_all_reports(guild, reportee):
+    session = bot.db.session()
+
+    return session.query(Report, func.count(Report.reporting_id)) \
+        .filter(Report.guild_id == guild.id) \
+        .filter(Report.reportee_id == reportee.id) \
+        .group_by(Report.reporting_id) \
+        .order_by(func.count(Report.reporting_id).desc()) \
+        .all()
+
+
 def get_reports(guild):
     session = bot.db.session()
 

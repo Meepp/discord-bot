@@ -98,7 +98,7 @@ class MusicPlayer:
             print("Warning: attempted playing music without being in a voice channel.")
             return
 
-        file_location = os.path.join(self.download_folder, song.yt_id)
+        file_location = os.path.join(self.download_folder, song.file)
         session = bot.db.session()
 
         # Download song if not yet downloaded

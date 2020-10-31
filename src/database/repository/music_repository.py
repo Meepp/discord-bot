@@ -8,6 +8,9 @@ from src import bot
 from src.database.models.models import Song
 
 
+playlists = {}
+
+
 def add_music(song: Song):
     session = bot.db.session()
 
@@ -32,12 +35,6 @@ def get_song(url: str):
     session = bot.db.session()
 
     return session.query(Song).filter(Song.url == url).first()
-
-
-def get_song_by_id(yt_id: str):
-    session = bot.db.session()
-
-    return session.query(Song).filter(Song.yt_id == yt_id).first()
 
 
 def remove_from_owner(url: str, owner_id: int):
@@ -68,7 +65,7 @@ def remove_unused():
     for song in songs:
         # This is the only entry of the song, so remove the file.
         if len(session.query(Song)
-               .filter(and_(Song.yt_id == song.yt_id, Song.owner_id != -1))
+               .filter(and_(Song.file == song.file, Song.owner_id != -1))
                .all()) == 0:
             print("Deleting %s" % song.file)
             remove_by_file(song.file)
@@ -85,3 +82,21 @@ def remove_by_id(user: Member, lower, upper):
     session.query(Song).filter(Song.id.in_(ids)).delete(synchronize_session=False)
     session.commit()
     print('Done...')
+
+
+def show_playlist(mention, page=0):
+    songs = get_music(mention)
+
+    page_size = bot.settings.page_size
+
+    out = "```\n%ss playlist (%d / %d):\n" % (mention.nick, page, len(songs) / page_size)
+    for i in range(page * page_size, min(len(songs), (page + 1) * page_size)):
+        song = songs[i]
+        out += "%d: %s | %s\n" % (i, song.title, song.owner)
+    out += "```"
+    return out
+
+
+def query_song_title(query):
+    session = bot.db.session()
+    return session.query(Song).filter(Song.title.like("%" + query + "%")).all()

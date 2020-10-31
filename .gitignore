@@ -3,7 +3,9 @@ key
 temp/*
 env/*
 media/music
-database.db
+*.db
 kerstpuzzel/*
 config.conf
 test.py
+__pycache__/
+.idea/

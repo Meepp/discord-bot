@@ -19,19 +19,42 @@ def is_valid_youtube_url(input):
 
 @bot.register_command("roll")
 async def command_roll(args, message):
+    """
+    !roll <N>: generate a random number between 0-N (N=100 by default). Or use NdM for dnd-type rolls. (N max 1000)
+    :param args:
+    :param message:
+    :return:
+    """
     if len(args) < 1:
-        nmax = 100
+        value = str(randint(0, 100))
+    elif "d" in args[0]:
+        d = args[0].split("d")
+        n_rolls = min(int(d[0]), 1000)
+        dice = int(d[1])
+
+        rolls = [randint(1, dice) for _ in range(n_rolls)]
+        s = str(sum(rolls))
+        if n_rolls < 10:
+            value = "%s (%s)" % (s, ", ".join(str(roll) for roll in rolls))
+        else:
+            value = s
     else:
         try:
-            nmax = (int)(args[0])
-        except:
-            nmax = 100
-
-    await message.channel.send(message.author.nick + " rolled a " + str(randint(0, nmax)))
+            upper = int(args[0])
+        except ValueError as e:
+            upper = 100
+        value = str(randint(0, upper))
+    await message.channel.send("%s rolled a %s." % (message.author.nick, value))
 
 
 @bot.register_command("join")
 async def command_join(args, message):
+    """
+    !join: lets the bot join the voice channel of the person who requested.
+    :param args:
+    :param message:
+    :return:
+    """
     if message.author.voice is not None:
         try:
             await message.author.voice.channel.connect()
@@ -43,6 +66,13 @@ async def command_join(args, message):
 
 @bot.register_command("fuckoff")
 async def command_fuckoff(args, message):
+    """
+    !fuckoff: makes the bot leave its currently active voice channel.
+
+    :param args:
+    :param message:
+    :return:
+    """
     for x in bot.client.voice_clients:
         if x.guild == message.guild:
             bot.music_player.clear(message)
@@ -51,6 +81,12 @@ async def command_fuckoff(args, message):
 
 @bot.register_command("queue")
 async def command_queue(args, message):
+    """
+    !queue: show the queue of the first few upcoming songs.
+    :param args:
+    :param message:
+    :return:
+    """
     size = bot.music_player.queue.qsize()
 
     page = 0
@@ -104,8 +140,7 @@ async def command_playlist(args, message: Message):
 
         await message.channel.send("Successfully deleted %d songs from the playlist." % (upp - low))
     else:
-        songs = music_repository.get_music(message.mentions[0])
-
+        mention = message.mentions[0]
         page = 0
         for arg in args:
             try:
@@ -114,16 +149,13 @@ async def command_playlist(args, message: Message):
             except ValueError:
                 pass
 
-        page_size = bot.settings.page_size
-
-        out = "```\n%ss playlist (%d / %d):\n" % (message.mentions[0].nick, page, len(songs) / page_size)
-        for i in range(page * page_size, min(len(songs), (page + 1) * page_size)):
-            song = songs[i]
-            out += "%d: %s | %s\n" % (i, song.title, song.owner)
-        out += "```"
+        out = music_repository.show_playlist(mention, page)
         await message.delete()
-        message = await message.channel.send(out, delete_after=30)
+        message = await message.channel.send(out)
+        music_repository.playlists[message.id] = (mention, page)
         await message.add_reaction(CustomEmoji.jimbo)
+        await message.add_reaction(CustomEmoji.arrow_left)
+        await message.add_reaction(CustomEmoji.arrow_right)
 
 
 @bot.register_command("delete")
@@ -150,16 +182,41 @@ async def command_delete(args, message):
 
 @bot.register_command("pause")
 async def command_pause(args, message):
+    """
+    !pause: pause the currently playing song
+
+    :param args:
+    :param message:
+    :return:
+    """
     await bot.music_player.pause(message)
 
 
 @bot.register_command("unpause")
 async def command_unpause(args, message):
+    """
+    !unpause: unpause the currently playing song
+
+    :param args:
+    :param message:
+    :return:
+    """
     await bot.music_player.unpause(message)
 
 
 @bot.register_command("music")
 async def command_music(args, message):
+    """
+    !music (search <query> | all <user(s)> | <youtube url> | playlist <user> <playlist id(s))
+
+    !music all <user> => play all songs in <user>'s playlist
+    !music <youtube url> => download song and play
+    !music playlist <user> <playlist id(s)> => pick specific songs from playlist
+
+    :param args:
+    :param message:
+    :return:
+    """
     voice = bot.get_voice_by_guild(message.guild)
     if voice is None:
         await message.channel.send("I am not in a voice channel yet, invite me with !join before playing music.")
@@ -203,7 +260,7 @@ async def command_music(args, message):
                 if ":" in arg:
                     data = arg.split(":", 1)
                     low, upp = int(data[0]), int(data[1])
-                    nums.extend(n for n in range(low, upp + 1))
+                    nums.extend(n for n in range(max(low, 0), min(upp + 1, len(songs))))
                 else:
                     nums.append(int(arg))
             except ValueError as e:
@@ -218,22 +275,38 @@ async def command_music(args, message):
 
             bot.music_player.add_queue(message, songs[num].url, 1, True)
         
-        await message.channel.send("Added %d songs" % len([num for num in nums if num < len(songs) and num >= 0]))
-        await message.delete()
-    elif is_valid_youtube_url(args[0]):
-        url = args[0]
-        bot.music_player.add_queue(message, url, speed)
+        await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
         await message.delete()
     elif args[0] == "search":
         url = bot.youtube_api.search(" ".join(args))
         bot.music_player.add_queue(message, url, speed)
         await message.delete()
+    elif args[0] == "like":
+        query = " ".join(args[1:])
+        songs = music_repository.query_song_title(query)
+        if len(songs) == 0:
+            msg = "No songs found."
+        else:
+            for song in songs:
+                bot.music_player.add_queue(message, song.url, 1, True)
+            msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0].title)
+        await message.channel.send(msg)
+        await message.delete()
     else:
-        await message.channel.send("Invalid youtube url. Did you mean !music all @user or !music search <query>?")
+        url = args[0]
+        bot.music_player.add_queue(message, url, speed)
+        await message.delete()
 
 
 @bot.register_command("skip")
 async def command_skip(args, message):
+    """
+    !skip: skips the currently playing song, and starts playing the next (if available)
+
+    :param args:
+    :param message:
+    :return:
+    """
     bot.music_player.skip(message.guild)
 
 
@@ -252,6 +325,13 @@ async def command_clear(args, message):
 
 @bot.register_command("kill")
 async def command_kill(args, message):
+    """
+    !kill: kills the bot, will make sure it terminates correctly.
+
+    :param args:
+    :param message:
+    :return:
+    """
     if bot.music_player and bot.music_player.is_playing:
         bot.music_player.clear(message)
     await bot.kill()
@@ -372,9 +452,15 @@ async def command_report(args, message: Message):
     """
     if args[0] == "show":
         out = "```"
-        reports = report_repository.get_reports(message.guild)
-        for report, n in reports:
-            out += "%s %d\n" % (report.reportee, n)
+        if len(message.mentions) > 0:
+            out += "Reported by:\n"
+            reports = report_repository.get_all_reports(message.guild, message.mentions[0])
+            for report, n in reports:
+                out += "%s %d\n" % (report.reporting, n)
+        else:
+            reports = report_repository.get_reports(message.guild)
+            for report, n in reports:
+                out += "%s %d\n" % (report.reportee, n)
         out += "```"
         await message.channel.send(out)
     elif args[0] == "time":
