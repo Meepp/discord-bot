@@ -1,3 +1,7 @@
+import io
+import threading
+
+import discord
 import requests
 
 def main():

@@ -240,7 +240,7 @@ async def command_music(args, message):
 
         shuffle(songs)
         for song in songs:
-            bot.music_player.add_queue(message, song.url, speed, True)
+            bot.music_player.add_queue(message, song.url, speed)
 
         await message.channel.send("Queueing " + str(len(songs)) + " songs.")
         await message.delete()
@@ -273,7 +273,7 @@ async def command_music(args, message):
                     await message.channel.send("Playlist id should be between %d and %d" % (0, len(songs)))
                 continue
 
-            bot.music_player.add_queue(message, songs[num].url, 1, True)
+            bot.music_player.add_queue(message, songs[num].url, 1)
         
         await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
         await message.delete()
@@ -288,7 +288,7 @@ async def command_music(args, message):
             msg = "No songs found."
         else:
             for song in songs:
-                bot.music_player.add_queue(message, song.url, 1, True)
+                bot.music_player.add_queue(message, song.url, 1)
             msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0].title)
         await message.channel.send(msg)
         await message.delete()

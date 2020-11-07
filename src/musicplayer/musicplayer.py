@@ -1,14 +1,17 @@
+import io
+import queue
+import threading
+import time
 from datetime import datetime
 
 import discord
-import queue
-import os.path
 import youtube_dl
 
 from src import bot
 from src.database.models.models import Song
 from src.database.repository import music_repository
-from src.musicplayer.downloader import Downloader
+
+FFMPEG_OPTS = {"options": "-vn -loglevel quiet -hide_banner -nostats", "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 0 -nostdin"}
 
 
 class MusicPlayer:
@@ -28,13 +31,15 @@ class MusicPlayer:
 
         self.queue = temp
 
-    def add_queue(self, message, url: str, speed, downloaded=False) -> str:
+    def add_queue(self, message, url: str, speed) -> str:
         video_title = "Unknown"
 
         song = music_repository.get_song(url)
         if not song:
-            print("Song not in db, downloading remote.")
-            bot.downloader.get(url, message.author)
+            song = Song(message.author, "", url)
+            music_repository.add_music(song)
+            # print("Song not in db, downloading remote.")
+            # bot.downloader.get(url, message.author)
 
         self.queue.put((message.guild, url, speed))
 
@@ -42,7 +47,7 @@ class MusicPlayer:
             try:
                 self.play()
             except Exception as e:
-                self.done(e)
+                message.channel.send("Error:" + str(e))
         return video_title
 
     def clear(self, message):
@@ -72,7 +77,7 @@ class MusicPlayer:
 
     def done(self, error):
         if error is not None:
-            print(error)
+            print("Exception while playing file:", error)
 
         self.is_playing = False
 
@@ -92,30 +97,44 @@ class MusicPlayer:
         self.is_playing = True
         song = music_repository.get_song(url)
 
-        # Download the youtube file and store in defined folder
+        # Check if the bot is in a voice channel currently.
         voice = bot.get_voice_by_guild(guild)
         if voice is None:
             print("Warning: attempted playing music without being in a voice channel.")
             return
 
-        file_location = os.path.join(self.download_folder, song.file)
         session = bot.db.session()
 
-        # Download song if not yet downloaded
-        if not os.path.isfile(file_location) or song.file is None:
-            print("Waiting for song to finish downloading...")
-            if bot.downloader.lock.locked():
-                bot.downloader.event.wait()
-            else:
-                self.done("This song could not be downloaded.")
-                return
+        # Extract the source location url from the youtube url.
+        ydl = youtube_dl.YoutubeDL()
+        try:
+            r = ydl.extract_info(url, download=False)
+        except Exception as e:
+            # Retry after half a second
+            time.sleep(0.25)
+            r = ydl.extract_info(url, download=False)
 
-            print("Song finished downloading successfully.")
+        song.title = r["title"]
+        formats = r["formats"]
 
+        # TODO: Attempt to fetch audio only stream, if this errors fallback on formats[0]
+        # source_url = None
+        # for f in formats:
+        #     # audio only format defined by youtube
+        #     if f["format_id"] == "251":
+        #         source_url = f["url"]
+        #         break
+
+        source_url = formats[0]["url"]
+
+        if not source_url:
+            # TODO: Error handling
+            return
+
+        audio_source = discord.FFmpegPCMAudio(source_url, **FFMPEG_OPTS)
         self.currently_playing = song.url
 
         # Update latest playtime to currently.
-        # TODO: Use latest playtime to remove unplayed songs from the db
         song.latest_playtime = datetime.now()
 
         # Add bot status change to currently playing song
@@ -123,7 +142,5 @@ class MusicPlayer:
         if bot.awaitables is not None:
             bot.awaitables.put_nowait(coroutine)
 
-        source = discord.FFmpegPCMAudio(file_location, options='-filter:a "atempo=' + str(speed) + '"')
-
-        voice.play(source, after=lambda e: self.done(e))
+        voice.play(audio_source, after=lambda e: self.done(e))
         session.commit()
