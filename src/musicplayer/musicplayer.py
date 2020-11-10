@@ -11,7 +11,19 @@ from src import bot
 from src.database.models.models import Song
 from src.database.repository import music_repository
 
-FFMPEG_OPTS = {"options": "-vn -loglevel quiet -hide_banner -nostats", "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 0 -nostdin"}
+FFMPEG_OPTS = {"options": "-vn -loglevel quiet -hide_banner -nostats",
+               "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 0 -nostdin"}
+
+
+async def send_music_info(message, result):
+    out = "Currently playing: %s" % result["title"]
+
+    thumbnails = result["thumbnails"]
+
+    em = discord.Embed()
+    em.set_image(url=str(thumbnails[1]["url"]))
+
+    await message.channel.send(out, embed=em)
 
 
 class MusicPlayer:
@@ -31,23 +43,25 @@ class MusicPlayer:
 
         self.queue = temp
 
-    def add_queue(self, message, url: str, speed) -> str:
+    async def add_queue(self, message, url: str, speed) -> str:
         video_title = "Unknown"
 
-        song = music_repository.get_song(url)
-        if not song:
-            song = Song(message.author, "", url)
-            music_repository.add_music(song)
-            # print("Song not in db, downloading remote.")
-            # bot.downloader.get(url, message.author)
-
-        self.queue.put((message.guild, url, speed))
+        self.queue.put((message, url, speed))
 
         if not self.is_playing:
             try:
-                self.play()
+                result = self.play()
+
+                title = result["title"]
+                await send_music_info(message, result)
+
+                # Add bot status change to currently playing song
+                await bot.client.change_presence(activity=discord.Game(name=title))
             except Exception as e:
-                message.channel.send("Error:" + str(e))
+                coro = message.channel.send("Error:" + str(e))
+                if bot.awaitables is not None:
+                    bot.awaitables.put_nowait(coro)
+
         return video_title
 
     def clear(self, message):
@@ -92,21 +106,18 @@ class MusicPlayer:
 
     def play(self):
         # Blocking Queue get, waits for an item to enter the queue.
-        guild, url, speed = self.queue.get()
+        message, url, speed = self.queue.get()
 
         self.is_playing = True
-        song = music_repository.get_song(url)
 
         # Check if the bot is in a voice channel currently.
-        voice = bot.get_voice_by_guild(guild)
+        voice = bot.get_voice_by_guild(message.guild)
         if voice is None:
             print("Warning: attempted playing music without being in a voice channel.")
             return
 
-        session = bot.db.session()
-
         # Extract the source location url from the youtube url.
-        ydl = youtube_dl.YoutubeDL()
+        ydl = youtube_dl.YoutubeDL({'noplaylist': True})
         try:
             r = ydl.extract_info(url, download=False)
         except Exception as e:
@@ -114,8 +125,10 @@ class MusicPlayer:
             time.sleep(0.25)
             r = ydl.extract_info(url, download=False)
 
-        song.title = r["title"]
+        # Streams have duration set to 0.
+        is_stream = r["duration"] == 0
         formats = r["formats"]
+        title = r["title"]
 
         # TODO: Attempt to fetch audio only stream, if this errors fallback on formats[0]
         # source_url = None
@@ -131,16 +144,22 @@ class MusicPlayer:
             # TODO: Error handling
             return
 
+        # Only non streams may get added to a playlist.
+        if not is_stream:
+            # At this point you may add the song to the db because there are no errors.
+            session = bot.db.session()
+            song = music_repository.get_song(url)
+
+            if song is None:
+                song = Song(message.author, title, url)
+                music_repository.add_music(song)
+
+            song.latest_playtime = datetime.now()
+            session.commit()
+
         audio_source = discord.FFmpegPCMAudio(source_url, **FFMPEG_OPTS)
-        self.currently_playing = song.url
-
-        # Update latest playtime to currently.
-        song.latest_playtime = datetime.now()
-
-        # Add bot status change to currently playing song
-        coroutine = bot.client.change_presence(activity=discord.Game(name=song.title))
-        if bot.awaitables is not None:
-            bot.awaitables.put_nowait(coroutine)
+        self.currently_playing = url
 
         voice.play(audio_source, after=lambda e: self.done(e))
-        session.commit()
+
+        return r

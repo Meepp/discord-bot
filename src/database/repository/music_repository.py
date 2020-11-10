@@ -89,7 +89,10 @@ def show_playlist(mention, page=0):
 
     page_size = bot.settings.page_size
 
-    out = "```\n%ss playlist (%d / %d):\n" % (mention.nick, page, len(songs) / page_size)
+    n_pages = int(len(songs) / page_size) + 1
+    page = (page + n_pages) % n_pages
+
+    out = "```\n%ss playlist (%d / %d):\n" % (mention.nick, page, n_pages)
     for i in range(page * page_size, min(len(songs), (page + 1) * page_size)):
         song = songs[i]
         out += "%d: %s | %s\n" % (i, song.title, song.owner)

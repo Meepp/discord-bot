@@ -240,7 +240,7 @@ async def command_music(args, message):
 
         shuffle(songs)
         for song in songs:
-            bot.music_player.add_queue(message, song.url, speed)
+            await bot.music_player.add_queue(message, song.url, speed)
 
         await message.channel.send("Queueing " + str(len(songs)) + " songs.")
         await message.delete()
@@ -273,13 +273,13 @@ async def command_music(args, message):
                     await message.channel.send("Playlist id should be between %d and %d" % (0, len(songs)))
                 continue
 
-            bot.music_player.add_queue(message, songs[num].url, 1)
+            await bot.music_player.add_queue(message, songs[num].url, 1)
         
         await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
         await message.delete()
     elif args[0] == "search":
         url = bot.youtube_api.search(" ".join(args))
-        bot.music_player.add_queue(message, url, speed)
+        await bot.music_player.add_queue(message, url, speed)
         await message.delete()
     elif args[0] == "like":
         query = " ".join(args[1:])
@@ -288,13 +288,13 @@ async def command_music(args, message):
             msg = "No songs found."
         else:
             for song in songs:
-                bot.music_player.add_queue(message, song.url, 1)
+                await bot.music_player.add_queue(message, song.url, 1)
             msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0].title)
         await message.channel.send(msg)
         await message.delete()
     else:
         url = args[0]
-        bot.music_player.add_queue(message, url, speed)
+        await bot.music_player.add_queue(message, url, speed)
         await message.delete()
 
 
@@ -352,9 +352,8 @@ async def command_explode(args, message):
     # hacky
     if "@" in image:
         for member in message.mentions:
-            em = discord.Embed()
             url = member.avatar_url_as(size=512)
-            print(url)
+            em = discord.Embed()
             em.set_image(url=str(url))
             await message.channel.send(embed=em)
     else:
