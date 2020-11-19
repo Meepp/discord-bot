@@ -2,12 +2,12 @@ from datetime import datetime
 
 from sqlalchemy import func
 
-from src import bot
+from database import db
 from src.database.models.models import Honor
 
 
 def add_honor(honor: Honor):
-    session = bot.db.session()
+    session = db.session()
 
     try:
         session.add(honor)
@@ -18,7 +18,7 @@ def add_honor(honor: Honor):
 
 
 def get_honors(guild):
-    session = bot.db.session()
+    session = db.session()
 
     sub = session.query(Honor, func.count(Honor.honoree_id)) \
         .filter(Honor.guild_id == guild.id) \
@@ -30,7 +30,7 @@ def get_honors(guild):
 
 
 def get_last_honors(guild, honoring):
-    session = bot.db.session()
+    session = db.session()
 
     return session.query(Honor) \
         .filter(Honor.guild_id == guild.id) \

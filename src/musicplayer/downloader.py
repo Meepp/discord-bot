@@ -70,7 +70,7 @@ class Downloader:
                 self.event.clear()
                 self.lock.acquire()
                 song = music_repository.get_song(url)
-                session = bot.db.session()
+                session = db.session()
 
                 # Extract the source location url from the youtube url.
                 ydl = youtube_dl.YoutubeDL()

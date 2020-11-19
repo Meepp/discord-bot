@@ -4,7 +4,7 @@ from typing import List
 from discord import Member
 from sqlalchemy import and_
 
-from src import bot
+from database import db
 from src.database.models.models import Song
 
 
@@ -12,7 +12,7 @@ playlists = {}
 
 
 def add_music(song: Song):
-    session = bot.db.session()
+    session = db.session()
 
     try:
         session.add(song)
@@ -22,7 +22,7 @@ def add_music(song: Song):
 
 
 def get_music(owner: Member = None) -> List[Song]:
-    session = bot.db.session()
+    session = db.session()
 
     sub = session.query(Song)
     if not owner:
@@ -32,13 +32,13 @@ def get_music(owner: Member = None) -> List[Song]:
 
 
 def get_song(url: str):
-    session = bot.db.session()
+    session = db.session()
 
     return session.query(Song).filter(Song.url == url).first()
 
 
 def remove_from_owner(url: str, owner_id: int):
-    session = bot.db.session()
+    session = db.session()
     song = session.query(Song) \
         .filter(and_(Song.owner_id == owner_id, Song.url == url)).first()
 
@@ -48,18 +48,8 @@ def remove_from_owner(url: str, owner_id: int):
     session.commit()
 
 
-def remove_by_file(filename: str):
-    full_filename = os.path.join(bot.music_player.download_folder, filename)
-    if os.path.exists(full_filename):
-        os.remove(full_filename)
-
-    session = bot.db.session()
-    session.query(Song).filter(Song.file == filename).delete()
-    session.commit()
-
-
 def remove_unused():
-    session = bot.db.session()
+    session = db.session()
     songs = session.query(Song).filter(Song.owner_id == -1).all()
 
     for song in songs:
@@ -68,7 +58,6 @@ def remove_unused():
                .filter(and_(Song.file == song.file, Song.owner_id != -1))
                .all()) == 0:
             print("Deleting %s" % song.file)
-            remove_by_file(song.file)
 
     session.query(Song).filter(Song.owner_id == -1).delete()
     session.commit()
@@ -76,7 +65,7 @@ def remove_unused():
 
 def remove_by_id(user: Member, lower, upper):
     ids = [song.id for song in get_music(user)[lower:upper]]
-    session = bot.db.session()
+    session = db.session()
     session.commit()
 
     session.query(Song).filter(Song.id.in_(ids)).delete(synchronize_session=False)
@@ -84,10 +73,8 @@ def remove_by_id(user: Member, lower, upper):
     print('Done...')
 
 
-def show_playlist(mention, page=0):
+def show_playlist(mention, page=0, page_size=15):
     songs = get_music(mention)
-
-    page_size = bot.settings.page_size
 
     n_pages = int(len(songs) / page_size) + 1
     page = (page + n_pages) % n_pages
@@ -101,5 +88,5 @@ def show_playlist(mention, page=0):
 
 
 def query_song_title(query):
-    session = bot.db.session()
+    session = db.session()
     return session.query(Song).filter(Song.title.like("%" + query + "%")).all()

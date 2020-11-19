@@ -1,16 +1,15 @@
 from datetime import datetime
 
 from discord import Message, Member, Guild
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Integer, Column, String, Boolean, Numeric, DateTime, UniqueConstraint
+from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint
 
-from src import bot
-
-Base = declarative_base()
+from database import Base
 
 
 class Trigger(Base):
     __tablename__ = 'triggers'
+    __table_args__ = {'extend_existing': True}
+
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     guild_id = Column('guild_id', String)
@@ -31,6 +30,7 @@ class Trigger(Base):
 
 class Report(Base):
     __tablename__ = 'report'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     guild_id = Column('guild_id', String)
@@ -56,6 +56,7 @@ class Report(Base):
 
 class Honor(Base):
     __tablename__ = 'honor'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     guild_id = Column('guild_id', String)
@@ -81,6 +82,7 @@ class Honor(Base):
 
 class Song(Base):
     __tablename__ = 'song'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     UniqueConstraint("owner_id", "url")
@@ -102,5 +104,3 @@ class Song(Base):
         self.url = url
         self.latest_playtime = datetime.now()
 
-
-Base.metadata.create_all(bot.db.engine)

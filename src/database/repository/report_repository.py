@@ -2,12 +2,12 @@ from datetime import datetime
 
 from sqlalchemy import func
 
-from src import bot
+from database import db
 from src.database.models.models import Report
 
 
 def add_report(report: Report):
-    session = bot.db.session()
+    session = db.session()
 
     try:
         session.add(report)
@@ -18,7 +18,7 @@ def add_report(report: Report):
 
 
 def get_all_reports(guild, reportee):
-    session = bot.db.session()
+    session = db.session()
 
     return session.query(Report, func.count(Report.reporting_id)) \
         .filter(Report.guild_id == guild.id) \
@@ -29,7 +29,7 @@ def get_all_reports(guild, reportee):
 
 
 def get_reports(guild):
-    session = bot.db.session()
+    session = db.session()
 
     sub = session.query(Report, func.count(Report.reportee_id)) \
         .filter(Report.guild_id == guild.id) \
@@ -41,7 +41,7 @@ def get_reports(guild):
 
 
 def get_last_reports(guild, reporting):
-    session = bot.db.session()
+    session = db.session()
 
     return session.query(Report) \
         .filter(Report.guild_id == guild.id) \

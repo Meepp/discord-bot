@@ -1,4 +1,5 @@
-from src import bot, music_repository
+from database.repository import music_repository
+from src import bot
 from src.custom_emoji import CustomEmoji
 
 
@@ -15,10 +16,12 @@ async def generate_help(channel):
     await channel.send(docs + "```")
 
 
-@bot.client.event
+@bot.event
 async def on_message(message):
     if message.guild not in bot.triggers:
         bot.update_triggers(message)
+
+    await bot.process_commands(message)
 
     # Command handling
     if message.content.startswith(bot.PREFIX):
@@ -43,7 +46,7 @@ async def on_message(message):
                 await message.channel.send(trigger.response)
 
 
-@bot.client.event
+@bot.event
 async def on_reaction_add(reaction, user):
     # Dont delete if bot adds reaction
     if user == bot.client.user:
@@ -64,4 +67,5 @@ async def on_reaction_add(reaction, user):
         out = music_repository.show_playlist(mention, page)
         music_repository.playlists[reaction.message.id] = (mention, page)
         await reaction.message.edit(content=out)
+
 

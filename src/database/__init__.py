@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -14,4 +12,9 @@ class Database:
 
     def session(self) -> scoped_session:
         return self._session()
+
+
+# Create db
+Base = declarative_base()
+db = Database("database.db")
 

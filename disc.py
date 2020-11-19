@@ -1,11 +1,13 @@
-import asyncio
-
 from src import bot
 
 
 def main():
-    bot.set_config("config.conf")
-    bot.start()
+    # Import database models
+    from src.database import Base, db
+    # Setup database models
+    Base.metadata.create_all(db.engine)
+
+    bot.run(bot.token)
 
 
 if __name__ == "__main__":
