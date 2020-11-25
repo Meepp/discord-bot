@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from discord import Message, Member, Guild
+from discord import Message, Member, Guild, User
 from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint
 
 from database import Base
@@ -68,7 +68,7 @@ class Honor(Base):
 
     time = Column('time', DateTime)
 
-    def __init__(self, guild: Guild, honoree: Member, honoring: Member):
+    def __init__(self, guild: Guild, honoree: User, honoring: User):
         self.guild_id = guild.id
 
         self.honoree = honoree.name
@@ -104,3 +104,43 @@ class Song(Base):
         self.url = url
         self.latest_playtime = datetime.now()
 
+
+class Profile(Base):
+    __tablename__ = 'profile'
+    __table_args__ = {'extend_existing': True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    owner = Column('owner', String)
+    owner_id = Column('owner_id', String, unique=True)
+
+    balance = Column('balance', Integer, default=0)
+
+    league_user_id = Column('league_user_id', String)
+
+    def __init__(self, owner: User):
+        self.owner = owner.name
+        self.owner_id = owner.id
+
+    def init_balance(self, session, user):
+        from database.repository import honor_repository
+
+        # Set initial balance to honor count
+        count = honor_repository.get_honor_count(user)
+        self.balance = count * 100
+        session.commit()
+
+
+class Game(Base):
+    __tablename__ = 'game'
+    __table_args__ = {'extend_existing': True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    channel_id = Column("channel_id", Integer)
+    owner_id = Column('owner_id', String, unique=True)
+
+    game_id = Column('game_id', String)
+    bet = Column('bet', Integer)
+    team = Column('team', Integer)
+
+    def __init__(self, owner: User):
+        self.owner_id = owner.id

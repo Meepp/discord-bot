@@ -8,9 +8,6 @@ from database import db
 from src.database.models.models import Song
 
 
-playlists = {}
-
-
 def add_music(song: Song):
     session = db.session()
 

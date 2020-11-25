@@ -1,8 +1,10 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from database import db
 from database.models.models import Report, Honor
-from database.repository import report_repository, honor_repository
+from database.repository import honor_repository, report_repository
+from database.repository.profile_repository import get_profile
 
 
 class Reputation(commands.Cog):
@@ -10,8 +12,10 @@ class Reputation(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def report(self, context: Context, subcommand):
+    async def report(self, context: Context, subcommand: str):
         """
+        !report show
+
         !report <show | time | [user tag]>: Contains all interaction with the report functionality.
 
         Show shows a list counting the reports per user.
@@ -60,7 +64,7 @@ class Reputation(commands.Cog):
                 await message.channel.send("Wait %d minutes to report again." % time)
 
     @commands.command()
-    async def honor(self, context: Context, subcommand):
+    async def honor(self, context: Context, subcommand: str):
         """
         !honor <show | time | [user tag]>: Contains all interaction with the honor functionality.
 
@@ -84,7 +88,7 @@ class Reputation(commands.Cog):
             else:
                 await message.channel.send("You have no honor downtime.")
         else:
-            honoree = message.guild.get_member(message.mentions[0].id)
+            honoree = message.mentions[0]
             honoring = message.author
 
             if honoring == honoree:
@@ -93,6 +97,13 @@ class Reputation(commands.Cog):
             time = honor_repository.honor_allowed(message.guild, honoring)
             if time is None:
                 honor = Honor(message.guild, honoree, honoring)
+                session = db.session()
+
+                # Add money to balance if honored
+                profile = get_profile(honoree)
+                profile.balance += 100
+                session.commit()
+
                 honor_repository.add_honor(honor)
             else:
                 await message.channel.send("Wait %d minutes to honor again." % time)

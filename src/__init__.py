@@ -5,9 +5,12 @@ import threading
 from discord.ext import commands
 
 from commands.chat import Chat
+from commands.currency import Currency
 from commands.reputation import Reputation
+from database import create_all_models
 from database.repository import music_repository, trigger_repository
-from musicplayer.musicplayer import MusicPlayer
+from league_api import LeagueAPI
+from musicplayer.musicplayer import MusicPlayer, Playlist
 from src.musicplayer.youtube_search import YoutubeAPI
 from src.settings import Settings
 
@@ -22,17 +25,19 @@ class Bot(commands.Bot):
         self.config = configparser.ConfigParser()
         self.settings = Settings()
         self.set_config(config)
+        self.playlists = {}
 
         self.triggers = dict()
 
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
+        self.league_api = LeagueAPI(self)
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
 
         self.asyncio_thread.start()
-
+        self.league_api.payout_games.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
 
         print("Done initializing.")
@@ -75,6 +80,13 @@ bot = Bot("config.conf")
 bot.add_cog(Reputation(bot))
 bot.add_cog(bot.music_player)
 bot.add_cog(Chat(bot))
+bot.add_cog(Playlist(bot))
+bot.add_cog(Currency(bot))
+bot.add_cog(bot.league_api)
 
-for command in bot.walk_commands():
-    print(command.name)
+# Import models and create tables
+import src.database.models.models  # noqa
+create_all_models()
+
+# Use event handlers for emotes etc.
+import src.event_handlers.messages  # noqa

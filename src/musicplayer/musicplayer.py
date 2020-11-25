@@ -9,7 +9,9 @@ from discord import Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from custom_emoji import CustomEmoji
 from database import db
+from database.repository.music_repository import remove_from_owner
 from src.database.models.models import Song
 from src.database.repository import music_repository
 
@@ -26,6 +28,88 @@ async def send_music_info(channel, result):
     em.set_image(url=str(thumbnails[1]["url"]))
 
     await channel.send(out)
+
+
+class Playlist(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    async def playlist(self, context: Context):
+        """
+        !playlist (@user | delete @user <id>)
+
+        !playlist @user: shows the playlist of the given user in order of addition (oldest first).
+        !playlist delete @user <id>: deletes a song from a players playlist.
+           Id can be a range (e.g. 0:10) which will delete all numbers in the range [0, 10)
+        """
+        message = context.message
+        if len(message.mentions) == 0:
+            await message.channel.send("Mention a player to change or see their playlist.")
+            return
+
+        args = message.content.split(" ")[1:]
+        subcommand = args[0]
+        if subcommand == "delete":
+            if message.author != message.mentions[0]:
+                await message.channel.send("Cannot delete songs from another user's playlist.")
+                return
+
+            try:
+                if ":" in args[1]:
+                    data = args[1].split(":", 1)
+                    low, upp = int(data[0]), int(data[1])
+                else:
+                    low = int(args[2])
+                    upp = low + 1
+            except ValueError as e:
+                await message.channel.send(
+                    "Invalid number or range, should be either a single number or a range in the form 'n:m'.")
+                return
+
+            music_repository.remove_by_id(message.mentions[0], lower=low, upper=upp)
+
+            await message.channel.send("Successfully deleted %d songs from the playlist." % (upp - low))
+        else:
+            mention = message.mentions[0]
+            page = 0
+            for arg in args:
+                try:
+                    page = int(arg)
+                    break
+                except ValueError:
+                    pass
+
+            out = music_repository.show_playlist(mention, page)
+            await message.delete()
+            message = await message.channel.send(out)
+            self.bot.playlists[message.id] = (mention, page)
+            await message.add_reaction(CustomEmoji.jimbo)
+            await message.add_reaction(CustomEmoji.arrow_left)
+            await message.add_reaction(CustomEmoji.arrow_right)
+
+    @commands.command()
+    async def delete(self, context: Context):
+        """
+        Deletes the currently playing song from your playlist.
+        !delete <number> deletes the Nth entry in the queue instead.
+        """
+        message: Message = context.message
+
+        args = message.content.split(" ")[1:]
+        if len(args) > 0:
+            try:
+                num = int(args[0])
+            except ValueError as e:
+                await context.channel.send("%s is not a valid number. (but you know this)" % args[0])
+                return
+
+            _, url, _ = self.bot.music_player.queue.queue[num]
+            remove_from_owner(url, message.author.id)
+            self.bot.music_player.skip_queue(num)
+        else:
+            remove_from_owner(self.bot.music_player.currently_playing, message.author.id)
+            self.bot.music_player.skip(message.guild)
 
 
 class MusicPlayer(commands.Cog):
@@ -162,11 +246,21 @@ class MusicPlayer(commands.Cog):
 
         return video_title
 
-    def clear(self, message):
-        self.queue = queue.Queue()
+    def clear_and_stop(self, context: Context):
+        self.clear(context)
         self.is_playing = False
-        voice = self.bot.get_voice_by_guild(message.guild)
-        voice.stop()
+        context.voice_client.stop()
+
+        # Set to not playing anything
+        coro = self.bot.change_presence(activity=None)
+        asyncio.run_coroutine_threadsafe(coro, self.bot.asyncio_loop).result()
+
+    @commands.command()
+    async def clear(self, context: Context):
+        """
+        !clear: Clears the queue of all songs, does not kill the currently playing song.
+        """
+        self.queue = queue.Queue()
 
     @commands.command()
     async def skip(self, context: Context):
@@ -192,6 +286,41 @@ class MusicPlayer(commands.Cog):
         else:
             await context.message.channel.send("There is no music playing currently.")
 
+    @commands.command()
+    async def fuckoff(self, context: Context):
+        """
+        Makes the bot leave its currently active voice channel.
+        """
+        self.clear_and_stop(context)
+        await context.voice_client.disconnect()
+
+    @commands.command()
+    async def queue(self, context: Context):
+        """
+        Show the queue of the first few upcoming songs.
+        :param args:
+        :param message:
+        :return:
+        """
+        size = bot.music_player.queue.qsize()
+
+        page = 0
+        if len(args) > 0:
+            try:
+                page = int(args[0])
+            except ValueError as e:
+                pass
+
+        page_size = bot.settings.page_size
+
+        out = "```\nComing up page (%d / %d):\n" % (page, bot.music_player.queue.qsize() / page_size)
+        for i in range(page * page_size, min(size, (page + 1) * page_size)):
+            _, url, _ = bot.music_player.queue.queue[i]
+            song = music_repository.get_song(url)
+            out += "%d: %s | %s\n" % (i, song.title, song.owner)
+        out += "```"
+        await message.channel.send(out, delete_after=30)
+
     def done(self, error):
         if error is not None:
             print(error)
@@ -202,7 +331,7 @@ class MusicPlayer(commands.Cog):
         if not self.queue.empty():
             self.play()
         else:
-            coro = self.bot.client.change_presence(activity=None)
+            coro = self.bot.change_presence(activity=None)
             asyncio.run_coroutine_threadsafe(coro, self.bot.asyncio_loop).result()
 
     def play(self):

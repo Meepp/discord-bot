@@ -14,7 +14,9 @@ class Database:
         return self._session()
 
 
+def create_all_models():
+    Base.metadata.create_all(db.engine)
+
 # Create db
 Base = declarative_base()
 db = Database("database.db")
-

@@ -1,9 +1,10 @@
 from datetime import datetime
 
+from discord import User
 from sqlalchemy import func
 
 from database import db
-from src.database.models.models import Honor
+from src.database.models.models import Honor, Profile
 
 
 def add_honor(honor: Honor):
@@ -50,3 +51,9 @@ def honor_allowed(guild, honoring):
         return 30 - diff.seconds // 60
     else:
         return None
+
+
+def get_honor_count(user: User):
+    session = db.session()
+
+    return session.query(Honor).filter(Honor.honoree_id == user.id).count()

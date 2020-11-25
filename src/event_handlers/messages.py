@@ -3,6 +3,9 @@ from src import bot
 from src.custom_emoji import CustomEmoji
 
 
+print("Imported messages")
+
+
 async def generate_help(channel):
     docs = "```"
     for key in bot.commands.keys():
@@ -23,37 +26,23 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-    # Command handling
-    if message.content.startswith(bot.PREFIX):
-        msg_array = message.content.split(" ")
+    # Dont trigger on yourself
+    if message.author == bot.user:
+        return
 
-        if len(msg_array) == 0:
-            return
-
-        cmd = msg_array[0][1:]
-        args = msg_array[1:]
-        if cmd == "help":
-            await generate_help(message.channel)
-        elif cmd in bot.commands:
-            await bot.commands[cmd](args, message)
-    # Default message handler
-    else:
-        if message.author.bot:
-            return
-
-        for trigger in bot.triggers[message.guild]:
-            if trigger.trigger in message.content:
-                await message.channel.send(trigger.response)
+    for trigger in bot.triggers[message.guild]:
+        if trigger.trigger in message.content:
+            await message.channel.send(trigger.response)
 
 
 @bot.event
 async def on_reaction_add(reaction, user):
     # Dont delete if bot adds reaction
-    if user == bot.client.user:
+    if user == bot.user:
         return
 
     # Dont delete if its not a message from bot.
-    if reaction.message.author != bot.client.user:
+    if reaction.message.author != bot.user:
         return
 
     if str(reaction.emoji)[1:-1] == CustomEmoji.jimbo:
@@ -62,10 +51,11 @@ async def on_reaction_add(reaction, user):
     lc = str(reaction.emoji) == CustomEmoji.arrow_left
     rc = str(reaction.emoji) == CustomEmoji.arrow_right
     if lc or rc:
-        mention, page = music_repository.playlists[reaction.message.id]
+        idx = int(reaction.message.id)
+        mention, page = bot.playlists[idx]
         page = page - 1 if lc else page + 1
         out = music_repository.show_playlist(mention, page)
-        music_repository.playlists[reaction.message.id] = (mention, page)
+        bot.playlists[idx] = (mention, page)
         await reaction.message.edit(content=out)
 
 

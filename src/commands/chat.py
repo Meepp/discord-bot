@@ -6,10 +6,61 @@ from discord import Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from database.models.models import Trigger
+from database.repository import trigger_repository
+
 
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    async def command_add_trigger(self, context: Context):
+        message = context.message
+        try:
+            arr = message.content.split(" ", 2)[2].split("|", 1)
+
+            trig = arr[0].strip()
+            resp = arr[1].strip()
+
+            trigger = Trigger(message)
+            trigger.trigger = trig
+            trigger.response = resp
+            err = trigger_repository.add_trigger(trigger)
+
+            if err is not None:
+                await message.channel.send(err)
+                return
+
+            self.bot.update_triggers(message)
+            await message.channel.send("Trigger for '%s' added." % trig)
+        except Exception as e:
+            await message.channel.send("Trigger failed to add")
+
+    async def command_remove_trigger(self, context: Context):
+        message = context.message
+
+        trig = message.content.split(" ", 2)[2]
+        try:
+            trigger_repository.remove_trigger(message.guild, trig)
+            self.bot.update_triggers(message)
+            await message.channel.send("Trigger '" + trig + "' removed")
+        except Exception as e:
+            await message.channel.send("Failed to remove trigger. Doesn't exist?")
+
+    async def command_show_triggers(self, context: Context):
+        message = context.message
+        if len(self.bot.triggers[message.guild]) == 0:
+            await message.channel.send("This channel has no triggers.")
+            return
+
+        out = "```"
+        out += "{0: <20}  | {1: <16}\n".format("Trigger"[:20], "Creator"[:16])
+        for trigger in self.bot.triggers[message.guild]:
+            if trigger is None:
+                continue
+            out += "{0: <20}  | {1: <16}\n".format(trigger.trigger[:20], trigger.author[:16])
+        out += "```"
+        await message.channel.send(out)
 
     @commands.command()
     async def explode(self, context: Context):
@@ -23,9 +74,8 @@ class Chat(commands.Cog):
         image = message.content.split(" ")[1]
 
         # Show the avatar of a user.
-        member = message.mentions[0]
-        if member is not None:
-            url = str(member.avatar_url_as(size=512))
+        if len(message.mentions) > 0:
+            url = str(message.mentions[0].avatar_url_as(size=512))
         else:
             # Get the first emoji matching the content
             url = next((emoji.url for emoji in message.guild.emojis if str(emoji) == image), None)
@@ -64,3 +114,29 @@ class Chat(commands.Cog):
                 upper = 100
             value = str(randint(0, upper))
         await message.channel.send("%s rolled a %s." % (message.author.nick, value))
+
+    @commands.command()
+    async def kill(self, context: Context):
+        """
+        Kills the bot, will make sure it terminates correctly.
+        """
+        if self.bot.music_player and self.bot.music_player.is_playing:
+            self.bot.music_player.clear_and_stop(context)
+        await self.bot.kill()
+
+    @commands.command()
+    async def trigger(self, context: Context, subcommand):
+        """
+        Trigger words make the bot say a predefined sentence.
+
+        Add adds a new trigger word: !trigger add <trigger> | <response>
+        Show prints a list of all existing trigger words for the current server.
+        Remove allows the removal of a trigger word based on trigger word. Note: This is case sensitive.
+        """
+        if subcommand == "add":
+            await self.command_add_trigger(context)
+        elif subcommand == "show":
+            await self.command_show_triggers(context)
+        elif subcommand == "remove":
+            await self.command_remove_trigger(context)
+
