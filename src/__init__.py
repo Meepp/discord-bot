@@ -31,7 +31,7 @@ class Bot(commands.Bot):
 
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
-        self.league_api = LeagueAPI(self)
+        self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
