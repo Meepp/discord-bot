@@ -135,8 +135,10 @@ class Game(Base):
     __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
 
+    UniqueConstraint("owner_id", "type")
+
     channel_id = Column("channel_id", Integer)
-    owner_id = Column('owner_id', String, unique=True)
+    owner_id = Column('owner_id', String)
 
     game_id = Column('game_id', String)
     bet = Column('bet', Integer)
