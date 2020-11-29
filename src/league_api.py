@@ -63,7 +63,7 @@ class LeagueAPI(commands.Cog):
             teams = response.get("teams")
             information = None
 
-            rate = [x for x in CONDITIONS if x[0] == game.type][0]
+            rate = next((x for x in CONDITIONS if x[0] == game.type), None)
 
             for team in teams:
                 if team.get("teamId") == game.team:
@@ -131,8 +131,8 @@ class LeagueAPI(commands.Cog):
         if profile.balance < amount:
             return await context.channel.send("You dont have the currency to place this bet.")
 
-        if filter(lambda x: x[0] == condition, CONDITIONS) is None:
-            return await context.channel.send("This is not a valid condition.")
+        if next((x for x in CONDITIONS if x[0] == condition), None) is None:
+            return await context.channel.send("%s is not a valid condition. Pick one from %s" % (condition, ", ".join(x[0] for x in CONDITIONS)))
 
         # Create a game object to keep track of bets.
         game = Game(context.author)
