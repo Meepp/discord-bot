@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from database import db
+from database.models.models import Profile
 from database.repository import profile_repository
 
 
@@ -40,6 +41,19 @@ class Currency(commands.Cog):
         await context.channel.send("Current balance: %d" % money.balance)
 
     @commands.command()
+    async def balancetop(self, context: Context):
+        session = db.session()
+        ids = [member.id for member in context.guild.members]
+        profiles = session.query(Profile)\
+            .filter(Profile.owner_id.in_(ids))\
+            .order_by(Profile.balance.desc())\
+            .limit(10)\
+            .all()
+
+        body = "\n".join("%s: %d" % (profile.owner, profile.balance) for profile in profiles)
+        await context.channel.send("```Current top:\n%s```" % body)
+
+    @commands.command()
     async def namechange(self, context: Context, user: User):
         """
         Pay 10 to change somebody's nickname to whatever you want.
@@ -52,7 +66,7 @@ class Currency(commands.Cog):
         money = profile_repository.get_money(context.author)
 
         if money.balance < cost:
-            return await context.channel.send("Changing someones name costs 500.")
+            return await context.channel.send("Changing someones name costs %d." % cost)
 
         try:
             await context.guild.get_member(user.id).edit(nick=name)

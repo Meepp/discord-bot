@@ -141,6 +141,7 @@ class Game(Base):
     game_id = Column('game_id', String)
     bet = Column('bet', Integer)
     team = Column('team', Integer)
+    type = Column('type', String)
 
     def __init__(self, owner: User):
         self.owner_id = owner.id

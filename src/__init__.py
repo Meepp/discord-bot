@@ -2,6 +2,7 @@ import asyncio
 import configparser
 import threading
 
+import discord
 from discord.ext import commands
 
 from commands.chat import Chat
@@ -18,8 +19,8 @@ from src.settings import Settings
 class Bot(commands.Bot):
     commands = {}
 
-    def __init__(self, config):
-        super().__init__(command_prefix=commands.when_mentioned_or("!"))
+    def __init__(self, config, intents):
+        super().__init__(command_prefix=commands.when_mentioned_or("!"), intents=intents)
 
         # Load config settings
         self.config = configparser.ConfigParser()
@@ -75,7 +76,9 @@ class Bot(commands.Bot):
         return wrapper
 
 
-bot = Bot("config.conf")
+intents = discord.Intents.default()
+intents.members = True
+bot = Bot("config.conf", intents=intents)
 
 bot.add_cog(Reputation(bot))
 bot.add_cog(bot.music_player)

@@ -10,6 +10,8 @@ from database.repository.profile_repository import get_money
 
 API_URL = "https://euw1.api.riotgames.com"
 
+CONDITIONS = [("dragon", 2), ("baron", 2), ("win", 2), ("herald", 2), ("tower", 2), ("inhibitor", 2)]
+
 
 class LeagueAPI(commands.Cog):
     def __init__(self, bot, key):
@@ -60,16 +62,26 @@ class LeagueAPI(commands.Cog):
             response = raw_response.json()
             teams = response.get("teams")
             information = None
+
+            rate = [x for x in CONDITIONS if x[0] == game.type][0]
+
             for team in teams:
                 if team.get("teamId") == game.team:
-                    if team.get("win") == "Win":
+                    if (rate[0] == "win" and team.get("win") == "Win") or \
+                       (rate[0] == "baron" and team.get("firstBaron")) or \
+                       (rate[0] == "herald" and team.get("firstRiftHerald")) or \
+                       (rate[0] == "tower" and team.get("firstTower")) or \
+                       (rate[0] == "inhibitor" and team.get("firstInhibitor")) or \
+                       (rate[0] == "dragon" and team.get("firstDragon")):
                         profile = session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
                         winnings = game.bet * 2
-                        profile.balance += winnings
+
+                        # Find rate from tuple
+                        profile.balance += winnings * rate[1]
 
                         information = "%s won %d!" % (user.name, winnings)
                     else:
-                        information = "%s lost the bet of %d." % (user.name, game.bet)
+                        information = "%s lost the bet on %s of %d." % (user.name, game.type, game.bet)
 
                     # Remove entry
                     session.delete(game)
@@ -88,7 +100,10 @@ class LeagueAPI(commands.Cog):
 
         try:
             for game in games:
-                user = self.bot.get_user(int(game.owner_id))
+                user = self.bot.get_user(game.owner_id)
+                if user is None:
+                    print("User id %d not found." % game.owner_id)
+                    continue
                 if game.game_id is not None:
                     # The game is in progress if this is the case
                     information = self.process_game_result(user, game.game_id)
@@ -103,10 +118,11 @@ class LeagueAPI(commands.Cog):
             print(e)
 
     @commands.command()
-    async def bet(self, context: Context, amount: int):
+    async def bet(self, context: Context, condition: str, amount: int):
         """
         Bet on the next league game you will play.
         """
+
         session = db.session()
         profile = session.query(Profile).filter(Profile.owner_id == context.author.id).one_or_none()
         if profile.league_user_id is None:
@@ -115,15 +131,19 @@ class LeagueAPI(commands.Cog):
         if profile.balance < amount:
             return await context.channel.send("You dont have the currency to place this bet.")
 
+        if filter(lambda x: x[0] == condition, CONDITIONS) is None:
+            return await context.channel.send("This is not a valid condition.")
+
         # Create a game object to keep track of bets.
         game = Game(context.author)
         game.bet = amount
+        game.type = condition
         game.channel_id = context.channel.id
         profile.balance -= amount
         session.add(game)
         session.commit()
 
-        await context.channel.send("You bet %d to win the next game." % amount)
+        await context.channel.send("You bet %d to get first %s the next game." % (amount, condition))
 
     @commands.command()
     async def connect(self, context: Context, name: str):
@@ -147,5 +167,3 @@ class LeagueAPI(commands.Cog):
         session.commit()
 
         await context.channel.send("Successfully linked %s to your account." % name)
-
-
