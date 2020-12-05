@@ -13,6 +13,8 @@ def get_money(user: User):
     if not result:
         result = Profile(user)
         result.init_balance(session, user)
+        session.add(result)
+        session.commit()
     return result
 
 

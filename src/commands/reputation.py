@@ -4,7 +4,7 @@ from discord.ext.commands import Context
 from database import db
 from database.models.models import Report, Honor
 from database.repository import honor_repository, report_repository
-from database.repository.profile_repository import get_profile
+from database.repository.profile_repository import get_profile, get_money
 
 
 class Reputation(commands.Cog):
@@ -100,8 +100,8 @@ class Reputation(commands.Cog):
                 session = db.session()
 
                 # Add money to balance if honored
-                profile = get_profile(honoree)
-                profile.balance += 100
+                money = get_money(honoree)
+                money.balance += 100
                 session.commit()
 
                 honor_repository.add_honor(honor)

@@ -7,6 +7,14 @@ from database.models.models import Profile
 from database.repository import profile_repository
 
 
+def format_money(money: int):
+    if money > 10000000:
+        return "%.1fm" % (money / 1000000.)
+    if money > 100000:
+        return "%.dk" % (money / 1000)
+    return money
+
+
 class Currency(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -38,19 +46,19 @@ class Currency(commands.Cog):
         else:
             money = profile_repository.get_money(user)
 
-        await context.channel.send("Current balance: %d" % money.balance)
+        await context.channel.send("Current balance: %s" % format_money(money.balance))
 
     @commands.command()
     async def balancetop(self, context: Context):
         session = db.session()
         ids = [member.id for member in context.guild.members]
-        profiles = session.query(Profile)\
-            .filter(Profile.owner_id.in_(ids))\
-            .order_by(Profile.balance.desc())\
-            .limit(10)\
+        profiles = session.query(Profile) \
+            .filter(Profile.owner_id.in_(ids)) \
+            .order_by(Profile.balance.desc()) \
+            .limit(10) \
             .all()
 
-        body = "\n".join("%s: %d" % (profile.owner, profile.balance) for profile in profiles)
+        body = "\n".join("%s: %s" % (profile.owner, format_money(profile.balance)) for profile in profiles)
         await context.channel.send("```Current top:\n%s```" % body)
 
     @commands.command()

@@ -302,7 +302,7 @@ class MusicPlayer(commands.Cog):
         :param message:
         :return:
         """
-        size = bot.music_player.queue.qsize()
+        size = self.bot.music_player.queue.qsize()
 
         page = 0
         if len(args) > 0:
@@ -313,9 +313,9 @@ class MusicPlayer(commands.Cog):
 
         page_size = bot.settings.page_size
 
-        out = "```\nComing up page (%d / %d):\n" % (page, bot.music_player.queue.qsize() / page_size)
+        out = "```\nComing up page (%d / %d):\n" % (page, self.bot.music_player.queue.qsize() / page_size)
         for i in range(page * page_size, min(size, (page + 1) * page_size)):
-            _, url, _ = bot.music_player.queue.queue[i]
+            _, url, _ = self.bot.music_player.queue.queue[i]
             song = music_repository.get_song(url)
             out += "%d: %s | %s\n" % (i, song.title, song.owner)
         out += "```"
