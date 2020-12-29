@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="main-wrapper">
+        <div id="lobby-wrapper" class="main-content">
+            <article class="post">
+                <header>
+                    <div>
+                        <h1>Room: <u>{{ room.name }}</u></h1>
+                        <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
+                        <div class="about">Room leader: {{ room.author.username }}</div>
+                        <div>
+                            <h3>
+                                User list</h3>
+                            <div class="user-list"></div>
+                        </div>
+                    </div>
+                    {% if session_user().id == room['author_id'] %}
+                        <div class="custom-input custom-button" onclick="changeSettings()">Edit Settings</div>
+                        <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
+                        <!--    TODO: SETTINGS-->
+                    {% endif %}
+                </header>
+            </article>
+        </div>
+        <div id="game-wrapper" class="main-content">
+            <div id="canvas-wrapper">
+                <canvas id="canvas">
+                </canvas>
+            </div>
+            <div id="button-bar">
+                <button id="call-button" class="custom-input custom-button" onclick="call()">Call</button>
+                <button class="custom-input custom-button" onclick="raise()">Raise</button>
+                <div class="range-slider">
+                    <input id="rs-range-line" class="rs-range" type="range" value="0" min="0" max="1">
+                    <span id="rs-bullet" class="rs-label">0</span>
+                </div>
+                <button class="custom-input custom-button" onclick="fold()">Fold</button>
+                <div class="custom-input custom-button" onclick="beginRound()">Begin Round</div>
+            </div>
+        </div>
+        <div id="chip-wrapper" class="secondary-content">
+        </div>
+        <div id="right-column" class="secondary-content">
+            <div class="custom-title flex-title">Event Log</div>
+            <div id="event-log-wrapper">
+                <div id="event-log">
+                </div>
+            </div>
+            <div class="custom-title flex-title">Chat</div>
+            <div id="chat-wrapper">
+                <ul id="messages"></ul>
+                <form id="messageform" method="post">
+                    <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
+                    <input id="roomid" type="hidden" value="{{ room.id }}"/>
+                    <input id="username" type="hidden" value="{{ session_user().username }}"/>
+                    <button class="custom-input custom-button">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        const ROOM_ID = "{{ room.id }}";
+        const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
+        const USER_NAME = "{{ session_user().username }}";
+    </script>
+    <script src="{{ url_for("static", filename="game.js") }}"></script>
+{% endblock %}

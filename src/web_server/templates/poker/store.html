@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div>
+    Current balance;
+    <div id="current-balance">{{ session_user().balance }}</div>
+    </div>
+    {% for chip in ["black", "blue", "green", "pink", "red", "white"] %}
+        <div class="chip-display">
+            <div class="chip-image-wrapper">
+                <img class="chip-image" src="/static/images/chips/{{chip}}_chip.png"/>
+            </div>
+            <div class="chip-bottom" id="chip-value-{{ chip }}">0 left.</div>
+        </div>
+    {% endfor %}
+
+{% endblock %}

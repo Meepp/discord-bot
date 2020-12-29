@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}New Room{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+    <label for="roomName">Room Name</label>
+    <input name="roomName" id="roomName" value="{{ request.form['roomName'] }}" required>
+    <label for="password">Password</label>
+    <input type="password" name="password" id="password" value="{{ request.form['password'] }}" required>
+    <input type="submit" value="Create Room">
+  </form>
+{% endblock %}
