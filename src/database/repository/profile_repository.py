@@ -18,6 +18,11 @@ def get_money(user: User):
     return result
 
 
-def get_profile(user: User):
+def get_profile(user: User = None, user_id: int = None):
     session = db.session()
-    return session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
+
+    sub = session.query(Profile)
+    if user is not None:
+        return sub.filter(Profile.owner_id == user.id).one_or_none()
+    if user_id is not None:
+        return sub.filter(Profile.owner_id == user_id).one_or_none()

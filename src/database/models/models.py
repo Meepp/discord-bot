@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from discord import Message, Member, Guild, User
-from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint
+from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint, ForeignKey
 
 from database import Base
 
@@ -147,3 +147,25 @@ class Game(Base):
 
     def __init__(self, owner: User):
         self.owner_id = owner.id
+
+
+class RoomModel(Base):
+    """
+    Stores information about a room in which poker games are being played
+    """
+    __tablename__ = "room"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(), nullable=False)
+
+    author = Column(String())
+    author_id = Column(Integer(), nullable=False)
+
+    created = Column(DateTime(), nullable=False, default=datetime.now())
+    temp_password = Column(String(), nullable=False)
+
+    def __init__(self, name: str, profile: Profile):
+        self.name = name
+        self.author_id = profile.owner_id
+        self.author = profile.owner
