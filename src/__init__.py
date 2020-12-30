@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from commands.chat import Chat
 from commands.currency import Currency
+from commands.poker import Poker
 from commands.reputation import Reputation
 from database import create_all_models
 from database.repository import music_repository, trigger_repository
@@ -85,6 +86,7 @@ bot.add_cog(bot.music_player)
 bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
 bot.add_cog(Currency(bot))
+bot.add_cog(Poker(bot))
 bot.add_cog(bot.league_api)
 
 # Import models and create tables

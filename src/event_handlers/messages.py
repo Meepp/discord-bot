@@ -1,3 +1,6 @@
+from discord import Reaction, User
+
+from commands.poker import poker_message_check
 from database.repository import music_repository
 from src import bot
 from src.custom_emoji import CustomEmoji
@@ -36,13 +39,17 @@ async def on_message(message):
 
 
 @bot.event
-async def on_reaction_add(reaction, user):
+async def on_reaction_add(reaction: Reaction, user: User):
     # Dont delete if bot adds reaction
     if user == bot.user:
         return
 
-    # Dont delete if its not a message from bot.
+     # Dont delete if its not a message from bot.
     if reaction.message.author != bot.user:
+        return
+
+    # If the message belongs to poker, dont handle it here.
+    if await poker_message_check(reaction, user):
         return
 
     if str(reaction.emoji)[1:-1] == CustomEmoji.jimbo:

@@ -192,7 +192,7 @@ class MusicPlayer(commands.Cog):
                         await message.channel.send("Playlist id should be between %d and %d" % (0, len(songs)))
                     continue
 
-                await self.bot.music_player.add_queue(message, songs[num].url, 1)
+                await self.bot.music_player.add_queue(message, songs[num].url)
 
             await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
             await message.delete()

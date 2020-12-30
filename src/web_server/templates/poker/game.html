@@ -8,14 +8,14 @@
                     <div>
                         <h1>Room: <u>{{ room.name }}</u></h1>
                         <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
-                        <div class="about">Room leader: {{ room.author.username }}</div>
+                        <div class="about">Room leader: {{ room.author }}</div>
                         <div>
                             <h3>
                                 User list</h3>
                             <div class="user-list"></div>
                         </div>
                     </div>
-                    {% if session_user().id == room['author_id'] %}
+                    {% if session_user().owner_id == room['author_id'] %}
                         <div class="custom-input custom-button" onclick="changeSettings()">Edit Settings</div>
                         <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
                         <!--    TODO: SETTINGS-->
@@ -53,7 +53,7 @@
                 <form id="messageform" method="post">
                     <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
                     <input id="roomid" type="hidden" value="{{ room.id }}"/>
-                    <input id="username" type="hidden" value="{{ session_user().username }}"/>
+                    <input id="username" type="hidden" value="{{ session_user().owner }}"/>
                     <button class="custom-input custom-button">Send</button>
                 </form>
             </div>
@@ -66,7 +66,7 @@
     <script>
         const ROOM_ID = "{{ room.id }}";
         const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
-        const USER_NAME = "{{ session_user().username }}";
+        const USER_NAME = "{{ session_user().owner }}";
     </script>
     <script src="{{ url_for("static", filename="game.js") }}"></script>
 {% endblock %}

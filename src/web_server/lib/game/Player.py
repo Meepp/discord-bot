@@ -11,9 +11,9 @@ class Player:
     def __init__(self, profile: Profile, socket):
         self.profile = profile
         self.socket = socket
+        self.initial_balance = profile.balance
 
         self.hand = []
-        self.balance = profile.balance
         self.all_in = False
 
         self.current_call_value = 0
@@ -32,18 +32,18 @@ class Player:
         """
         to_pay = current_call_value - self.current_call_value
 
-        if self.balance < to_pay:  # all in
-            paid = self.balance
-            self.balance = 0
+        if self.profile.balance < to_pay:  # all in
+            paid = self.profile.balance
+            self.profile.balance = 0
             self.all_in = True
         else:  # not all in
             paid = to_pay
-            self.balance -= to_pay
+            self.profile.balance -= to_pay
         self.current_call_value = current_call_value
         return paid
 
     def payout(self, pot):
-        self.balance += pot
+        self.profile.balance += pot
 
     def export_hand(self):
         if len(self.hand) == 0:

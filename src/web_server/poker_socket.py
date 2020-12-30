@@ -5,32 +5,28 @@ from flask import request
 from flask_socketio import join_room, leave_room
 
 from database.repository import room_repository
-from web_server import sio
-from web_server.lib.game.Exceptions import PokerException
-from web_server.lib.game.PokerTable import PokerTable
-from web_server.lib.user_session import session_profile
+from src.web_server import sio
+from src.web_server.lib.game.Exceptions import PokerException
+from src.web_server.lib.game.PokerTable import PokerTable
+from src.web_server.lib.user_session import session_user
 
 tables: Dict[int, PokerTable] = {}
 
-
-logger = logging.getLogger("socket")
+print("Loaded socket functions")
 
 
 @sio.on('join')
 def on_join(data):
-    logger.debug("%s sent a %s request." % (request.sid, "join"))
-
     room_id = int(data['room'])
     join_room(room=room_id)
 
     if room_id not in tables:
         tables[room_id] = PokerTable(room_id)
 
-    # TODO: Make sure a player is only joining a room once
-    user = session_profile()
-    tables[room_id].add_player(user, request.sid)
+    profile = session_user()
+    tables[room_id].add_player(profile, request.sid)
 
-    sio.emit("join", user.username, json=True, room=room_id)
+    sio.emit("join", profile.owner, json=True, room=room_id)
     sio.emit("user_list", tables[room_id].export_players(), json=True, room=room_id)
 
 
@@ -47,26 +43,25 @@ def on_leave(data):
 
 @sio.on("chat message")
 def message(data):
-    logger.debug("%s sent a %s request." % (request.sid, "chat message"))
-
     room = int(data.get('room'))
     if message != "":  # Stop empty messages
+        profile = session_user()
+        data["username"] = profile.owner
+
         sio.emit('chat message', data, room=room, include_self=True)
 
 
 @sio.on("start")
 def start(data):
-    logger.debug("%s sent a %s request." % (request.sid, "start"))
-
     room_id = int(data.get("room"))
     room = room_repository.get_room(room_id)
-    profile = session_profile()
+    profile = session_user()
 
     table = tables[room_id]
     player = table.get_player(profile)
 
     # Only the owner may start the game
-    if room.author.id != profile.id:
+    if room.author_id != profile.owner_id:
         sio.emit("message", "You are not the room owner.", room=player.socket)
         return
 
@@ -83,12 +78,12 @@ def start(data):
 def begin(data):
     room_id = int(data.get("room"))
     room = room_repository.get_room(room_id)
-    user = session_profile()
+    profile = session_user()
 
     table = tables[room_id]
-    player = table.get_player(user)
+    player = table.get_player(profile)
     # Only the owner may start the game
-    if room.author.id != user.id:
+    if room.author_id != profile.owner_id:
         sio.emit("message", "You are not the room owner.", room=player.socket)
         return
 
@@ -100,16 +95,14 @@ def begin(data):
 
 @sio.on("action")
 def action(data):
-    logger.debug("%s sent a %s request." % (request.sid, "action"))
-
     room_id = int(data.get("room"))
 
     table = tables[room_id]
-    user = session_profile()
+    profile = session_user()
 
-    player = table.get_player(user)
+    player = table.get_player(profile)
 
-    response = table.round(user, data.get("action"), int(data.get("value", 0)))
+    response = table.round(profile, data.get("action"), int(data.get("value", 0)))
 
     if response is not None:
         sio.emit("message", response, room=player.socket)
@@ -120,12 +113,10 @@ def action(data):
 
 @sio.on("table_state")
 def action(data):
-    logger.debug("%s sent a %s request." % (request.sid, "table_state"))
-
     room_id = int(data.get("room"))
 
     table = tables[room_id]
-    user = session_profile()
+    user = session_user()
     player = table.get_player(user)
     sio.emit("table_state", table.export_state(player), json=True, room=player.socket)
 

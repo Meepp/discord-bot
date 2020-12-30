@@ -2,13 +2,14 @@ from enum import Enum
 
 from discord import User
 
+from database import db
 from database.models.models import Profile
 from database.repository import profile_repository
-from web_server import sio
-from web_server.lib.game import Evaluator
-from web_server.lib.game.Exceptions import PokerException
-from web_server.lib.game.Player import Player
-from web_server.lib.game.Card import CardSuits, Card, CardRanks
+from src.web_server import sio
+from src.web_server.lib.game import Evaluator
+from src.web_server.lib.game.Exceptions import PokerException
+from src.web_server.lib.game.Player import Player
+from src.web_server.lib.game.Card import CardSuits, Card, CardRanks
 import random
 from typing import Optional, List
 
@@ -81,14 +82,13 @@ class PokerTable:
         """
 
         for player in self.player_list[:]:
-            if player.balance == 0:
+            if player.profile.balance == 0:
                 self.player_list.remove(player)
                 # TODO: Update player value in db
             else:
                 player.reset()
         if len(self.player_list) < 2:
             raise PokerException("Need at least two players to start the game.")
-
 
         # TODO: add pay
         self.deck = deck_generator()
@@ -149,7 +149,6 @@ class PokerTable:
             winning_players = [self.caller_list[0]]
 
         shared_pot = self.payout_pot(len(winning_players))
-        print(shared_pot)
 
         self.broadcast("%s won." % ",".join([player.profile.owner for player in winning_players]))
 
@@ -159,7 +158,19 @@ class PokerTable:
 
         self.phase = Phases.NOT_YET_STARTED
 
+        # Synchronize profiles with the database
+        self.synchronize_balance()
+
         self.update_players()
+
+    def synchronize_balance(self):
+        session = db.session()
+        for player in self.player_list:
+            profile = profile_repository.get_profile(user_id=player.profile.owner_id)
+            difference = player.profile.balance - player.initial_balance
+            profile.balance += difference
+            player.profile = profile
+        session.commit()
 
     def get_player(self, profile: Profile):
         for player in self.player_list:
@@ -184,11 +195,11 @@ class PokerTable:
         elif self.phase == Phases.POST_ROUND:
             self.post_round()
 
-    def round(self, user: User, action: str, value: int = 0):
+    def round(self, profile: Profile, action: str, value: int = 0):
         if self.phase == Phases.NOT_YET_STARTED or self.phase == Phases.POST_ROUND:
             return "The next round has not yet started."
 
-        if self.get_current_player().profile.owner_id != user.id:
+        if self.get_current_player().profile.id != profile.id:
             return "It is not yet your turn."
 
         message = None
@@ -267,16 +278,15 @@ class PokerTable:
         else:
             return None
 
-    def add_player(self, user: User, socket_id):
+    def add_player(self, profile: Profile, socket_id):
         for player in self.player_list:
 
-            if player.profile.owner_id == user.id:
+            if player.profile.id == profile.id:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
                 return
 
         # Store database profile to player list
-        profile = profile_repository.get_profile(user=user)
         self.player_list.append(Player(profile, socket_id))
 
     def export_players(self):
@@ -319,7 +329,7 @@ class PokerTable:
             "caller_list": [player.profile.owner for player in self.caller_list],
             "hand": player.export_hand(),
             "players": self.export_player_game_data(),
-            "balance": player.balance,
+            "balance": player.profile.balance,
             "to_call": (self.current_call_value - player.current_call_value),
             "started": self.phase != Phases.NOT_YET_STARTED
         }
@@ -424,3 +434,4 @@ class PokerTable:
     def cleanup(self):
         for player in self.player_list:
             player.leave()
+

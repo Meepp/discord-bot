@@ -28,13 +28,13 @@ socket.on("user_list", (data) => {
 
 $('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
-    console.log("prevented default");
     let m = $('#m');
     data = {
         "message": m.val(),
         "room": $('#roomid').val(),
         "username": $('#username').val()
     };
+    console.log(data)
     socket.emit('chat message', data);
     m.val('');
     return false;
@@ -183,7 +183,7 @@ function drawPlayerHand(i, player) {
     context.font = "20px Arial";
     context.fillText(player.name, 0, -36);
     context.font = "16px Arial";
-    context.fillText(player.state, 0, -16);
+    context.fillText(player.state + " | " + player.balance, 0, -16);
 
     if (i >= 2 && i <= 4) {
         context.translate(cardWidth, -60);
@@ -402,6 +402,7 @@ socket.on("begin", (data) => {
     audioFiles["begin"].play();
 });
 
+console.log("Emitting join");
 socket.emit("join", {
     "room": ROOM_ID,
 });

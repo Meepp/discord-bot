@@ -57,7 +57,7 @@ def report_allowed(guild, reporting):
         return None
 
     diff = datetime.now() - report.time
-    if diff.seconds // 60 < 30:
+    if diff.total_seconds() // 60 < 30:
         return 30 - diff.seconds // 60
     else:
         return None

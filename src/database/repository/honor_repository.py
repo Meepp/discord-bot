@@ -47,7 +47,7 @@ def honor_allowed(guild, honoring):
         return None
 
     diff = datetime.now() - honor.time
-    if diff.seconds // 60 < 30:
+    if diff.total_seconds() // 60 < 30:
         return 30 - diff.seconds // 60
     else:
         return None

@@ -58,6 +58,7 @@ class LeagueAPI(commands.Cog):
         if raw_response.status_code == 200:
             response = raw_response.json()
             team = None
+			
             game_id = response.get("gameId")
             for participant in response.get("participants"):
                 if participant.get("summonerId") == summoner_id:
@@ -167,6 +168,20 @@ class LeagueAPI(commands.Cog):
         await context.channel.send("You bet %d to get first %s the next game." % (amount, condition))
 
     @commands.command()
+    async def activebets(self, context: Context):
+        """
+        Shows a list of your active bets and the value.
+        """
+        session = db.session()
+        bets = session.query(Game).filter(Game.owner_id == context.author.id).all()
+
+        out = "```\nActive bets:\n"
+        for bet in bets:
+            out += "%s: %d" % (bet.type, bet.bet)
+        out += "```"
+        await context.channel.send(out)
+
+    @commands.command()
     async def connect(self, context: Context, name: str):
         """
         Connects your league account to the profile used by this bot.
@@ -179,10 +194,6 @@ class LeagueAPI(commands.Cog):
             profile = Profile(context.author)
             profile.init_balance(session, context.author)
             session.add(profile)
-			
-			
-        if amount < 1:
-            return await context.channel.send("A positive amount of currency has to be placed in the bet.")
 
         account_id = self.get_account_id(name)
         if account_id is None:

@@ -111,7 +111,7 @@ class Profile(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     owner = Column('owner', String)
-    owner_id = Column('owner_id', String, unique=True)
+    owner_id = Column('owner_id', Integer, unique=True)
 
     balance = Column('balance', Integer, default=0)
 
@@ -162,8 +162,10 @@ class RoomModel(Base):
     author = Column(String())
     author_id = Column(Integer(), nullable=False)
 
+    message_id = Column(Integer())
+
     created = Column(DateTime(), nullable=False, default=datetime.now())
-    temp_password = Column(String(), nullable=False)
+    temp_password = Column(String(), nullable=False, default="")
 
     def __init__(self, name: str, profile: Profile):
         self.name = name

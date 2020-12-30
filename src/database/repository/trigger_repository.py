@@ -5,6 +5,9 @@ from src.database.models.models import Trigger
 
 
 def get_triggers(guild: Guild):
+    if guild is None:
+        return None
+
     session = db.session()
     return session.query(Trigger) \
         .filter(Trigger.guild_id == str(guild.id)) \
