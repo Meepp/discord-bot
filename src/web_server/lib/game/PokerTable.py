@@ -57,7 +57,9 @@ class PokerTable:
 
     def __init__(self, room_id):
         self.room_id = room_id
+
         self.player_list: List[Player] = []
+        self.spectator_list: List[Player] = []
 
         self.fold_list: List[Player] = []
         self.caller_list: List[Player] = []
@@ -80,17 +82,29 @@ class PokerTable:
 
         :return: An error string, or None if no error occurred.
         """
+        # Move all spectating players to the table
+        self.player_list.extend(self.spectator_list)
+        self.spectator_list = []
 
+        # Move all no balance players to spectator list
         for player in self.player_list[:]:
             if player.profile.balance == 0:
                 self.player_list.remove(player)
-                # TODO: Update player value in db
+                self.spectator_list.append(player)
             else:
                 player.reset()
+
+        while len(self.player_list) > 8:
+            player = self.player_list.pop()
+            self.spectator_list.append(player)
+
+        for player in self.spectator_list:
+            sio.emit("message", "You are a spectator this round.", room=player.socket)
+
+        # Check if there are enough players
         if len(self.player_list) < 2:
             raise PokerException("Need at least two players to start the game.")
 
-        # TODO: add pay
         self.deck = deck_generator()
         self.deal_cards()
 
@@ -168,8 +182,11 @@ class PokerTable:
         for player in self.player_list:
             profile = profile_repository.get_profile(user_id=player.profile.owner_id)
             difference = player.profile.balance - player.initial_balance
+
             profile.balance += difference
             player.profile = profile
+
+            player.initial_balance = player.profile.balance
         session.commit()
 
     def get_player(self, profile: Profile):
@@ -280,20 +297,17 @@ class PokerTable:
 
     def add_player(self, profile: Profile, socket_id):
         for player in self.player_list:
-
             if player.profile.id == profile.id:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
                 return
 
-        # Store database profile to player list
-        self.player_list.append(Player(profile, socket_id))
-
-    def export_players(self):
-        return [{
-            "username": player.profile.owner,
-            "balance": player.profile.balance
-        } for player in self.player_list]
+        player = Player(profile, socket_id)
+        if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
+            # Store database profile to player list
+            self.player_list.append(player)
+        else:
+            self.spectator_list.append(player)
 
     def get_small_blind(self):
         return self.player_list[self.small_blind_index]
@@ -426,7 +440,8 @@ class PokerTable:
                 "name": other.profile.owner,
                 "state": state,
                 "balance": other.profile.balance,
-                "hand": hand
+                "hand": hand,
+                "ready": other.ready,
             })
 
         return data
@@ -434,4 +449,10 @@ class PokerTable:
     def cleanup(self):
         for player in self.player_list:
             player.leave()
+
+    def check_readies(self):
+        for player in self.player_list:
+            if not player.ready:
+                return False
+        return True
 

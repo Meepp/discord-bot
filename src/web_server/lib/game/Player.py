@@ -13,6 +13,8 @@ class Player:
         self.socket = socket
         self.initial_balance = profile.balance
 
+        self.ready = False
+
         self.hand = []
         self.all_in = False
 

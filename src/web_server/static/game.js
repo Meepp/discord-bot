@@ -7,24 +7,13 @@ context.imageSmoothingEnabled = true;
 let socket = io();
 
 socket.on("join", (data) => {
-    console.log("New user detected: " + data);
+    console.log(`${data} joined the room.`);
 });
 
-/*
- * Userlist and chat related socket io handlers.
- */
-socket.on("user_list", (data) => {
-    let userList = $(".user-list");
-    userList.empty();
-    data.forEach(player => {
-        userList.append(`
-            <div class="user-entry">
-            <div class="user-entry-name">${player.username}</div>
-            <div class="user-entry-balance">€${player.balance}</div>
-            </div>
-        `);
-    })
+socket.on("leave", (data) => {
+    console.log(`${data} left the room.`);
 });
+
 
 $('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
@@ -97,10 +86,6 @@ function PokerTable() {
     this.fadeMessages = [];
 
     this.setState = function(data) {
-        if (this.state.active_player !== USER_NAME && data.active_player === USER_NAME) {
-            audioFiles["notify"].play();
-        }
-
         this.state = {
             ...data,
         };
@@ -341,6 +326,25 @@ function initialize() {
         rangeSlider.max = pokerTable.state.balance;
 
         document.getElementById("call-button").innerHTML = "Call with " + (pokerTable.state.to_call)
+
+        if (pokerTable.state.active_player !== USER_NAME && data.active_player === USER_NAME) {
+            audioFiles["notify"].play();
+        }
+
+        if (!pokerTable.state.started) {
+            let userList = $(".user-list");
+            userList.empty();
+            data.players.forEach(player => {
+                userList.append(`
+                    <div class="user-entry">
+                    <div class="user-entry-name">${player.name}</div>
+                    <div class="user-entry-balance">¤${player.balance}</div>
+                    <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
+                    </div>
+                `);
+            });
+        }
+
     });
     socket.on("message", (data) => {
         pokerTable.fadeMessages.push({
@@ -356,7 +360,6 @@ function initialize() {
 }
 
 function postInit() {
-    setInterval(render, 1000 / 60);
 }
 
 
@@ -376,27 +379,28 @@ function sendAction(action, value) {
     socket.emit("action", {"room": ROOM_ID, "action": action, "value": value})
 }
 
-socket.on("start", (data) => {
-    console.log("Got here");
+
+socket.on("start", () => {
     loadMainContent("game-wrapper");
-    initialize();
+    setInterval(render, 1000 / 60);
 });
+initialize();
 
 function startRoom() {
-    socket.emit("start", {
-        room: ROOM_ID
-    });
-}
-
-function beginRound() {
     if (!pokerTable.state.started) {
-        socket.emit("begin", {
+        socket.emit("start", {
             room: ROOM_ID
         });
     }
 }
 
-socket.on("begin", (data) => {
+function toggleReady() {
+    socket.emit("start", {
+        room: ROOM_ID
+    });
+}
+
+socket.on("start", () => {
     // Reset flip animation ticks
     pokerTable.community_card_flip_ticks = [...INITIAL_COMMUNITY_CARD_FLIPTICKS];
     audioFiles["begin"].play();
@@ -410,10 +414,10 @@ socket.emit("join", {
 socket.on("message", (data) => {
     let log = document.getElementById("event-log");
     log.innerHTML += `
-            <div class="event-log-entry">
-                <div class="event-log-date">${new Date().toLocaleTimeString()}</div>
-                <div class="event-log-value">${data}</div>
-            </div>`;
+    <div class="event-log-entry">
+        <div class="event-log-date">${new Date().toLocaleTimeString()}</div>
+        <div class="event-log-value">${data}</div>
+    </div>`;
 
     log.lastChild.scrollIntoView();
 });
@@ -448,7 +452,7 @@ document.addEventListener("keydown", (ev) => {
     if (ev.key === "ArrowLeft") {
         rangeSlider.value -= increment;
     } else if (ev.key === "ArrowRight") {
-        rangeSlider.value = 1*rangeSlider.value + increment;
+        rangeSlider.value = 1 * rangeSlider.value + increment;
     } else if (ev.key === "c") {
         call();
     } else if (ev.key === "r") {

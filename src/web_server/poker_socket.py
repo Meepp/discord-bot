@@ -24,21 +24,21 @@ def on_join(data):
         tables[room_id] = PokerTable(room_id)
 
     profile = session_user()
-    tables[room_id].add_player(profile, request.sid)
+    table = tables[room_id]
+    table.add_player(profile, request.sid)
 
     sio.emit("join", profile.owner, json=True, room=room_id)
-    sio.emit("user_list", tables[room_id].export_players(), json=True, room=room_id)
+    table.update_players()
 
 
 @sio.on('leave')
 def on_leave(data):
-    logging.debug("%s sent a %s request." % (request.sid, "leave"))
-
     username = data['id']
-    room = int(data['room'])
-    leave_room(room)
-    print(f"User {username} left room {room}")
-    sio.emit("leave", username, json=True, room=room)
+    room_id = int(data['room'])
+    leave_room(room_id)
+
+    tables[room_id].broadcast("%s left the table." % username)
+    sio.emit("leave", username, json=True, room=room_id)
 
 
 @sio.on("chat message")
@@ -60,37 +60,30 @@ def start(data):
     table = tables[room_id]
     player = table.get_player(profile)
 
+    # All normal players toggle their ready state
+    player.ready = not player.ready
+
     # Only the owner may start the game
     if room.author_id != profile.owner_id:
-        sio.emit("message", "You are not the room owner.", room=player.socket)
+        print("Player state: ", player.ready)
+        table.update_players()
+        return
+
+    # Room owner is always true
+    player.ready = True
+    if not table.check_readies():
+        sio.emit("message", "The room owner wants to start. Ready up!", room=room_id)
         return
 
     try:
         table.initialize_round()
+        table.update_players()
+
         # Assume everybody is ready, maybe implement ready check later
-        sio.emit("start", "None", room=room_id)
+        sio.emit("start", None, room=room_id)
     except PokerException as e:
         print(e.message, player.socket)
         sio.emit("message", e.message, room=player.socket)
-
-
-@sio.on("begin")
-def begin(data):
-    room_id = int(data.get("room"))
-    room = room_repository.get_room(room_id)
-    profile = session_user()
-
-    table = tables[room_id]
-    player = table.get_player(profile)
-    # Only the owner may start the game
-    if room.author_id != profile.owner_id:
-        sio.emit("message", "You are not the room owner.", room=player.socket)
-        return
-
-    table.initialize_round()
-    table.update_players()
-
-    sio.emit("begin", None, room=room_id)
 
 
 @sio.on("action")

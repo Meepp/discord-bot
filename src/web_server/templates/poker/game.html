@@ -18,7 +18,8 @@
                     {% if session_user().owner_id == room['author_id'] %}
                         <div class="custom-input custom-button" onclick="changeSettings()">Edit Settings</div>
                         <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
-                        <!--    TODO: SETTINGS-->
+                    {% else %}
+                        <div class="custom-input custom-button" onclick="toggleReady()">Ready?</div>
                     {% endif %}
                 </header>
             </article>
@@ -36,7 +37,9 @@
                     <span id="rs-bullet" class="rs-label">0</span>
                 </div>
                 <button class="custom-input custom-button" onclick="fold()">Fold</button>
-                <div class="custom-input custom-button" onclick="beginRound()">Begin Round</div>
+                {% if session_user().owner_id == room['author_id'] %}
+                    <div class="custom-input custom-button" onclick="startRoom()">Begin Round</div>
+                {% endif %}
             </div>
         </div>
         <div id="chip-wrapper" class="secondary-content">
