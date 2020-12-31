@@ -1,7 +1,7 @@
 discord
 key
 temp/*
-env/*
+venv/*
 media/music
 *.db
 kerstpuzzel/*

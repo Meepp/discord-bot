@@ -1,3 +1,5 @@
+const CURRENCY = "¤";
+
 let canvas = document.getElementById("canvas");
 canvas.width = 1000;
 canvas.height = 600;
@@ -168,7 +170,7 @@ function drawPlayerHand(i, player) {
     context.font = "20px Arial";
     context.fillText(player.name, 0, -36);
     context.font = "16px Arial";
-    context.fillText(player.state + " | " + player.balance, 0, -16);
+    context.fillText(player.state + " | " + CURRENCY + player.balance, 0, -16);
 
     if (i >= 2 && i <= 4) {
         context.translate(cardWidth, -60);
@@ -226,7 +228,7 @@ function render() {
     context.fillStyle = "black";
     context.font = "20px Arial";
     context.fillText(`Current turn: ${pokerTable.state.active_player}`, 10, 20);
-    context.fillText(`Pot: ${pokerTable.state.pot}`, 378.1000061035156, 172.26666259765625);
+    context.fillText(`Pot: ${CURRENCY}${pokerTable.state.pot}`, 378.1000061035156, 172.26666259765625);
 
     pokerTable.drawFadeMessages();
 
@@ -338,7 +340,7 @@ function initialize() {
                 userList.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.name}</div>
-                    <div class="user-entry-balance">¤${player.balance}</div>
+                    <div class="user-entry-balance">${CURRENCY}${player.balance}</div>
                     <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
                     </div>
                 `);

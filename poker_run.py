@@ -3,15 +3,14 @@ monkey.patch_all()
 
 from geventwebsocket import WebSocketServer
 
-host = '0.0.0.0'
-port = 5000
-
 
 if __name__ == "__main__":
     from src.web_server import app
     from src import bot
 
     app.secret_key = bot.config["WEBSERVER"]["SECRET"]
+    host = bot.config["WEBSERVER"]["IP"]
+    port = int(bot.config["WEBSERVER"]["Port"])
 
     http_server = WebSocketServer((host, port), app, debug=True)
 

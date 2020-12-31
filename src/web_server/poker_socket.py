@@ -38,6 +38,7 @@ def on_leave(data):
     leave_room(room_id)
 
     tables[room_id].broadcast("%s left the table." % username)
+    tables[room_id].remove_player(session_user())
     sio.emit("leave", username, json=True, room=room_id)
 
 
@@ -65,7 +66,6 @@ def start(data):
 
     # Only the owner may start the game
     if room.author_id != profile.owner_id:
-        print("Player state: ", player.ready)
         table.update_players()
         return
 
@@ -82,7 +82,6 @@ def start(data):
         # Assume everybody is ready, maybe implement ready check later
         sio.emit("start", None, room=room_id)
     except PokerException as e:
-        print(e.message, player.socket)
         sio.emit("message", e.message, room=player.socket)
 
 

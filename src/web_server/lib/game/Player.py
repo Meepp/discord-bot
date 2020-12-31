@@ -8,10 +8,13 @@ class Player:
         Stores information about a player participating in a web_server game.
     """
 
-    def __init__(self, profile: Profile, socket):
+    def __init__(self, profile: Profile, socket, table):
         self.profile = profile
         self.socket = socket
         self.initial_balance = profile.balance
+
+        from web_server.lib.game.PokerTable import PokerTable
+        self.table: PokerTable = table
 
         self.ready = False
 
@@ -25,6 +28,7 @@ class Player:
 
     def reset(self):
         self.hand = []
+        self.all_in = False
         self.current_call_value = 0
 
     def pay(self, current_call_value):
@@ -34,10 +38,13 @@ class Player:
         """
         to_pay = current_call_value - self.current_call_value
 
-        if self.profile.balance < to_pay:  # all in
+        if self.profile.balance <= to_pay:  # all in
             paid = self.profile.balance
             self.profile.balance = 0
             self.all_in = True
+
+            self.table.broadcast("%s went all in." % self.profile.owner)
+            self.table.all_in_list.append(self)
         else:  # not all in
             paid = to_pay
             self.profile.balance -= to_pay

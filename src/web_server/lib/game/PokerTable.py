@@ -50,6 +50,19 @@ def deck_generator():
     return deck
 
 
+def synchronize_balance(players):
+    session = db.session()
+    for player in players:
+        profile = profile_repository.get_profile(user_id=player.profile.owner_id)
+        difference = player.profile.balance - player.initial_balance
+
+        profile.balance += difference
+        player.profile = profile
+
+        player.initial_balance = player.profile.balance
+    session.commit()
+
+
 class PokerTable:
     """
     Stores information about the web_server game being played
@@ -60,13 +73,13 @@ class PokerTable:
 
         self.player_list: List[Player] = []
         self.spectator_list: List[Player] = []
-
+        self.all_in_list: List[Player] = []
         self.fold_list: List[Player] = []
         self.caller_list: List[Player] = []
+
         self.deck = None
         self.small_blind_index = 0
         self.phase: Phases = Phases.NOT_YET_STARTED
-
         self.community_cards: List[Card] = []
 
         self.first = True
@@ -89,6 +102,7 @@ class PokerTable:
         # Move all no balance players to spectator list
         for player in self.player_list[:]:
             if player.profile.balance == 0:
+                print(player.profile.owner, "has", player.profile.balance)
                 self.player_list.remove(player)
                 self.spectator_list.append(player)
             else:
@@ -108,20 +122,18 @@ class PokerTable:
         self.deck = deck_generator()
         self.deal_cards()
 
-        self.phase = Phases.PRE_FLOP
         self.current_call_value = SMALL_BLIND_CALL_VALUE
 
         self.first = True
 
         self.fold_list = []
         self.caller_list = []
+        self.all_in_list = []
 
         self.active_player_index = self.small_blind_index
         self.community_cards: List[Card] = []
 
-        self.phase_start()
-
-        self.broadcast("New round starting.")
+        self.start_next_phase()
 
     def broadcast(self, message):
         sio.emit("message", message, room=self.room_id)
@@ -173,21 +185,9 @@ class PokerTable:
         self.phase = Phases.NOT_YET_STARTED
 
         # Synchronize profiles with the database
-        self.synchronize_balance()
+        synchronize_balance(self.player_list)
 
         self.update_players()
-
-    def synchronize_balance(self):
-        session = db.session()
-        for player in self.player_list:
-            profile = profile_repository.get_profile(user_id=player.profile.owner_id)
-            difference = player.profile.balance - player.initial_balance
-
-            profile.balance += difference
-            player.profile = profile
-
-            player.initial_balance = player.profile.balance
-        session.commit()
 
     def get_player(self, profile: Profile):
         for player in self.player_list:
@@ -195,7 +195,8 @@ class PokerTable:
                 return player
         return None
 
-    def phase_start(self):
+    def start_next_phase(self):
+        self.phase = Phases(self.phase.value + 1)
         self.broadcast("Starting phase " + self.phase.name.capitalize().replace("_", " "))
 
         if self.phase == Phases.PRE_FLOP:
@@ -211,6 +212,10 @@ class PokerTable:
             self.community_cards.append(self.take_card())
         elif self.phase == Phases.POST_ROUND:
             self.post_round()
+
+        # If everybody is all in, continue with the next phase immediately, and wait on the last phase
+        if self.phase != Phases.NOT_YET_STARTED and len(self.player_list) == len(self.all_in_list):
+            self.start_next_phase()
 
     def round(self, profile: Profile, action: str, value: int = 0):
         if self.phase == Phases.NOT_YET_STARTED or self.phase == Phases.POST_ROUND:
@@ -239,10 +244,7 @@ class PokerTable:
                 self.action_call(player, 0)
             else:
                 paid = player.pay(self.current_call_value)
-
                 self.action_call(player, paid)
-                # self.action_fold(player)
-                # message = "Folded, not enough currency to match the call value."
 
         elif action == "raise":
             difference = player.current_call_value + value - self.current_call_value
@@ -250,13 +252,14 @@ class PokerTable:
                 return "Raise of %d not high enough." % value
 
             paid = player.pay(self.current_call_value + difference)
+
             if paid != 0:
                 self.add_pot(paid)
                 self.current_call_value += difference
                 self.caller_list = [player]
                 self.broadcast("%s raised by %d." % (player.profile.owner, difference))
             else:
-                return "Cannot raise by %d." % value
+                return "Not enough currency to raise by %d." % value
 
         elif action == "fold":
             if not self.action_fold(player):
@@ -302,7 +305,7 @@ class PokerTable:
                 player.socket = socket_id
                 return
 
-        player = Player(profile, socket_id)
+        player = Player(profile, socket_id, self)
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             # Store database profile to player list
             self.player_list.append(player)
@@ -322,12 +325,10 @@ class PokerTable:
         if len(self.player_list) != len(self.fold_list) + len(self.caller_list):
             return False
 
-        self.phase = Phases(self.phase.value + 1)
-
         self.caller_list = []
 
         # Start new phase
-        self.phase_start()
+        self.start_next_phase()
 
     def export_state(self, player: Player):
         return {
@@ -341,6 +342,7 @@ class PokerTable:
             "community_cards": [card.to_json() for card in self.community_cards],
             "fold_list": [player.profile.owner for player in self.fold_list],
             "caller_list": [player.profile.owner for player in self.caller_list],
+            "spectator_list": [player.profile.owner for player in self.spectator_list],
             "hand": player.export_hand(),
             "players": self.export_player_game_data(),
             "balance": player.profile.balance,
@@ -349,8 +351,6 @@ class PokerTable:
         }
 
     def evaluate_hand(self, hand: List[Card]):
-        # TODO: Four of a kind
-
         all_cards = hand + self.community_cards
 
         best_cards = []
@@ -384,12 +384,6 @@ class PokerTable:
 
         return best_cards[0:5]
 
-    # def action_raise(self, player, value):
-    #     self.add_pot(value)
-    #     self.current_call_value += value
-    #     self.caller_list = [player]
-    #     self.broadcast("%s raised to %d." % (player.user.username, value))
-
     def action_fold(self, player: Player):
         """
         Returns False if the fold made the game finish.
@@ -399,8 +393,9 @@ class PokerTable:
         """
         self.fold_list.append(player)
         if len(self.fold_list) == len(self.player_list) - 1:
-            self.phase = Phases.POST_ROUND
-            self.phase_start()
+            # Second to last phase, because phase start increments the phase itself.
+            self.phase = Phases.RIVER
+            self.start_next_phase()
             return False
         return True
 
@@ -455,4 +450,14 @@ class PokerTable:
             if not player.ready:
                 return False
         return True
+
+    def remove_player(self, profile: Profile):
+        player = self.get_player(profile)
+        synchronize_balance([player])
+
+        lists = [self.player_list, self.spectator_list, self.all_in_list, self.fold_list, self.caller_list]
+        # Cleanup player from all lists
+        for l in lists:
+            if player in l:
+                l.remove(player)
 
