@@ -1,5 +1,3 @@
-print("Initialized web_server")
-
 from flask import Flask
 from flask_socketio import SocketIO
 import logging
@@ -32,6 +30,7 @@ def create_app():
 
     from src.web_server import poker
     app.register_blueprint(poker.bp)
+
 
 print("Creating app")
 create_app()

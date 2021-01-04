@@ -81,6 +81,10 @@ function PokerTable() {
         you: "name",
         balance: 0,
         to_call: 0,
+        settings: {
+            max_buy_in: 0,
+            small_blind_value: 0
+        }
     };
 
     this.community_card_flip_ticks = [...INITIAL_COMMUNITY_CARD_FLIPTICKS];
@@ -345,6 +349,12 @@ function initialize() {
                     </div>
                 `);
             });
+
+            let settings = document.getElementById("room-settings");
+            settings.innerHTML = `<div>   
+                <div>Small blind value: ${data.settings.small_blind_value}</div>
+                <div>Max buy-in: ${data.settings.max_buy_in}</div>
+            </div>`;
         }
 
     });
@@ -408,7 +418,6 @@ socket.on("start", () => {
     audioFiles["begin"].play();
 });
 
-console.log("Emitting join");
 socket.emit("join", {
     "room": ROOM_ID,
 });

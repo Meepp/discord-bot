@@ -13,6 +13,8 @@ from src.web_server.lib.game.Card import CardSuits, Card, CardRanks
 import random
 from typing import Optional, List
 
+from web_server.lib.game.PokerSettings import PokerSettings
+
 SMALL_BLIND_CALL_VALUE = 2
 MINIMUM_RAISE = 1
 
@@ -84,9 +86,12 @@ class PokerTable:
 
         self.first = True
         self.pot = 0
-        self.current_call_value = SMALL_BLIND_CALL_VALUE
-        self.active_player_index = 0
 
+        # Create default settings class.
+        self.settings = PokerSettings(settings={})
+
+        self.current_call_value = 0
+        self.active_player_index = 0
         self.all_in = False
 
     def initialize_round(self):
@@ -122,7 +127,7 @@ class PokerTable:
         self.deck = deck_generator()
         self.deal_cards()
 
-        self.current_call_value = SMALL_BLIND_CALL_VALUE
+        self.current_call_value = self.settings.small_blind_value
 
         self.first = True
 
@@ -347,7 +352,8 @@ class PokerTable:
             "players": self.export_player_game_data(),
             "balance": player.profile.balance,
             "to_call": (self.current_call_value - player.current_call_value),
-            "started": self.phase != Phases.NOT_YET_STARTED
+            "started": self.phase != Phases.NOT_YET_STARTED,
+            "settings": self.settings.to_json(),
         }
 
     def evaluate_hand(self, hand: List[Card]):

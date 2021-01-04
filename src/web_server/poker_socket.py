@@ -9,6 +9,7 @@ from src.web_server import sio
 from src.web_server.lib.game.Exceptions import PokerException
 from src.web_server.lib.game.PokerTable import PokerTable
 from src.web_server.lib.user_session import session_user
+from web_server.lib.game.PokerSettings import PokerSettings
 
 tables: Dict[int, PokerTable] = {}
 
@@ -50,6 +51,22 @@ def message(data):
         data["username"] = profile.owner
 
         sio.emit('chat message', data, room=room, include_self=True)
+
+
+@sio.on("change settings")
+def change_settings(data):
+    room_id = int(data.get("room_id"))
+    room = room_repository.get_room(room_id)
+    table = tables[room_id]
+    profile = session_user()
+    
+    # Only the owner may change room settings
+    if room.author_id != profile.owner_id:
+        user = table.get_player(profile)
+        return sio.emit("message", "You may not change the room settings.", room=user.socket)
+
+    table.settings = PokerSettings(data.get("settings", {}))
+    table.update_players()
 
 
 @sio.on("start")
