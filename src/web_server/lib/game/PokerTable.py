@@ -104,10 +104,15 @@ class PokerTable:
         self.player_list.extend(self.spectator_list)
         self.spectator_list = []
 
+        # Get latest balance from server
+        for player in self.player_list:
+            profile = profile_repository.get_profile(user_id=player.profile.owner_id)
+            player.profile = profile
+            print("Updating %ss profile" % player.profile.owner)
+
         # Move all no balance players to spectator list
         for player in self.player_list[:]:
             if player.profile.balance == 0:
-                print(player.profile.owner, "has", player.profile.balance)
                 self.player_list.remove(player)
                 self.spectator_list.append(player)
             else:
@@ -123,6 +128,11 @@ class PokerTable:
         # Check if there are enough players
         if len(self.player_list) < 2:
             raise PokerException("Need at least two players to start the game.")
+
+        self.small_blind_index %= len(self.player_list)
+
+        # Ensure all players start on equal grounds.
+        self.set_player_balances()
 
         self.deck = deck_generator()
         self.deal_cards()
@@ -194,8 +204,11 @@ class PokerTable:
 
         self.update_players()
 
-    def get_player(self, profile: Profile):
-        for player in self.player_list:
+    def get_player(self, profile: Profile, spectator=False):
+        combined_list = self.player_list[:]
+        if spectator:
+            combined_list.extend(self.spectator_list)
+        for player in combined_list:
             if player.profile.owner_id == profile.owner_id:
                 return player
         return None
@@ -240,7 +253,7 @@ class PokerTable:
             if paid != 0:
                 self.broadcast("%s started the round with %d." % (player.profile.owner, self.current_call_value))
                 self.add_pot(paid)
-                self.current_call_value = SMALL_BLIND_CALL_VALUE * 2  # In cents
+                self.current_call_value = self.settings.small_blind_value * 2  # In cents
             else:
                 raise ValueError("Programmer error: please check the player balances before starting the next round.")
 
@@ -304,7 +317,7 @@ class PokerTable:
             return None
 
     def add_player(self, profile: Profile, socket_id):
-        for player in self.player_list:
+        for player in self.player_list + self.spectator_list:
             if player.profile.id == profile.id:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
@@ -417,7 +430,7 @@ class PokerTable:
         return payout_pot
 
     def update_players(self):
-        for player in self.player_list:
+        for player in self.player_list + self.spectator_list:
             sio.emit("table_state", self.export_state(player), json=True, room=player.socket)
 
     def export_player_game_data(self):
@@ -458,7 +471,7 @@ class PokerTable:
         return True
 
     def remove_player(self, profile: Profile):
-        player = self.get_player(profile)
+        player = self.get_player(profile, spectator=True)
         synchronize_balance([player])
 
         lists = [self.player_list, self.spectator_list, self.all_in_list, self.fold_list, self.caller_list]
@@ -467,3 +480,6 @@ class PokerTable:
             if player in l:
                 l.remove(player)
 
+    def set_player_balances(self):
+        for player in self.player_list:
+            player.initial_balance = player.profile.balance = min(player.profile.balance, self.settings.max_buy_in)

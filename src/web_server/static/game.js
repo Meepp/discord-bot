@@ -327,15 +327,15 @@ function initialize() {
      * Register all socket.io functions to the pokerTable object.
      */
     socket.on("table_state", (data) => {
+        // Check before overwriting state.
+        if (pokerTable.state.active_player !== USER_NAME && data.active_player === USER_NAME) {
+            audioFiles["notify"].play();
+        }
         pokerTable.setState(data);
 
         rangeSlider.max = pokerTable.state.balance;
 
         document.getElementById("call-button").innerHTML = "Call with " + (pokerTable.state.to_call)
-
-        if (pokerTable.state.active_player !== USER_NAME && data.active_player === USER_NAME) {
-            audioFiles["notify"].play();
-        }
 
         if (!pokerTable.state.started) {
             let userList = $(".user-list");
@@ -391,10 +391,13 @@ function sendAction(action, value) {
     socket.emit("action", {"room": ROOM_ID, "action": action, "value": value})
 }
 
-
+let has_started = false;
 socket.on("start", () => {
     loadMainContent("game-wrapper");
-    setInterval(render, 1000 / 60);
+    if (!has_started) {
+        has_started = true;
+        setInterval(render, 1000 / 60);
+    }
 });
 initialize();
 
@@ -450,6 +453,17 @@ function showSliderValue() {
     }
     let bulletPosition = (rangeSlider.value / rangeSlider.max);
     rangeBullet.style.left = (bulletPosition * 200) + "px";
+}
+
+function changeSettings() {
+    let data = {
+        room_id: ROOM_ID,
+        settings: {
+            small_blind_value: document.getElementById("small-blind-value").value,
+            max_buy_in: document.getElementById("max-buy-in").value,
+        }
+    };
+    socket.emit("change settings", data)
 }
 
 document.addEventListener("keydown", (ev) => {

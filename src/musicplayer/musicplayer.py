@@ -109,7 +109,7 @@ class Playlist(commands.Cog):
             self.bot.music_player.skip_queue(num)
         else:
             remove_from_owner(self.bot.music_player.currently_playing, message.author.id)
-            self.bot.music_player.skip(message.guild)
+            await self.bot.music_player.skip(message.guild)
 
 
 class MusicPlayer(commands.Cog):
@@ -247,7 +247,7 @@ class MusicPlayer(commands.Cog):
         return video_title
 
     def clear_and_stop(self, context: Context):
-        self.clear(context)
+        self.queue = queue.Queue()
         self.is_playing = False
         context.voice_client.stop()
 
@@ -298,10 +298,12 @@ class MusicPlayer(commands.Cog):
     async def queue(self, context: Context):
         """
         Show the queue of the first few upcoming songs.
-        :param args:
-        :param message:
+        :param context:
         :return:
         """
+        message = context.message
+        args = message.content.split(" ")[1:]
+
         size = self.bot.music_player.queue.qsize()
 
         page = 0
@@ -311,11 +313,11 @@ class MusicPlayer(commands.Cog):
             except ValueError as e:
                 pass
 
-        page_size = bot.settings.page_size
+        page_size = self.bot.settings.page_size
 
         out = "```\nComing up page (%d / %d):\n" % (page, self.bot.music_player.queue.qsize() / page_size)
         for i in range(page * page_size, min(size, (page + 1) * page_size)):
-            _, url, _ = self.bot.music_player.queue.queue[i]
+            _, url = self.bot.music_player.queue.queue[i]
             song = music_repository.get_song(url)
             out += "%d: %s | %s\n" % (i, song.title, song.owner)
         out += "```"

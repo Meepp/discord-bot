@@ -34,6 +34,8 @@ def on_join(data):
 
 @sio.on('leave')
 def on_leave(data):
+    print("Received leave")
+
     username = data['id']
     room_id = int(data['room'])
     leave_room(room_id)
@@ -55,6 +57,8 @@ def message(data):
 
 @sio.on("change settings")
 def change_settings(data):
+    print("Change settings")
+
     room_id = int(data.get("room_id"))
     room = room_repository.get_room(room_id)
     table = tables[room_id]
@@ -71,6 +75,8 @@ def change_settings(data):
 
 @sio.on("start")
 def start(data):
+    print("Received start")
+
     room_id = int(data.get("room"))
     room = room_repository.get_room(room_id)
     profile = session_user()
@@ -104,29 +110,37 @@ def start(data):
 
 @sio.on("action")
 def action(data):
+    print("Received action")
     room_id = int(data.get("room"))
 
     table = tables[room_id]
     profile = session_user()
 
     player = table.get_player(profile)
+    if player is None:
+        player = table.get_player(profile, spectator=True)
+        return sio.emit("message", "You are currently spectating.", room=player.socket)
 
     response = table.round(profile, data.get("action"), int(data.get("value", 0)))
 
     if response is not None:
         sio.emit("message", response, room=player.socket)
 
-    for table_player in table.player_list:
+    for table_player in table.player_list + table.spectator_list:
         sio.emit("table_state", table.export_state(table_player), json=True, room=table_player.socket)
 
 
 @sio.on("table_state")
 def action(data):
+    print("Received table request")
+
     room_id = int(data.get("room"))
 
     table = tables[room_id]
     user = session_user()
-    player = table.get_player(user)
+    player = table.get_player(user, spectator=True)
+    if not player:
+        return
     sio.emit("table_state", table.export_state(player), json=True, room=player.socket)
 
 

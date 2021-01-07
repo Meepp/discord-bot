@@ -20,8 +20,16 @@
                         </div>
                     </div>
                     {% if session_user().owner_id == room['author_id'] %}
-                        <div class="custom-input custom-button" onclick="changeSettings()">Edit Settings</div>
-                        <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
+                        <div class="settings-column">
+                            <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
+                            <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
+                            <label class="custom-text" for="small-blind-value">Small blind:</label><br>
+                            <input class="custom-input" type="text" id="small-blind-value" name="Small blind" value="2"><br>
+                            <input class="custom-input custom-button" type="button" value="Submit" onclick="changeSettings()">
+
+                            <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
+                        </div>
+
                     {% else %}
                         <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
                     {% endif %}
@@ -71,7 +79,7 @@
 
 {% block script %}
     <script>
-        const ROOM_ID = "{{ room.id }}";
+    const ROOM_ID = "{{ room.id }}";
         const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
         const USER_NAME = "{{ session_user().owner }}";
     </script>

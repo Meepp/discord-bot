@@ -5,8 +5,6 @@ from discord.ext.commands import Context
 
 from database import db
 from database.models.models import Game, Profile
-from database.repository import game_repository
-from database.repository.profile_repository import get_money
 
 API_URL = "https://euw1.api.riotgames.com"
 
@@ -58,7 +56,6 @@ class LeagueAPI(commands.Cog):
         if raw_response.status_code == 200:
             response = raw_response.json()
             team = None
-			
             game_id = response.get("gameId")
             for participant in response.get("participants"):
                 if participant.get("summonerId") == summoner_id:
