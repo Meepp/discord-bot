@@ -8,7 +8,7 @@ class Tile:
     Generic class, don't initialize this directly, use subclasses instead.
     """
     def __init__(self):
-        self.image = "default_texture.png"
+        self.image = "center"
         self.movement_allowed = True
         self.opaque = True
         self.item: Optional[Item] = None
@@ -25,7 +25,7 @@ class Tile:
 class GroundTile(Tile):
     def __init__(self):
         super().__init__()
-        self.image = ""
+        self.image = "center"
 
         self.movement_allowed = True
         self.opaque = False

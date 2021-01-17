@@ -4,6 +4,8 @@ canvas.height = 600;
 let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
+const TILE_SIZE = 16;
+
 let socket = io();
 
 socket.on("join", (data) => {
@@ -46,11 +48,25 @@ function getRelativeMousePosition(canvas, evt) {
     };
 }
 
-function Game() {
+function HallwayHunters() {
     this.state = {
-
+        board_size: 30,
+        player_data: {
+            name: "",
+            position: {
+                x: 0,
+                y: 0
+            },
+            pre_move: {
+                x: 0,
+                y: 0
+            },
+            cooldown: 0,
+            cooldown_timer: 0,
+        }
     };
     this.fadeMessages = [];
+    this.tiles = {};
 
     this.setState = function(data) {
         this.state = {
@@ -91,22 +107,67 @@ function Game() {
 
 // Game rendering stuff
 function render() {
+    // Resizing the canvas should overwrite the width and height variables
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw background
-    // context.drawImage(images["board"], 0, 0, canvas.width, canvas.height);
+    // Compute the offset for all tiles, to center rendering on the player.
+    const xOffset = -game.state.player_data.position.x + canvas.width / 2 - TILE_SIZE / 2;
+    const yOffset = -game.state.player_data.position.y + canvas.height / 2 - TILE_SIZE / 2;
+
+    // Draw tiles
+    for (let x = 0; x < game.state.board_size; x++) {
+        for (let y = 0; y < game.state.board_size; y++) {
+            let imageData = game.tiles[game.state.board[x][y].image];
+            context.putImageData(imageData, x * TILE_SIZE + xOffset, y * TILE_SIZE + yOffset);
+        }
+    }
+
+    context.putImageData(game.tiles["character_blue"], game.state.player_data.position.x + xOffset, game.state.player_data.position.y + yOffset);
 
     game.drawFadeMessages();
 }
 
 let images = {};
 let audioFiles = {};
-let game = new Game();
+let game = new HallwayHunters();
 
+function split_sheet() {
+    canvas = document.createElement("canvas");
+    canvas.width = this.width;
+    canvas.height = this.height;
+    context = canvas.getContext("2d");
+    context.drawImage(tileSet, 0, 0);
+
+    const S = TILE_SIZE;
+
+    game.tiles["corner_tl"] = context.getImageData(0 * S, 0 * S, S, S);
+    game.tiles["edge_t"]    = context.getImageData(1 * S, 0 * S, S, S);
+    game.tiles["corner_tr"] = context.getImageData(2 * S, 0 * S, S, S);
+    game.tiles["edge_l"]    = context.getImageData(0 * S, 1 * S, S, S);
+    game.tiles["center"]    = context.getImageData(1 * S, 1 * S, S, S);
+    game.tiles["edge_r"]    = context.getImageData(2 * S, 1 * S, S, S);
+    game.tiles["corner_bl"] = context.getImageData(0 * S, 2 * S, S, S);
+    game.tiles["edge_b"]    = context.getImageData(1 * S, 2 * S, S, S);
+    game.tiles["corner_br"] = context.getImageData(2 * S, 2 * S, S, S);
+
+    game.tiles["character_blue"] = context.getImageData(19 * S, 7 * S, S, S);
+    game.tiles["character_red"] = context.getImageData(20 * S, 7 * S, S, S);
+    game.tiles["character_green"] = context.getImageData(21 * S, 7 * S, S, S);
+    game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
+    game.tiles["character_black"] = context.getImageData(23 * S, 7 * S, S, S);
+}
+
+let tileSet = null;
 function initialize() {
     /*
      * Preload all images to reduce traffic later.
      */
+    tileSet = new Image();
+    tileSet.onload = split_sheet;
+    tileSet.src = "images/tiles/dungeon_sheet.png";
 
     /*
      * Register all socket.io functions to the game object.
