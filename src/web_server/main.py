@@ -32,6 +32,10 @@ def game(room_id):
         session_user_set(profile)
 
     room = get_room(room_id)
+    if room.type == "poker":
+        return render_template('poker.html', room=room)
+    elif room.type == "game":
+        return render_template('poker.html', room=room)
 
-    return render_template('poker/game.html', room=room)
+
 

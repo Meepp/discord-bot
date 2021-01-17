@@ -6,14 +6,14 @@ from database import db
 from database.models.models import Profile
 from database.repository import profile_repository
 from src.web_server import sio
-from src.web_server.lib.game import Evaluator
-from src.web_server.lib.game.Exceptions import PokerException
-from src.web_server.lib.game.Player import Player
-from src.web_server.lib.game.Card import CardSuits, Card, CardRanks
+from src.web_server.lib.poker import Evaluator
+from src.web_server.lib.poker.exceptions import PokerException
+from src.web_server.lib.poker.Player import Player
+from src.web_server.lib.poker.Card import CardSuits, Card, CardRanks
 import random
 from typing import Optional, List
 
-from web_server.lib.game.PokerSettings import PokerSettings
+from web_server.lib.poker.PokerSettings import PokerSettings
 
 SMALL_BLIND_CALL_VALUE = 2
 MINIMUM_RAISE = 1
@@ -204,14 +204,21 @@ class PokerTable:
 
         self.update_players()
 
-    def get_player(self, profile: Profile, spectator=False):
+    def get_player(self, profile: Profile=None, spectator=False, socket_id=None):
         combined_list = self.player_list[:]
         if spectator:
             combined_list.extend(self.spectator_list)
-        for player in combined_list:
-            if player.profile.owner_id == profile.owner_id:
-                return player
-        return None
+
+        if profile is not None:
+            for player in combined_list:
+                if player.profile.owner_id == profile.owner_id:
+                    return player
+            return None
+        elif socket_id is not None:
+            for player in combined_list:
+                if player.socket == socket_id:
+                    return player
+            return None
 
     def start_next_phase(self):
         self.phase = Phases(self.phase.value + 1)

@@ -13,7 +13,7 @@ class Player:
         self.socket = socket
         self.initial_balance = profile.balance
 
-        from web_server.lib.game.PokerTable import PokerTable
+        from web_server.lib.poker.PokerTable import PokerTable
         self.table: PokerTable = table
 
         self.ready = False

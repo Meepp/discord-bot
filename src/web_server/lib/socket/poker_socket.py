@@ -6,21 +6,15 @@ from flask_socketio import join_room, leave_room
 
 from database.repository import room_repository
 from src.web_server import sio
-from src.web_server.lib.game.Exceptions import PokerException
-from src.web_server.lib.game.PokerTable import PokerTable
+from src.web_server.lib.poker.exceptions import PokerException
+from src.web_server.lib.poker.PokerTable import PokerTable
 from src.web_server.lib.user_session import session_user
-from web_server.lib.game.PokerSettings import PokerSettings
+from web_server.lib.poker.PokerSettings import PokerSettings
 
 tables: Dict[int, PokerTable] = {}
 
-print("Loaded socket functions")
 
-
-@sio.on('join')
-def on_join(data):
-    room_id = int(data['room'])
-    join_room(room=room_id)
-
+def join_poker(room_id):
     if room_id not in tables:
         tables[room_id] = PokerTable(room_id)
 
@@ -32,17 +26,14 @@ def on_join(data):
     table.update_players()
 
 
-@sio.on('leave')
-def on_leave(data):
-    print("Received leave")
+def leave_poker(socket_id):
+    for room_id, table in tables.items():
+        player = table.get_player(socket_id=socket_id)
+        if player:
+            table.remove_player(player.profile)
 
-    username = data['id']
-    room_id = int(data['room'])
-    leave_room(room_id)
-
-    tables[room_id].broadcast("%s left the table." % username)
-    tables[room_id].remove_player(session_user())
-    sio.emit("leave", username, json=True, room=room_id)
+            table.broadcast("%s left the table." % player.profile.owner)
+            sio.emit("leave", player.profile.owner, json=True, room=room_id)
 
 
 @sio.on("chat message")

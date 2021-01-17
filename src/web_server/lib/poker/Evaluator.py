@@ -1,6 +1,6 @@
 from typing import List
 
-from src.web_server.lib.game.Card import Card
+from src.web_server.lib.poker.Card import Card
 
 
 def get_ranks(cards):

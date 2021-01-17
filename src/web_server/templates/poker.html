@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block title %}
+    Poker
+{% endblock %}
+
 {% block content %}
     <div class="main-wrapper">
         <div id="lobby-wrapper" class="main-content">
@@ -83,5 +87,5 @@
         const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
         const USER_NAME = "{{ session_user().owner }}";
     </script>
-    <script src="{{ url_for("static", filename="game.js") }}"></script>
+    <script src="{{ url_for("static", filename="poker.js") }}"></script>
 {% endblock %}

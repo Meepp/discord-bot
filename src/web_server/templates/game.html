@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Game
+{% endblock %}
+
+{% block content %}
+    <div class="main-wrapper">
+        <div id="lobby-wrapper" class="main-content">
+            <article class="post">
+                <header>
+                    <div>
+                        <h1>Room: <u>{{ room.name }}</u></h1>
+                        <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
+                        <div class="about">Room leader: {{ room.author }}
+                            <div id="room-settings">
+
+                            </div>
+                        </div>
+                        <div>
+                            <h3>
+                                User list</h3>
+                            <div class="user-list"></div>
+                        </div>
+                    </div>
+                    {% if session_user().owner_id == room['author_id'] %}
+                        <div class="settings-column">
+                            <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
+                            <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
+                            <label class="custom-text" for="small-blind-value">Small blind:</label><br>
+                            <input class="custom-input" type="text" id="small-blind-value" name="Small blind" value="2"><br>
+                            <input class="custom-input custom-button" type="button" value="Submit" onclick="changeSettings()">
+
+                            <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
+                        </div>
+
+                    {% else %}
+                        Choose class
+                        <select>
+                            <option>a</option>
+                            <option>b</option>
+                        </select>
+                        <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
+                    {% endif %}
+                </header>
+            </article>
+        </div>
+        <div id="game-wrapper" class="main-content">
+            <div id="canvas-wrapper">
+                <canvas id="canvas">
+                </canvas>
+            </div>
+            <div id="button-bar">
+                <button id="call-button" class="custom-input custom-button" onclick="call()">Call</button>
+                <button class="custom-input custom-button" onclick="raise()">Raise</button>
+                <button class="custom-input custom-button" onclick="fold()">Fold</button>
+                {% if session_user().owner_id == room['author_id'] %}
+                    <div class="custom-input custom-button" onclick="startRoom()">Begin Round</div>
+                {% endif %}
+            </div>
+        </div>
+        <div id="right-column" class="secondary-content">
+            <div class="custom-title flex-title">Event Log</div>
+            <div id="event-log-wrapper">
+                <div id="event-log">
+                </div>
+            </div>
+            <div class="custom-title flex-title">Chat</div>
+            <div id="chat-wrapper">
+                <ul id="messages"></ul>
+                <form id="messageform" method="post">
+                    <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
+                    <input id="roomid" type="hidden" value="{{ room.id }}"/>
+                    <input id="username" type="hidden" value="{{ session_user().owner }}"/>
+                    <button class="custom-input custom-button">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+    <script>
+        const ROOM_ID = "{{ room.id }}";
+        const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
+        const USER_NAME = "{{ session_user().owner }}";
+    </script>
+    <script src="{{ url_for("static", filename="game.js") }}"></script>
+{% endblock %}
