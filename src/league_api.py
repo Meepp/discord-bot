@@ -4,7 +4,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 from database import db
-from database.models.models import Game, Profile
+from database.models.models import LeagueGame, Profile
 
 API_URL = "https://euw1.api.riotgames.com"
 
@@ -49,7 +49,7 @@ class LeagueAPI(commands.Cog):
         else:
             return None
 
-    def set_active_game(self, user: User, summoner_id: str, game: Game):
+    def set_active_game(self, user: User, summoner_id: str, game: LeagueGame):
         endpoint = "/lol/spectator/v4/active-games/by-summoner/%s" % summoner_id
         raw_response = requests.get(API_URL + endpoint, headers=self.headers)
 
@@ -115,7 +115,7 @@ class LeagueAPI(commands.Cog):
         await self.bot.wait_until_ready()
 
         session = db.session()
-        games = session.query(Game).all()
+        games = session.query(LeagueGame).all()
 
         try:
             for game in games:
@@ -154,7 +154,7 @@ class LeagueAPI(commands.Cog):
             return await context.channel.send("%s is not a valid condition. Pick one from %s" % (condition, ", ".join(x[0] for x in CONDITIONS)))
 
         # Create a game object to keep track of bets.
-        game = Game(context.author)
+        game = LeagueGame(context.author)
         game.bet = amount
         game.type = condition
         game.channel_id = context.channel.id
@@ -170,7 +170,7 @@ class LeagueAPI(commands.Cog):
         Shows a list of your active bets and the value.
         """
         session = db.session()
-        bets = session.query(Game).filter(Game.owner_id == context.author.id).all()
+        bets = session.query(LeagueGame).filter(LeagueGame.owner_id == context.author.id).all()
 
         out = "```\nActive bets:\n"
         for bet in bets:

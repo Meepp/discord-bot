@@ -130,7 +130,7 @@ class Profile(Base):
         session.commit()
 
 
-class Game(Base):
+class LeagueGame(Base):
     __tablename__ = 'game'
     __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -166,7 +166,6 @@ class RoomModel(Base):
 
     created = Column(DateTime(), nullable=False, default=datetime.now())
     type = Column(String(), nullable=False)
-    temp_password = Column(String(), nullable=False, default="")
 
     def __init__(self, name: str, profile: Profile, room_type: str):
         self.name = name

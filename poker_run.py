@@ -12,7 +12,7 @@ if __name__ == "__main__":
     host = bot.config["WEBSERVER"]["IP"]
     port = int(bot.config["WEBSERVER"]["Port"])
 
-    http_server = WebSocketServer((host, port), app, debug=True)
+    http_server = WebSocketServer((host, port), app, debug=False)
 
     try:
         http_server.serve_forever()

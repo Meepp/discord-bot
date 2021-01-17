@@ -6,7 +6,7 @@ canvas.height = 600;
 let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
-let socket = io();
+let socket = io("/poker");
 
 socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
@@ -324,6 +324,7 @@ function initialize() {
      * Register all socket.io functions to the pokerTable object.
      */
     socket.on("table_state", (data) => {
+        console.log("Received table state.");
         // Check before overwriting state.
         if (pokerTable.state.active_player !== USER_NAME && data.active_player === USER_NAME) {
             audioFiles["notify"].play();
@@ -362,7 +363,7 @@ function initialize() {
         });
     });
 
-
+    console.log("Requesting stable state");
     socket.emit("table_state", {
         "room": ROOM_ID
     });
@@ -396,7 +397,6 @@ socket.on("start", () => {
         setInterval(render, 1000 / 60);
     }
 });
-initialize();
 
 function startRoom() {
     if (!pokerTable.state.started) {
@@ -421,6 +421,8 @@ socket.on("start", () => {
 socket.emit("join", {
     "room": ROOM_ID,
 });
+
+initialize();
 
 socket.on("message", (data) => {
     let log = document.getElementById("event-log");

@@ -4,9 +4,9 @@ canvas.height = 600;
 let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
-const TILE_SIZE = 16;
+const TILE_SIZE = 64;
 
-let socket = io();
+let socket = io("/hallway");
 
 socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
@@ -51,6 +51,7 @@ function getRelativeMousePosition(canvas, evt) {
 function HallwayHunters() {
     this.state = {
         board_size: 30,
+        other_players: [],
         player_data: {
             name: "",
             position: {
@@ -120,12 +121,11 @@ function render() {
     // Draw tiles
     for (let x = 0; x < game.state.board_size; x++) {
         for (let y = 0; y < game.state.board_size; y++) {
-            let imageData = game.tiles[game.state.board[x][y].image];
-            context.putImageData(imageData, x * TILE_SIZE + xOffset, y * TILE_SIZE + yOffset);
+            context.drawImage(game.tiles[game.state.board[x][y].image], x * TILE_SIZE + xOffset, y * TILE_SIZE + yOffset);
         }
     }
 
-    context.putImageData(game.tiles["character_blue"], game.state.player_data.position.x + xOffset, game.state.player_data.position.y + yOffset);
+    context.drawImage(game.tiles["character_blue"], game.state.player_data.position.x + xOffset, game.state.player_data.position.y + yOffset);
 
     game.drawFadeMessages();
 }
@@ -135,10 +135,17 @@ let audioFiles = {};
 let game = new HallwayHunters();
 
 function split_sheet() {
-    canvas = document.createElement("canvas");
-    canvas.width = this.width;
-    canvas.height = this.height;
-    context = canvas.getContext("2d");
+    const scale = TILE_SIZE / 16;
+    let canvas = document.createElement("canvas");
+    canvas.width = this.width * scale;
+    canvas.height = this.height * scale;
+    let context = canvas.getContext("2d");
+    context.clearRect(0,0, canvas.width, canvas.height);
+    context.webkitImageSmoothingEnabled = false;
+    context.mozImageSmoothingEnabled = false;
+    context.imageSmoothingEnabled = false;
+
+    context.scale(scale, scale);
     context.drawImage(tileSet, 0, 0);
 
     const S = TILE_SIZE;
@@ -158,6 +165,16 @@ function split_sheet() {
     game.tiles["character_green"] = context.getImageData(21 * S, 7 * S, S, S);
     game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
     game.tiles["character_black"] = context.getImageData(23 * S, 7 * S, S, S);
+
+    for (const [title, data] of Object.entries(game.tiles)) {
+        canvas.width = data.width;
+        canvas.height = data.height;
+        context.putImageData(data, 0, 0);
+
+        let image = new Image();
+        image.src = canvas.toDataURL();
+        game.tiles[title] = image;
+    }
 }
 
 let tileSet = null;
@@ -167,7 +184,7 @@ function initialize() {
      */
     tileSet = new Image();
     tileSet.onload = split_sheet;
-    tileSet.src = "images/tiles/dungeon_sheet.png";
+    tileSet.src = "/static/images/tiles/dungeon_sheet.png";
 
     /*
      * Register all socket.io functions to the game object.
@@ -179,11 +196,10 @@ function initialize() {
             // Lobby stuff
             let userList = $(".user-list");
             userList.empty();
-            data.players.forEach(player => {
+            data.other_players.forEach(player => {
                 userList.append(`
                     <div class="user-entry">
-                    <div class="user-entry-name">${player.name}</div>
-                    <div class="user-entry-balance">${CURRENCY}${player.balance}</div>
+                    <div class="user-entry-name">${player.username}</div>
                     <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
                     </div>
                 `);
@@ -220,7 +236,6 @@ socket.on("start", () => {
         setInterval(render, 1000 / 60);
     }
 });
-initialize();
 
 function startRoom() {
     if (!game.state.started) {
@@ -265,9 +280,10 @@ document.addEventListener("keydown", (ev) => {
     // Game inputs
 });
 
-
+console.log("Emitting join");
 socket.emit("join", {
     "room": ROOM_ID,
 });
 
 
+initialize();

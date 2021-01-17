@@ -22,7 +22,16 @@ def create_app():
 
     print("Created socketio")
     sio = SocketIO(app, async_mode='gevent')
-    from web_server.lib.socket import poker_socket
+
+    import web_server.lib.socket
+
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s %(name)s %(levelname)-8s  %(message)s',
+        datefmt='(%H:%M:%S)')
+    # disable all loggers from different files
+    logging.getLogger('geventwebsocket.server').setLevel(logging.ERROR)
 
     # Import models and create tables
     create_all_models()

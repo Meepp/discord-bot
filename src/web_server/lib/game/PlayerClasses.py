@@ -1,21 +1,24 @@
 from collections import namedtuple
 
 from database.models.models import Profile
-from web_server.lib.game.Game import Game
 from web_server.lib.game.Tiles import GroundTile
 from web_server.lib.game.Utils import Point
 from web_server.lib.game.exceptions import InvalidAction
 
 
 class PlayerClass:
-    def __init__(self, profile: Profile, socket_id, game: Game):
+    def __init__(self, profile: Profile, socket_id, game):
         self.name = ""
         self.profile = profile
         self.ability_cooldown = 0
-        self.position = Point(0, 0)
+        self.position = Point(1, 1)
         self.pre_move = Point(0, 0)
         self.cooldown_timer = 0
-        self.game = game
+        self.ready = False
+
+        from web_server.lib.game.HallwayHunters import HallwayHunters
+        self.game: HallwayHunters = game
+
         self.socket = socket_id
 
     def move(self, x, y):
@@ -34,10 +37,14 @@ class PlayerClass:
 
     def to_json(self, owner=True):
         # Default dictionary to see other players name
-        state = {"username": self.profile.discord_username}
+        state = {
+            "username": self.profile.discord_username,
+            "ready": self.ready,
+        }
         # In case you are owner add player sensitive information to state
         if owner:
             state.update({
+
                 "name": self.name,
                 "position": self.position.to_json(),
                 "pre_move": self.pre_move.to_json(),

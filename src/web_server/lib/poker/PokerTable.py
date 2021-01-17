@@ -123,7 +123,7 @@ class PokerTable:
             self.spectator_list.append(player)
 
         for player in self.spectator_list:
-            sio.emit("message", "You are a spectator this round.", room=player.socket)
+            sio.emit("message", "You are a spectator this round.", room=player.socket, namespace="/poker")
 
         # Check if there are enough players
         if len(self.player_list) < 2:
@@ -151,7 +151,7 @@ class PokerTable:
         self.start_next_phase()
 
     def broadcast(self, message):
-        sio.emit("message", message, room=self.room_id)
+        sio.emit("message", message, room=self.room_id, namespace="/poker")
 
     def post_round(self):
         self.small_blind_index = (self.small_blind_index + 1) % len(self.player_list)
@@ -438,7 +438,7 @@ class PokerTable:
 
     def update_players(self):
         for player in self.player_list + self.spectator_list:
-            sio.emit("table_state", self.export_state(player), json=True, room=player.socket)
+            sio.emit("table_state", self.export_state(player), json=True, room=player.socket, namespace="/poker")
 
     def export_player_game_data(self):
         data = []

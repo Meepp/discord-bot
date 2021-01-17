@@ -1,6 +1,6 @@
 from discord import Reaction, User
 
-from commands.poker import poker_message_check
+from commands.games import poker_message_check
 from database.repository import music_repository
 from src import bot
 from src.custom_emoji import CustomEmoji

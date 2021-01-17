@@ -34,8 +34,8 @@ def game(room_id):
     room = get_room(room_id)
     if room.type == "poker":
         return render_template('poker.html', room=room)
-    elif room.type == "game":
-        return render_template('poker.html', room=room)
+    elif room.type == "hallway":
+        return render_template('hallway.html', room=room)
 
 
 

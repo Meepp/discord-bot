@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List
 
 from database.models.models import Profile
-from web_server import sio
+from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
 from web_server.lib.game.Tiles import GroundTile, Tile
 
@@ -16,11 +16,11 @@ class Phases(Enum):
     STARTED = 1
 
 
-class Game:
+class HallwayHunters:
     def __init__(self, room_id):
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
-        self.player_list = []
+        self.player_list: List[PlayerClass] = []
         self.size = 30
 
         self.board = generate_board(size=self.size)
@@ -37,10 +37,11 @@ class Game:
 
     def update_players(self):
         for player in self.player_list:
-            sio.emit("table_state", self.export_board(player), json=True, room=player.socket)
+            sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass):
         return {
+            "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
             "other_players": [player.to_json() for player in self.player_list],
             "board": [[tile.to_json() for tile in row] for row in self.board],
@@ -68,4 +69,10 @@ class Game:
             self.player_list.remove(player)
 
     def broadcast(self, message):
-        sio.emit("message", message, room=self.room_id)
+        sio.emit("message", message, room=self.room_id, namespace="/hallway")
+
+    def check_readies(self):
+        for player in self.player_list:
+            if not player.ready:
+                return False
+        return True
