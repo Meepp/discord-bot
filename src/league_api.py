@@ -21,7 +21,7 @@ class LeagueAPI(commands.Cog):
     @staticmethod
     def check_kill(response, user):
         session = db.session()
-        profile = session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
+        profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
 
         # Get user's participant ID from the match.
         participant_id = None
@@ -93,7 +93,7 @@ class LeagueAPI(commands.Cog):
                        (rate[0] == "inhibitor" and team.get("firstInhibitor")) or \
                        (rate[0] == "dragon" and team.get("firstDragon")) or \
                             (rate[0] == "kill" and self.check_kill(response, user)):
-                        profile = session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
+                        profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
                         winnings = game.bet * rate[1]
                         # Find rate from tuple
                         profile.balance += winnings
@@ -119,9 +119,9 @@ class LeagueAPI(commands.Cog):
 
         try:
             for game in games:
-                user = self.bot.get_user(int(game.owner_id))
+                user = self.bot.get_user(int(game.discord_id))
                 if user is None:
-                    print("User id %s not found." % game.owner_id)
+                    print("User id %s not found." % game.discord_id)
                     continue
                 if game.game_id is not None:
                     # The game is in progress if this is the case
@@ -130,7 +130,7 @@ class LeagueAPI(commands.Cog):
                         await self.bot.get_channel(game.channel_id).send("`%s`" % information)
                 else:
                     # Fetch active game and set game data
-                    profile = session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
+                    profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
                     self.set_active_game(user, profile.league_user_id, game)
 
         except Exception as e:
@@ -143,7 +143,7 @@ class LeagueAPI(commands.Cog):
         """
 
         session = db.session()
-        profile = session.query(Profile).filter(Profile.owner_id == context.author.id).one_or_none()
+        profile = session.query(Profile).filter(Profile.discord_id == context.author.id).one_or_none()
         if profile.league_user_id is None:
             return await context.channel.send("You dont have a league account linked yet. Set this account using !connect <summonername>")
 
@@ -185,7 +185,7 @@ class LeagueAPI(commands.Cog):
         Only works on EUW server right now.
         """
         session = db.session()
-        profile = session.query(Profile).filter(Profile.owner_id == context.author.id).one_or_none()
+        profile = session.query(Profile).filter(Profile.discord_id == context.author.id).one_or_none()
 
         if profile is None:
             profile = Profile(context.author)

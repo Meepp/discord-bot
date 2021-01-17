@@ -13,11 +13,11 @@ def join_game(room_id):
         games[room_id] = Game(room_id)
 
     profile = session_user()
-    table = games[room_id]
-    table.add_player(profile, request.sid)
+    game = games[room_id]
+    game.add_player(profile, request.sid)
 
-    sio.emit("join", profile.owner, json=True, room=room_id)
-    table.update_players()
+    sio.emit("join", profile.discord_username, json=True, room=room_id)
+    game.update_players()
 
 
 def leave_game(socket_id):
@@ -26,5 +26,5 @@ def leave_game(socket_id):
         if player:
             game.remove_player(player.profile)
 
-            game.broadcast("%s left the game." % player.profile.owner)
-            sio.emit("leave", player.profile.owner, json=True, room=room_id)
+            game.broadcast("%s left the game." % player.profile.discord_username)
+            sio.emit("leave", player.profile.discord_username, json=True, room=room_id)

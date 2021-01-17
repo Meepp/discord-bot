@@ -8,14 +8,15 @@ from web_server.lib.game.exceptions import InvalidAction
 
 
 class PlayerClass:
-    def __init__(self, profile: Profile, game: Game):
+    def __init__(self, profile: Profile, socket_id, game: Game):
         self.name = ""
         self.profile = profile
         self.ability_cooldown = 0
         self.position = Point(0, 0)
+        self.pre_move = Point(0, 0)
         self.cooldown_timer = 0
         self.game = game
-        self.pre_move = Point(0, 0)
+        self.socket = socket_id
 
     def move(self, x, y):
         if abs(self.position.x - x) + abs(self.position.y - y) == 1:
@@ -26,22 +27,29 @@ class PlayerClass:
     def ability(self, x, y):
         pass
 
+
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.position = self.pre_move
 
-    def to_json(self):
-        return {
-            "name": self.name,
-            "username": self.profile.owner,
-            "position": self.position.to_json(),
-            "cooldown": self.ability_cooldown,
-        }
+    def to_json(self, owner=True):
+        # Default dictionary to see other players name
+        state = {"username": self.profile.discord_username}
+        # In case you are owner add player sensitive information to state
+        if owner:
+            state.update({
+                "name": self.name,
+                "position": self.position.to_json(),
+                "pre_move": self.pre_move.to_json(),
+                "cooldown": self.ability_cooldown,
+                "cooldown_timer": self.cooldown_timer,
+            })
+        return state
 
 
 class Demolisher(PlayerClass):
-    def __init__(self, profile, game):
-        super().__init__(profile, game)
+    def __init__(self, profile, socket_id, game):
+        super().__init__(profile, socket_id, game)
 
         self.name = "Demolisher"
         self.ability_cooldown = 30

@@ -8,7 +8,7 @@ from database.repository import honor_repository
 def get_money(user: User):
     session = db.session()
 
-    result = session.query(Profile).filter(Profile.owner_id == user.id).one_or_none()
+    result = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
 
     if not result:
         result = Profile(user)
@@ -23,6 +23,6 @@ def get_profile(user: User = None, user_id: int = None):
 
     sub = session.query(Profile)
     if user is not None:
-        return sub.filter(Profile.owner_id == user.id).one_or_none()
+        return sub.filter(Profile.discord_id == user.id).one_or_none()
     if user_id is not None:
-        return sub.filter(Profile.owner_id == user_id).one_or_none()
+        return sub.filter(Profile.discord_id == user_id).one_or_none()

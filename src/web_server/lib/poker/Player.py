@@ -43,7 +43,7 @@ class Player:
             self.profile.balance = 0
             self.all_in = True
 
-            self.table.broadcast("%s went all in." % self.profile.owner)
+            self.table.broadcast("%s went all in." % self.profile.discord_username)
             self.table.all_in_list.append(self)
         else:  # not all in
             paid = to_pay

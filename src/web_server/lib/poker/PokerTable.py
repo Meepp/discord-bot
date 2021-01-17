@@ -55,7 +55,7 @@ def deck_generator():
 def synchronize_balance(players):
     session = db.session()
     for player in players:
-        profile = profile_repository.get_profile(user_id=player.profile.owner_id)
+        profile = profile_repository.get_profile(user_id=player.profile.discord_id)
         difference = player.profile.balance - player.initial_balance
 
         profile.balance += difference
@@ -106,9 +106,9 @@ class PokerTable:
 
         # Get latest balance from server
         for player in self.player_list:
-            profile = profile_repository.get_profile(user_id=player.profile.owner_id)
+            profile = profile_repository.get_profile(user_id=player.profile.discord_id)
             player.profile = profile
-            print("Updating %ss profile" % player.profile.owner)
+            print("Updating %ss profile" % player.profile.discord_username)
 
         # Move all no balance players to spectator list
         for player in self.player_list[:]:
@@ -191,7 +191,7 @@ class PokerTable:
 
         shared_pot = self.payout_pot(len(winning_players))
 
-        self.broadcast("%s won." % ",".join([player.profile.owner for player in winning_players]))
+        self.broadcast("%s won." % ",".join([player.profile.discord_username for player in winning_players]))
 
         # Payout the game
         for player in winning_players:
@@ -211,7 +211,7 @@ class PokerTable:
 
         if profile is not None:
             for player in combined_list:
-                if player.profile.owner_id == profile.owner_id:
+                if player.profile.discord_id == profile.discord_id:
                     return player
             return None
         elif socket_id is not None:
@@ -258,7 +258,7 @@ class PokerTable:
             self.first = False
             paid = player.pay(self.current_call_value)  # Current small blind
             if paid != 0:
-                self.broadcast("%s started the round with %d." % (player.profile.owner, self.current_call_value))
+                self.broadcast("%s started the round with %d." % (player.profile.discord_username, self.current_call_value))
                 self.add_pot(paid)
                 self.current_call_value = self.settings.small_blind_value * 2  # In cents
             else:
@@ -282,7 +282,7 @@ class PokerTable:
                 self.add_pot(paid)
                 self.current_call_value += difference
                 self.caller_list = [player]
-                self.broadcast("%s raised by %d." % (player.profile.owner, difference))
+                self.broadcast("%s raised by %d." % (player.profile.discord_username, difference))
             else:
                 return "Not enough currency to raise by %d." % value
 
@@ -357,17 +357,17 @@ class PokerTable:
 
     def export_state(self, player: Player):
         return {
-            "you": player.profile.owner,
-            "small_blind": self.get_small_blind().profile.owner,
+            "you": player.profile.discord_username,
+            "small_blind": self.get_small_blind().profile.discord_username,
             "current_call_value": self.current_call_value,
             "pot": self.pot,
             "phase": self.phase.name.capitalize(),
             "active_player_index": self.active_player_index,
-            "active_player": self.get_current_player().profile.owner,
+            "active_player": self.get_current_player().profile.discord_username,
             "community_cards": [card.to_json() for card in self.community_cards],
-            "fold_list": [player.profile.owner for player in self.fold_list],
-            "caller_list": [player.profile.owner for player in self.caller_list],
-            "spectator_list": [player.profile.owner for player in self.spectator_list],
+            "fold_list": [player.profile.discord_username for player in self.fold_list],
+            "caller_list": [player.profile.discord_username for player in self.caller_list],
+            "spectator_list": [player.profile.discord_username for player in self.spectator_list],
             "hand": player.export_hand(),
             "players": self.export_player_game_data(),
             "balance": player.profile.balance,
@@ -428,7 +428,7 @@ class PokerTable:
     def action_call(self, player: Player, value):
         self.pot += value
         self.caller_list.append(player)
-        self.broadcast("%s called %d." % (player.profile.owner, value))
+        self.broadcast("%s called %d." % (player.profile.discord_username, value))
 
     def payout_pot(self, shares=1):
         payout_pot = int(self.pot / shares)
@@ -458,7 +458,7 @@ class PokerTable:
 
             data.append({
                 "active": self.get_current_player() == other,
-                "name": other.profile.owner,
+                "name": other.profile.discord_username,
                 "state": state,
                 "balance": other.profile.balance,
                 "hand": hand,

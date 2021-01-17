@@ -15,4 +15,5 @@ class YoutubeAPI:
         }
 
         result = requests.get("https://www.googleapis.com/youtube/v3/search", params=data)
+
         return "https://www.youtube.com/watch?v=" + result.json()["items"][0]["id"]["videoId"]

@@ -22,7 +22,7 @@ def join_poker(room_id):
     table = tables[room_id]
     table.add_player(profile, request.sid)
 
-    sio.emit("join", profile.owner, json=True, room=room_id)
+    sio.emit("join", profile.discord_username, json=True, room=room_id)
     table.update_players()
 
 
@@ -32,8 +32,8 @@ def leave_poker(socket_id):
         if player:
             table.remove_player(player.profile)
 
-            table.broadcast("%s left the table." % player.profile.owner)
-            sio.emit("leave", player.profile.owner, json=True, room=room_id)
+            table.broadcast("%s left the table." % player.profile.discord_username)
+            sio.emit("leave", player.profile.discord_username, json=True, room=room_id)
 
 
 @sio.on("chat message")
@@ -41,7 +41,7 @@ def message(data):
     room = int(data.get('room'))
     if message != "":  # Stop empty messages
         profile = session_user()
-        data["username"] = profile.owner
+        data["username"] = profile.discord_username
 
         sio.emit('chat message', data, room=room, include_self=True)
 
@@ -56,7 +56,7 @@ def change_settings(data):
     profile = session_user()
     
     # Only the owner may change room settings
-    if room.author_id != profile.owner_id:
+    if room.author_id != profile.discord_id:
         user = table.get_player(profile)
         return sio.emit("message", "You may not change the room settings.", room=user.socket)
 
@@ -79,7 +79,7 @@ def start(data):
     player.ready = not player.ready
 
     # Only the owner may start the game
-    if room.author_id != profile.owner_id:
+    if room.author_id != profile.discord_id:
         table.update_players()
         return
 

@@ -110,16 +110,16 @@ class Profile(Base):
     __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    owner = Column('owner', String)
-    owner_id = Column('owner_id', Integer, unique=True)
+    discord_username = Column('owner', String)
+    discord_id = Column('owner_id', Integer, unique=True)
 
     balance = Column('balance', Integer, default=0)
 
     league_user_id = Column('league_user_id', String)
 
     def __init__(self, owner: User):
-        self.owner = owner.name
-        self.owner_id = owner.id
+        self.discord_username = owner.name
+        self.discord_id = owner.id
 
     def init_balance(self, session, user):
         from database.repository import honor_repository
@@ -165,9 +165,11 @@ class RoomModel(Base):
     message_id = Column(Integer())
 
     created = Column(DateTime(), nullable=False, default=datetime.now())
+    type = Column(String(), nullable=False)
     temp_password = Column(String(), nullable=False, default="")
 
-    def __init__(self, name: str, profile: Profile):
+    def __init__(self, name: str, profile: Profile, room_type: str):
         self.name = name
-        self.author_id = profile.owner_id
-        self.author = profile.owner
+        self.author_id = profile.discord_id
+        self.author = profile.discord_username
+        self.type = room_type

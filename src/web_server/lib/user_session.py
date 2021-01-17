@@ -44,4 +44,4 @@ def session_user_set(user: Optional[Profile]):
     if user is None:
         del session['user_id']
     else:
-        session['user_id'] = user.owner_id
+        session['user_id'] = user.discord_id

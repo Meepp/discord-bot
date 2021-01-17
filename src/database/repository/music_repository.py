@@ -41,7 +41,7 @@ def remove_from_owner(url: str, owner_id: int):
 
     if song is None:
         return
-    song.owner_id = -1
+    song.discord_id = -1
     session.commit()
 
 

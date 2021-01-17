@@ -12,7 +12,7 @@ bp = Blueprint('poker', __name__)
 def get_room(room_id, check_author=False):
     room = room_repository.get_room(room_id)
 
-    if check_author and room.author != session_user().owner:
+    if check_author and room.author != session_user().discord_username:
         abort(401, "Room id {0} doesn't belong to you.".format(room_id))
     if room is None:
         abort(404, "Room id {0} doesn't exist.".format(room_id))

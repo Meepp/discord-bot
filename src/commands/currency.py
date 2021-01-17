@@ -53,12 +53,12 @@ class Currency(commands.Cog):
         session = db.session()
         ids = [member.id for member in context.guild.members]
         profiles = session.query(Profile) \
-            .filter(Profile.owner_id.in_(ids)) \
+            .filter(Profile.discord_id.in_(ids)) \
             .order_by(Profile.balance.desc()) \
             .limit(10) \
             .all()
 
-        body = "\n".join("%s: %s" % (profile.owner, format_money(profile.balance)) for profile in profiles)
+        body = "\n".join("%s: %s" % (profile.discord_username, format_money(profile.balance)) for profile in profiles)
         await context.channel.send("```Current top:\n%s```" % body)
 
     @commands.command()
