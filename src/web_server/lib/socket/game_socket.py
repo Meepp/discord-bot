@@ -3,6 +3,7 @@ from typing import Dict
 from flask import request
 
 from web_server import session_user, sio
+from web_server.lib.game.Game import Game
 
 games: Dict[int, Game] = {}
 

@@ -3,6 +3,7 @@ from flask_socketio import join_room
 
 from database.repository import room_repository
 from web_server import sio
+from web_server.lib.socket.game_socket import join_game
 from web_server.lib.socket.poker_socket import join_poker, leave_poker
 
 
