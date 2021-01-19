@@ -7,12 +7,6 @@ from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
 from web_server.lib.game.Tiles import GroundTile, Tile, WallTile
 
 
-def generate_board(size) -> List[List[Tile]]:
-    base = [[GroundTile() for i in range(size)] for j in range(size)]
-    print(base)
-    base[0] = [WallTile() for i in range(size)]
-    return base
-
 
 class Phases(Enum):
     NOT_YET_STARTED = 0

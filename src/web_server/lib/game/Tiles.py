@@ -7,6 +7,7 @@ class Tile:
     """
     Generic class, don't initialize this directly, use subclasses instead.
     """
+
     def __init__(self):
         self.image = "center"
         self.movement_allowed = True
@@ -26,6 +27,7 @@ class Tile:
 
     __repr__ = __str__
 
+
 class GroundTile(Tile):
     def __init__(self):
         super().__init__()
@@ -33,6 +35,30 @@ class GroundTile(Tile):
 
         self.movement_allowed = True
         self.opaque = False
+
+    def __str__(self):
+        return "G"
+
+    def __eq__(self, other):
+        return other == "G"
+
+    __repr__ = __str__
+
+class UnmarkedTile(Tile):
+    def __init__(self):
+        super().__init__()
+        self.image = "center"
+
+        self.movement_allowed = True
+        self.opaque = False
+
+    def __str__(self):
+        return "U"
+
+    def __eq__(self, other):
+        return other == "U"
+
+    __repr__ = __str__
 
 
 class WallTile(Tile):
@@ -42,3 +68,11 @@ class WallTile(Tile):
 
         self.movement_allowed = False
         self.opaque = True
+
+    def __str__(self):
+        return "W"
+
+    def __eq__(self, other):
+        return other == "W"
+
+    __repr__ = __str__
