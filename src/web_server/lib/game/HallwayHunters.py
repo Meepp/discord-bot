@@ -1,4 +1,3 @@
-import random
 from enum import Enum
 from typing import List, Optional
 
@@ -6,6 +5,7 @@ from database.models.models import Profile
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
 from web_server.lib.game.Tiles import GroundTile, Tile, WallTile
+import random
 
 
 def room_generator(board: List[List[Tile]], size, attempts=20):
