@@ -31,9 +31,26 @@ class Tile:
 class GroundTile(Tile):
     def __init__(self):
         super().__init__()
-        self.image = "center"
+        self.image = "floor"
 
         self.movement_allowed = True
+        self.opaque = False
+
+    def __str__(self):
+        return " "
+
+    def __eq__(self, other):
+        return other == " "
+
+    __repr__ = __str__
+
+
+class UnknownTile(Tile):
+    def __init__(self):
+        super().__init__()
+        self.image = "void"
+
+        self.movement_allowed = False
         self.opaque = False
 
     def __str__(self):
@@ -48,7 +65,7 @@ class GroundTile(Tile):
 class WallTile(Tile):
     def __init__(self):
         super().__init__()
-        self.image = "edge_l"
+        self.image = "wall_test"
 
         self.movement_allowed = False
         self.opaque = True

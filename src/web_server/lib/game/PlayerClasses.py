@@ -12,9 +12,11 @@ class PlayerClass:
         self.profile = profile
         self.ability_cooldown = 0
         self.position = Point(1, 1)
-        self.pre_move = Point(0, 0)
+        self.pre_move = Point(1, 1)
         self.cooldown_timer = 0
         self.ready = False
+        self.old_positions = set()
+        self.old_positions.add(self.position)
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
@@ -26,7 +28,10 @@ class PlayerClass:
 
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
+
         self.position = self.pre_move
+        self.old_positions.add(self.position)
+
         self.ready = False
 
     def to_json(self, owner=True):

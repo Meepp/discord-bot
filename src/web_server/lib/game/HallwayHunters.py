@@ -2,46 +2,11 @@ from enum import Enum
 from typing import List, Optional
 
 from database.models.models import Profile
+from room_generator import generate_board
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
-from web_server.lib.game.Tiles import GroundTile, Tile, WallTile
+from web_server.lib.game.Tiles import GroundTile, Tile, WallTile, UnknownTile
 import random
-
-
-def room_generator(board: List[List[Tile]], size, attempts=20):
-    def room_fits(_x, _y, _width, _height):
-        for i in range(_x, _width):
-            for j in range(_y, _height):
-                if not isinstance(board[_x][_y], WallTile):
-                    return False
-        return True
-
-    def carve_room(_x, _y, _width, _height):
-        for i in range(_x, _width):
-            for j in range(_y, _height):
-                board[_x][_y] = GroundTile()
-        return True
-
-    min_size = 3
-    max_size = 7
-    for _ in range(attempts):
-        width = random.randint(min_size, max_size)
-        height = random.randint(min_size, max_size)
-
-        x = random.randint(0, size - width)
-        y = random.randint(0, size - height)
-
-        if room_fits(x, y, width, height):
-            carve_room(x, y, width, height)
-
-
-def generate_board(size) -> List[List[Tile]]:
-    base = [[WallTile() for i in range(size)] for j in range(size)]
-
-    room_generator(base, size)
-
-    base[0] = [WallTile() for i in range(size)]
-    return base
 
 
 class Phases(Enum):
@@ -81,11 +46,16 @@ class HallwayHunters:
             sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass):
+        board = [[UnknownTile() for _ in row] for row in self.board]
+        for point in player.old_positions:
+            for x in range(point.x - 1, point.x + 2):
+                for y in range(point.y - 1, point.y + 2):
+                    board[x][y] = self.board[x][y]
         return {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
             "players": [player.to_json() for player in self.player_list],
-            "board": [[tile.to_json() for tile in row] for row in self.board],
+            "board": [[tile.to_json() for tile in row] for row in board],
             "board_size": self.size,
         }
 
