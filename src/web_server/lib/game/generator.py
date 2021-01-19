@@ -1,7 +1,7 @@
 import random
 from typing import List
 
-from src.web_server.lib.game.Tiles import WallTile, Tile, GroundTile
+from web_server.lib.game.Tiles import WallTile, Tile, GroundTile
 
 
 def room_generator(board: List[List[Tile]], size, attempts=50):

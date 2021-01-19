@@ -5,7 +5,7 @@ let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
 const TILE_SIZE = 64;
-const TILE_PADDING = 8;
+const TILE_PADDING = 1;
 
 let socket = io("/hallway");
 
@@ -200,11 +200,14 @@ function split_sheet() {
     game.tiles["edge_t"]    = context.getImageData(1 * S, 0 * S, S, S);
     game.tiles["corner_tr"] = context.getImageData(2 * S, 0 * S, S, S);
     game.tiles["edge_l"]    = context.getImageData(0 * S, 1 * S, S, S);
-    game.tiles["center"]    = context.getImageData(1 * S, 1 * S, S, S);
+    game.tiles["void"]      = context.getImageData(1 * S, 1 * S, S, S);
     game.tiles["edge_r"]    = context.getImageData(2 * S, 1 * S, S, S);
     game.tiles["corner_bl"] = context.getImageData(0 * S, 2 * S, S, S);
     game.tiles["edge_b"]    = context.getImageData(1 * S, 2 * S, S, S);
     game.tiles["corner_br"] = context.getImageData(2 * S, 2 * S, S, S);
+
+    game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
+    game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
 
     game.tiles["Demolisher"]   = context.getImageData(19 * S, 7 * S, S, S);
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
