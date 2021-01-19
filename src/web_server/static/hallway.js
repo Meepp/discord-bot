@@ -5,6 +5,7 @@ let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
 const TILE_SIZE = 64;
+const TILE_PADDING = 8;
 
 let socket = io("/hallway");
 
@@ -68,6 +69,11 @@ function HallwayHunters() {
     };
     this.fadeMessages = [];
     this.tiles = {};
+    this.selected = {
+        x: 0,
+        y: 0,
+    };
+    this.mouseDown = false;
 
     this.setState = function(data) {
         this.state = {
@@ -102,6 +108,22 @@ function HallwayHunters() {
 
             fm.ticks--;
         }
+    };
+
+    this.onMove = function(e) {
+        if (!game.mouseDown) return;
+        const pos = getRelativeMousePosition(canvas, e);
+
+        // Compute the offset for all tiles, to center rendering on the player.
+        const S = (TILE_SIZE + TILE_PADDING);
+        const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 ;
+        const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 ;
+
+
+        game.selected = {
+            x: Math.round((pos.x - xOffset) / S),
+            y: Math.round((pos.y - yOffset) / S)
+        }
     }
 }
 
@@ -113,19 +135,41 @@ function render() {
     canvas.height = canvas.clientHeight;
 
     context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#EEEEEE";
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
     // Compute the offset for all tiles, to center rendering on the player.
-    const xOffset = -game.state.player_data.position.x + canvas.width / 2 - TILE_SIZE / 2;
-    const yOffset = -game.state.player_data.position.y + canvas.height / 2 - TILE_SIZE / 2;
+    const S = (TILE_SIZE + TILE_PADDING);
+    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2;
+    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
+
+
+    // Draw selected tile by means of darker square
+    context.fillStyle = "#3c5978";
+    context.fillRect(
+        game.selected.x * S + xOffset - TILE_PADDING,
+        game.selected.y * S + yOffset  - TILE_PADDING,
+        S + TILE_PADDING,
+        S + TILE_PADDING
+    );
+
 
     // Draw tiles
     for (let x = 0; x < game.state.board_size; x++) {
         for (let y = 0; y < game.state.board_size; y++) {
-            context.drawImage(game.tiles[game.state.board[x][y].image], x * TILE_SIZE + xOffset, y * TILE_SIZE + yOffset);
+            context.drawImage(
+                game.tiles[game.state.board[x][y].image],
+                x * S + xOffset,
+                y * S + yOffset
+            );
         }
     }
 
-    context.drawImage(game.tiles["character_blue"], game.state.player_data.position.x + xOffset, game.state.player_data.position.y + yOffset);
+    context.drawImage(
+        game.tiles["character_blue"],
+        game.state.player_data.position.x * S + xOffset,
+        game.state.player_data.position.y * S + yOffset
+    );
 
     game.drawFadeMessages();
 }
@@ -160,11 +204,11 @@ function split_sheet() {
     game.tiles["edge_b"]    = context.getImageData(1 * S, 2 * S, S, S);
     game.tiles["corner_br"] = context.getImageData(2 * S, 2 * S, S, S);
 
-    game.tiles["character_blue"] = context.getImageData(19 * S, 7 * S, S, S);
-    game.tiles["character_red"] = context.getImageData(20 * S, 7 * S, S, S);
-    game.tiles["character_green"] = context.getImageData(21 * S, 7 * S, S, S);
+    game.tiles["character_blue"]   = context.getImageData(19 * S, 7 * S, S, S);
+    game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
+    game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
     game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
-    game.tiles["character_black"] = context.getImageData(23 * S, 7 * S, S, S);
+    game.tiles["character_black"]  = context.getImageData(23 * S, 7 * S, S, S);
 
     for (const [title, data] of Object.entries(game.tiles)) {
         canvas.width = data.width;
@@ -276,6 +320,9 @@ function changeSettings() {
     socket.emit("change settings", data)
 }
 
+canvas.addEventListener("mousemove", game.onMove);
+canvas.addEventListener("mousedown", (e) => {game.mouseDown = true; game.onMove(e)});
+canvas.addEventListener("mouseup", () => {game.mouseDown = false});
 document.addEventListener("keydown", (ev) => {
     // Game inputs
 });

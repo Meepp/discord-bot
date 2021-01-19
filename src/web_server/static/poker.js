@@ -232,7 +232,9 @@ function render() {
     context.fillStyle = "black";
     context.font = "20px Arial";
     context.fillText(`Current turn: ${pokerTable.state.active_player}`, 10, 20);
-    context.fillText(`Pot: ${CURRENCY}${pokerTable.state.pot}`, 378.1000061035156, 172.26666259765625);
+    context.fillText(`Pot: ${CURRENCY}${pokerTable.state.pot}`, 420, 180);
+    context.font = "30px Arial";
+    context.fillText(`${CURRENCY}${pokerTable.state.balance}`, 420, 400);
 
     pokerTable.drawFadeMessages();
 

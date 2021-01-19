@@ -56,7 +56,12 @@ class LeagueAPI(commands.Cog):
         if raw_response.status_code == 200:
             response = raw_response.json()
             team = None
+            
+            if response.get("gameLength") > 200:
+                return None
+
             game_id = response.get("gameId")
+			
             for participant in response.get("participants"):
                 if participant.get("summonerId") == summoner_id:
                     team = participant.get("teamId")
@@ -119,9 +124,9 @@ class LeagueAPI(commands.Cog):
 
         try:
             for game in games:
-                user = self.bot.get_user(int(game.discord_id))
+                user = self.bot.get_user(int(game.owner_id))
                 if user is None:
-                    print("User id %s not found." % game.discord_id)
+                    print("User id %s not found." % game.owner_id)
                     continue
                 if game.game_id is not None:
                     # The game is in progress if this is the case
