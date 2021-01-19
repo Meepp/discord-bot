@@ -21,6 +21,10 @@ class Tile:
             "item": self.item.to_json() if self.item else None,
         }
 
+    def __str__(self):
+        return f"Image: {self.image}, mov_allowed: {self.movement_allowed}, opaque: {self.opaque}, item: {self.item}"
+
+    __repr__ = __str__
 
 class GroundTile(Tile):
     def __init__(self):
@@ -34,7 +38,7 @@ class GroundTile(Tile):
 class WallTile(Tile):
     def __init__(self):
         super().__init__()
-        self.image = "edge_t"
+        self.image = "edge_l"
 
         self.movement_allowed = False
         self.opaque = True

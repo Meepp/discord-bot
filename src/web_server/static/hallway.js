@@ -52,7 +52,7 @@ function getRelativeMousePosition(canvas, evt) {
 function HallwayHunters() {
     this.state = {
         board_size: 30,
-        other_players: [],
+        players: [],
         player_data: {
             name: "",
             position: {
@@ -242,7 +242,7 @@ function initialize() {
             // Lobby stuff
             let userList = $(".user-list");
             userList.empty();
-            data.other_players.forEach(player => {
+            data.players.forEach(player => {
                 userList.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -324,9 +324,16 @@ function changeSettings() {
 
 canvas.addEventListener("mousemove", game.onMove);
 canvas.addEventListener("mousedown", (e) => {game.mouseDown = true; game.onMove(e)});
-canvas.addEventListener("mouseup", () => {
+canvas.addEventListener("mouseup", (e) => {
     game.mouseDown = false;
-    // something
+
+    let data = {
+        room: ROOM_ID,
+        move: game.selected,
+
+    }
+    socket.emit("move", data)
+
 
 });
 document.addEventListener("keydown", (ev) => {

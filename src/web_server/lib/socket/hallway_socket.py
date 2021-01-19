@@ -94,4 +94,4 @@ def suggest_move(data):
         player.suggest_move(position)
         game.update_players()
     except InvalidAction as e:
-        sio.emit("message", e.message, player.socket, namespace="/hallway")
+        sio.emit("message", e.message, room=player.socket, namespace="/hallway")

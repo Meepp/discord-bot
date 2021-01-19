@@ -1,8 +1,8 @@
 from gevent import monkey
+
 monkey.patch_all()
 
 from geventwebsocket import WebSocketServer
-
 
 if __name__ == "__main__":
     from src.web_server import app

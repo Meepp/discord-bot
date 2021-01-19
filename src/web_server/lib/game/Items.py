@@ -8,6 +8,11 @@ class Item:
             "name": self.name
         }
 
+    def __str__(self):
+        return f"Name: {self.name}"
+
+
+    __repr__ = __str__
 
 class TestItem(Item):
     def __init__(self):

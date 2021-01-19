@@ -9,6 +9,7 @@ from web_server.lib.game.Tiles import GroundTile, Tile, WallTile
 
 def generate_board(size) -> List[List[Tile]]:
     base = [[GroundTile() for i in range(size)] for j in range(size)]
+    print(base)
     base[0] = [WallTile() for i in range(size)]
     return base
 
@@ -27,10 +28,13 @@ class HallwayHunters:
 
         self.board = generate_board(size=self.size)
 
-    def increment_game_state(self):
+    def tick(self):
+        if not self.check_readies():
+            return
         for player in self.player_list:
             # Maybe check if this is allowed, maybe not
-            player.position = player.pre_move
+            player.tick()
+        print("Incremented tick")
 
     def add_player(self, profile, socket_id):
         for player in self.player_list:
@@ -50,7 +54,7 @@ class HallwayHunters:
         return {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
-            "other_players": [player.to_json() for player in self.player_list],
+            "players": [player.to_json() for player in self.player_list],
             "board": [[tile.to_json() for tile in row] for row in self.board],
             "board_size": self.size,
         }

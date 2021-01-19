@@ -21,31 +21,25 @@ class PlayerClass:
 
         self.socket = socket_id
 
-    def move(self, x, y):
-        if abs(self.position.x - x) + abs(self.position.y - y) == 1:
-            self.pre_move = Point(x, y)
-        else:
-            raise InvalidAction("You may only move one tile.")
-
     def ability(self, x, y):
         pass
 
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.position = self.pre_move
+        self.ready = False
 
     def to_json(self, owner=True):
         # Default dictionary to see other players name
         state = {
             "username": self.profile.discord_username,
             "ready": self.ready,
+            "position": self.position.to_json(),
+            "name": self.name,
         }
         # In case you are owner add player sensitive information to state
         if owner:
             state.update({
-
-                "name": self.name,
-                "position": self.position.to_json(),
                 "pre_move": self.pre_move.to_json(),
                 "cooldown": self.ability_cooldown,
                 "cooldown_timer": self.cooldown_timer,
@@ -53,13 +47,23 @@ class PlayerClass:
         return state
 
     def suggest_move(self, move: Point):
-        if self.game.board[move.x][move.y].movement_allowed:
+        print("Tile to move to:", move)
+        print("Current position", self.position)
+        if self.position == move:
+            raise InvalidAction("You are already on this tile.")
+
+        if not self.game.board[move.x][move.y].movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 
         if abs(self.position.x - move.x) + abs(self.position.y - move.y) != 1:
             raise InvalidAction("You cannot move more than one square per turn.")
 
         self.pre_move = move
+        self.set_ready()
+
+    def set_ready(self):
+        self.ready = True
+        self.game.tick()
 
 
 class Demolisher(PlayerClass):
