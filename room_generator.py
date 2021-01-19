@@ -34,7 +34,11 @@ def room_generator(board: List[List[Tile]], size, attempts=50):
         y = random.randint(1, size - height - 1)
         if room_fits(x, y, width, height):
             carve_room(x, y, width, height)
+
+
 from web_server.lib.game.Utils import Point
+
+
 
 
 def maze_generator(matrix, start_point):
@@ -54,9 +58,52 @@ def maze_generator(matrix, start_point):
             return False
         return True
 
+    def find_ground_cell(x, y):
+        if isinstance(matrix[x - 1][y], GroundTile):
+            return Point(x - 1, y)
+        if isinstance(matrix[x + 1][y], GroundTile):
+            return Point(x + 1, y)
+        if isinstance(matrix[x][y - 1], GroundTile):
+            return Point(x, y - 1)
+        if isinstance(matrix[x][y + 1], GroundTile):
+            return Point(x, y + 1)
+
+    def count_wall_cells(x, y):
+        return isinstance(matrix[x + 1][y], WallTile) + \
+               isinstance(matrix[x - 1][y], WallTile) + \
+               isinstance(matrix[x][y + 1], WallTile) + \
+               isinstance(matrix[x][y - 1], WallTile)
+
+    def check_dead_end(matrix):
+        dead_ends = []
+        for x in range(1, len(matrix) - 1):
+            for y in range(1, len(matrix[x]) - 1):
+                if count_wall_cells(x, y) == 3:
+                    dead_ends.append(Point(x, y))
+        print(dead_ends)
+        print(*matrix, sep="\n")
+        print()
+
+        while dead_ends:
+            end = dead_ends[0]
+            matrix[end.x][end.y] = WallTile()
+            print(end, count_wall_cells(end.x, end.y))
+            if count_wall_cells(end.x, end.y) >= 3:
+                end = find_ground_cell(end.x, end.y)
+                if end is None:
+                    break
+                if matrix[end.x][end.y] == GroundTile():
+                    matrix[end.x][end.y] = WallTile()
+                    print(end, count_wall_cells(end.x, end.y))
+                else:
+                    break
+
+        return matrix
+
     matrix[start_point.x][start_point.y] = GroundTile()
     carved_cells = [start_point]
-    while carved_cells != []:
+
+    while carved_cells:
         current_cell = carved_cells[-1]
         potential_cells = []
         x = current_cell.x
@@ -84,14 +131,15 @@ def maze_generator(matrix, start_point):
             carved_cells.append(next_cell)
         else:
             carved_cells.remove(current_cell)
-    return matrix
 
+    check_dead_end(matrix)
+    return matrix
 
 
 def generate_board(size) -> List[List[Tile]]:
     base = [[WallTile() for i in range(size)] for j in range(size)]
 
-    room_generator(base, size)
+    # room_generator(base, size)
 
     maze_generator(base, Point(1, 1))
     maze_generator(base, Point(1, size - 2))
@@ -102,4 +150,4 @@ def generate_board(size) -> List[List[Tile]]:
     return base
 
 
-generate_board(32)
+generate_board(10)
