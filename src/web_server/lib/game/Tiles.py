@@ -37,13 +37,12 @@ class GroundTile(Tile):
         self.opaque = False
 
     def __str__(self):
-        return "_"
+        return " "
 
     def __eq__(self, other):
-        return other == "_"
+        return other == " "
 
     __repr__ = __str__
-
 
 
 class WallTile(Tile):
