@@ -52,6 +52,9 @@ class PlayerClass:
         if self.position == move:
             raise InvalidAction("You are already on this tile.")
 
+        if move.x > self.game.size or move.y > self.game.size or move.x < 0 or move.y < 0:
+            raise InvalidAction("You cannot move out of bounds.")
+
         if not self.game.board[move.x][move.y].movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 

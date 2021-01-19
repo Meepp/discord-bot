@@ -1,3 +1,4 @@
+import random
 from enum import Enum
 from typing import List, Optional
 
@@ -7,9 +8,38 @@ from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
 from web_server.lib.game.Tiles import GroundTile, Tile, WallTile
 
 
+def room_generator(board: List[List[Tile]], size, attempts=20):
+    def room_fits(_x, _y, _width, _height):
+        for i in range(_x, _width):
+            for j in range(_y, _height):
+                if not isinstance(board[_x][_y], WallTile):
+                    return False
+        return True
+
+    def carve_room(_x, _y, _width, _height):
+        for i in range(_x, _width):
+            for j in range(_y, _height):
+                board[_x][_y] = GroundTile()
+        return True
+
+    min_size = 3
+    max_size = 7
+    for _ in range(attempts):
+        width = random.randint(min_size, max_size)
+        height = random.randint(min_size, max_size)
+
+        x = random.randint(0, size - width)
+        y = random.randint(0, size - height)
+
+        if room_fits(x, y, width, height):
+            carve_room(x, y, width, height)
+
+
 def generate_board(size) -> List[List[Tile]]:
-    base = [[GroundTile() for i in range(size)] for j in range(size)]
-    print(base)
+    base = [[WallTile() for i in range(size)] for j in range(size)]
+
+    room_generator(base, size)
+
     base[0] = [WallTile() for i in range(size)]
     return base
 

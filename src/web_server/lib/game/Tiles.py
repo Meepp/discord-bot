@@ -26,6 +26,7 @@ class Tile:
 
     __repr__ = __str__
 
+
 class GroundTile(Tile):
     def __init__(self):
         super().__init__()
@@ -34,6 +35,8 @@ class GroundTile(Tile):
         self.movement_allowed = True
         self.opaque = False
 
+    def __repr__(self):
+        return "_"
 
 class WallTile(Tile):
     def __init__(self):
@@ -42,3 +45,54 @@ class WallTile(Tile):
 
         self.movement_allowed = False
         self.opaque = True
+
+    def __repr__(self):
+        return "W"
+
+
+class TopLeftCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_tl"
+
+
+class TopRightCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_tr"
+
+
+class BottomLeftCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_bl"
+
+
+class BottomRightCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_br"
+
+
+class TopWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_t"
+
+
+class LeftWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_l"
+
+
+class RightWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_r"
+
+
+class BottomWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_b"
