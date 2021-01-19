@@ -15,7 +15,6 @@ class PlayerClass:
         self.pre_move = Point(1, 1)
         self.cooldown_timer = 0
         self.ready = False
-
         self.old_positions = set()
         self.old_positions.add(self.position)
 
