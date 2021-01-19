@@ -165,11 +165,13 @@ function render() {
         }
     }
 
-    context.drawImage(
-        game.tiles["character_blue"],
-        game.state.player_data.position.x * S + xOffset,
-        game.state.player_data.position.y * S + yOffset
-    );
+    game.state.players.forEach((player) => {
+        context.drawImage(
+            game.tiles[player.name],
+            player.position.x * S + xOffset,
+            player.position.y * S + yOffset
+        );
+    });
 
     game.drawFadeMessages();
 }
@@ -204,7 +206,7 @@ function split_sheet() {
     game.tiles["edge_b"]    = context.getImageData(1 * S, 2 * S, S, S);
     game.tiles["corner_br"] = context.getImageData(2 * S, 2 * S, S, S);
 
-    game.tiles["character_blue"]   = context.getImageData(19 * S, 7 * S, S, S);
+    game.tiles["Demolisher"]   = context.getImageData(19 * S, 7 * S, S, S);
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
     game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
     game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
@@ -322,7 +324,11 @@ function changeSettings() {
 
 canvas.addEventListener("mousemove", game.onMove);
 canvas.addEventListener("mousedown", (e) => {game.mouseDown = true; game.onMove(e)});
-canvas.addEventListener("mouseup", () => {game.mouseDown = false});
+canvas.addEventListener("mouseup", () => {
+    game.mouseDown = false;
+    // something
+
+});
 document.addEventListener("keydown", (ev) => {
     // Game inputs
 });
