@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from database.models.models import Profile
 from src.web_server import sio
@@ -25,6 +25,11 @@ class HallwayHunters:
 
         self.board = generate_board(size=self.size)
 
+    def increment_game_state(self):
+        for player in self.player_list:
+            # Maybe check if this is allowed, maybe not
+            player.position = player.pre_move
+
     def add_player(self, profile, socket_id):
         for player in self.player_list:
             if player.profile.id == profile.id:
@@ -48,7 +53,7 @@ class HallwayHunters:
             "board_size": self.size,
         }
 
-    def get_player(self, profile: Profile = None, socket_id=None):
+    def get_player(self, profile: Profile = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]
 
         if profile is not None:

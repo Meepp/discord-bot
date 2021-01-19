@@ -6,6 +6,8 @@ from flask_socketio import join_room
 from database.repository import room_repository
 from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
+from web_server.lib.game.Utils import Point
+from web_server.lib.game.exceptions import InvalidAction
 
 games: Dict[int, HallwayHunters] = {}
 
@@ -71,7 +73,25 @@ def start_game(data):
         sio.emit("message", "The room owner wants to start. Ready up!", room=room_id, namespace="/hallway")
         return
 
-    # game.initialize_round()
     game.update_players()
 
     sio.emit("start", None, room=room_id, namespace="/hallway")
+
+
+@sio.on("move", namespace="/hallway")
+def suggest_move(data):
+    room_id = int(data.get("room"))
+    game = games[room_id]
+
+    profile = session_user()
+
+    player = game.get_player(profile)
+
+    move = data.get("move")
+    position = Point(move.get("x"), move.get("y"))
+
+    try:
+        player.suggest_move(position)
+        game.update_players()
+    except InvalidAction as e:
+        sio.emit("message", e.message, player.socket, namespace="/hallway")

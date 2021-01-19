@@ -30,3 +30,11 @@ class GroundTile(Tile):
         self.movement_allowed = True
         self.opaque = False
 
+
+class WallTile(Tile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_t"
+
+        self.movement_allowed = False
+        self.opaque = True

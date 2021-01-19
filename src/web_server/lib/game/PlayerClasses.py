@@ -30,7 +30,6 @@ class PlayerClass:
     def ability(self, x, y):
         pass
 
-
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.position = self.pre_move
@@ -52,6 +51,15 @@ class PlayerClass:
                 "cooldown_timer": self.cooldown_timer,
             })
         return state
+
+    def suggest_move(self, move: Point):
+        if self.game.board[move.x][move.y].movement_allowed:
+            raise InvalidAction("You cannot move on this tile.")
+
+        if abs(self.position.x - move.x) + abs(self.position.y - move.y) != 1:
+            raise InvalidAction("You cannot move more than one square per turn.")
+
+        self.pre_move = move
 
 
 class Demolisher(PlayerClass):
