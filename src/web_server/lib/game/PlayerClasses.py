@@ -16,7 +16,6 @@ class PlayerClass:
         self.cooldown_timer = 0
         self.ready = False
         self.old_positions = set()
-        self.old_positions.add(self.position)
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
@@ -88,3 +87,7 @@ class Demolisher(PlayerClass):
         if not self.game.board[x][y].movement_allowed:
             self.game.board[x][y] = GroundTile()
             self.cooldown_timer = self.ability_cooldown
+
+    def change_position(self, point):
+        self.position = point
+        self.old_positions.add(point)

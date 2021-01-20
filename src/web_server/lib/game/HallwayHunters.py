@@ -2,11 +2,10 @@ from enum import Enum
 from typing import List, Optional
 
 from database.models.models import Profile
-from room_generator import generate_board
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
-from web_server.lib.game.Tiles import GroundTile, Tile, WallTile, UnknownTile
-import random
+from web_server.lib.game.Tiles import UnknownTile
+from web_server.lib.game.generator import generate_board
 
 
 class Phases(Enum):
@@ -19,9 +18,9 @@ class HallwayHunters:
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
-        self.size = 30
+        self.size = 31
 
-        self.board = generate_board(size=self.size)
+        self.board, self.spawn_points = generate_board(size=self.size)
 
     def tick(self):
         if not self.check_readies():
@@ -38,6 +37,7 @@ class HallwayHunters:
                 player.socket = socket_id
                 return
         player = Demolisher(profile, socket_id, self)  # All players become demolishers by default
+        player.change_position(self.spawn_points.pop())
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
