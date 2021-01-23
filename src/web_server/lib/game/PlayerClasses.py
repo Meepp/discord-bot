@@ -29,9 +29,6 @@ class PlayerClass:
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
 
-        self.position = self.pre_move
-        self.old_positions.add(self.position)
-
         self.ready = False
 
     def suggest_move(self, move: Point):
@@ -40,23 +37,22 @@ class PlayerClass:
         if move.x == -1:
             self.direction = PlayerAngles.LEFT
         if move.y == 1:
-            self.direction = PlayerAngles.UP
-        if move.y == -1:
             self.direction = PlayerAngles.DOWN
+        if move.y == -1:
+            self.direction = PlayerAngles.UP
 
         # if self.position == move:
         #     raise InvalidAction("You are already on this tile.")
 
-        if move.x > self.game.size or move.y > self.game.size or move.x < 0 or move.y < 0:
+        new_position = move + self.position
+
+        if new_position.x > self.game.size - 1 or new_position.y > self.game.size - 1 or new_position.x < 0 or new_position.y < 0:
             raise InvalidAction("You cannot move out of bounds.")
 
-        if not self.game.board[self.position.x + move.x][self.position.y + move.y].movement_allowed:
+        if not self.game.board[new_position.x][new_position.y].movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 
-        # if abs(self.position.x - move.x) + abs(self.position.y - move.y) != 1:
-        #     raise InvalidAction("You cannot move more than one square per turn.")
-
-        self.pre_move = Point(self.position.x + move.x, self.position.y + move.y)
+        self.position = new_position
         self.set_ready()
 
     def set_ready(self):
@@ -115,6 +111,21 @@ class Demolisher(PlayerClass):
         print("To demolish wall", position)
         self.game.board[position.x][position.y] = GroundTile()
         self.cooldown_timer = self.ability_cooldown
+
+    def change_position(self, point):
+        self.position = point
+        self.old_positions.add(point)
+
+
+class Spy(PlayerClass):
+    def __init__(self, profile, socket_id, game):
+        super().__init__(profile, socket_id, game)
+
+        self.name = "Spy"
+        self.ability_cooldown = 30
+
+    def ability(self):
+        pass
 
     def change_position(self, point):
         self.position = point

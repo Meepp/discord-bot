@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict
 
 from flask import request
@@ -80,6 +81,8 @@ def start_game(data):
 
 @sio.on("move", namespace="/hallway")
 def suggest_move(data):
+    start = datetime.now()
+
     room_id = int(data.get("room"))
     game = games[room_id]
 
@@ -93,6 +96,11 @@ def suggest_move(data):
     try:
         player.suggest_move(position)
         game.update_players()
+
+        game.spent_time += (datetime.now() - start).total_seconds() * 1000
+        game.ticks += 1
+
+        print("Avg. Server FPS: ", 1000 / (game.spent_time / game.ticks))
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
 

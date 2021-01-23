@@ -1,9 +1,10 @@
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
 from database.models.models import Profile
 from src.web_server import sio
-from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
+from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy
 from web_server.lib.game.Tiles import UnknownTile
 from web_server.lib.game.generator import generate_board
 
@@ -22,7 +23,11 @@ class HallwayHunters:
 
         self.board, self.spawn_points = generate_board(size=self.size)
 
+        self.spent_time = 0
+        self.ticks = 0
+
     def tick(self):
+
         if not self.check_readies():
             return
         for player in self.player_list:
@@ -35,30 +40,35 @@ class HallwayHunters:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
                 return
-        player = Demolisher(profile, socket_id, self)  # All players become demolishers by default
+
+        if len(self.player_list) > 0 and isinstance(self.player_list[0], Demolisher):
+            player = Spy(profile, socket_id, self)
+        else:
+            player = Demolisher(profile, socket_id, self)
+
         player.change_position(self.spawn_points.pop())
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
+        sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
+
     def update_players(self):
         for player in self.player_list:
-            sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
+            sio.emit("game_state", self.export_board(player, reduced=True), room=player.socket, namespace="/hallway")
 
-    def export_board(self, player: PlayerClass):
-        # board = [[UnknownTile() for _ in row] for row in self.board]
-        # print(player.old_positions)
-        # for point in list(player.old_positions):
-        #     print("point", point)
-        #     for x in range(point.x - 1, point.x + 2):
-        #         for y in range(point.y - 1, point.y + 2):
-        #             board[x][y] = self.board[x][y]
-        return {
-            "started": self.phase == Phases.STARTED,
-            "player_data": player.to_json(),
-            "players": [player.to_json() for player in self.player_list],
-            "board": [[tile.to_json() for tile in row] for row in self.board],
-            "board_size": self.size,
-        }
+    def export_board(self, player: PlayerClass, reduced=False):
+        data = {
+                "started": self.phase == Phases.STARTED,
+                "player_data": player.to_json(),
+                "players": [player.to_json() for player in self.player_list],
+            }
+        if not reduced:
+            data.update({
+                "board": [[tile.to_json() for tile in row] for row in self.board],
+                "board_size": self.size
+            })
+
+        return data
 
     def get_player(self, profile: Profile = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]

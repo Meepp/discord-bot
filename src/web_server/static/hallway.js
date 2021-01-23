@@ -73,7 +73,8 @@ function HallwayHunters() {
 
     this.setState = function (data) {
         this.state = {
-            ...data,
+            ...this.state,
+            ...data
         };
     };
 
@@ -143,7 +144,7 @@ function render() {
         context.drawImage(sprite, x, y);
     });
 
-    game.drawFadeMessages();
+    // game.drawFadeMessages();
 }
 
 let game = new HallwayHunters();
@@ -211,6 +212,11 @@ function split_sheet() {
     game.tiles["Demolisher_90"]   = context.getImageData(2 * S, 10 * S, S, S);
     game.tiles["Demolisher_180"]   = context.getImageData(1 * S, 10 * S, S, S);
     game.tiles["Demolisher_270"]   = context.getImageData(3 * S, 10 * S, S, S);
+
+    game.tiles["Spy_0"]   = context.getImageData(4 * S, 10 * S, S, S);
+    game.tiles["Spy_90"]   = context.getImageData(5 * S, 10 * S, S, S);
+    game.tiles["Spy_180"]   = context.getImageData(6 * S, 10 * S, S, S);
+    game.tiles["Spy_270"]   = context.getImageData(7 * S, 10 * S, S, S);
 
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
     game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
@@ -340,7 +346,6 @@ document.addEventListener("keydown", (ev) => {
     } else if (ev.key === "c") {
         sendAction()
     }
-
 });
 
 console.log("Emitting join");

@@ -24,6 +24,12 @@ class Point:
         else:
             raise NotImplemented("Only multiplying with a constant is implemented.")
 
+    def __add__(self, other):
+        if isinstance(other, Point):
+            return Point(self.x + other.x, self.y + other.y)
+        else:
+            raise NotImplemented("Only multiplying with another Point is implemented.")
+
     __rmul__ = __mul__
 
     __repr__ = __str__
