@@ -169,11 +169,9 @@ function render() {
     game.state.players.forEach((player) => {
         const x = player.position.x * S + xOffset;
         const y = player.position.y * S + yOffset;
-        // context.translate(x, y);
-        // context.rotate(player.rotation);
-        context.drawImage(game.tiles[player.name], x, y);
-        // context.rotate(player.rotation);
-        // context.translate(x, y);
+
+        const sprite = game.tiles[player.name + "_" + player.direction];
+        context.drawImage(sprite, x, y);
     });
 
     game.drawFadeMessages();
@@ -242,7 +240,11 @@ function split_sheet() {
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
 
-    game.tiles["Demolisher"]   = context.getImageData(19 * S, 7 * S, S, S);
+    game.tiles["Demolisher_0"]   = context.getImageData(0 * S, 10 * S, S, S);
+    game.tiles["Demolisher_90"]   = context.getImageData(2 * S, 10 * S, S, S);
+    game.tiles["Demolisher_180"]   = context.getImageData(1 * S, 10 * S, S, S);
+    game.tiles["Demolisher_270"]   = context.getImageData(3 * S, 10 * S, S, S);
+
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
     game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
     game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
