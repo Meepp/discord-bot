@@ -2,7 +2,7 @@ import copy
 import random
 from typing import List, Tuple
 
-from web_server.lib.game.Tiles import WallTile, Tile, GroundTile, DoorTile
+from web_server.lib.game.Tiles import *
 from web_server.lib.game.Utils import Point
 
 
@@ -13,7 +13,7 @@ def room_generator(board: List[List[Tile]], size, attempts=50):
         """
         for i in range(_x - 1, _x + _width + 1):
             for j in range(_y - 1, _y + _height + 1):
-                if not isinstance(board[i][j], WallTile):
+                if not isinstance(board[i][j], UnknownTile):
                     return False
         return True
 
@@ -78,13 +78,13 @@ def maze_generator(matrix):
             potential_cells = []
             x = current_cell.x
             y = current_cell.y
-            if x - 1 != 0 and isinstance(matrix[x - 2][y], WallTile):
+            if x - 1 != 0 and isinstance(matrix[x - 2][y], UnknownTile):
                 potential_cells.append(Point(x - 2, y))
-            if x + 2 != size and isinstance(matrix[x + 2][y], WallTile):
+            if x + 2 != size and isinstance(matrix[x + 2][y], UnknownTile):
                 potential_cells.append(Point(x + 2, y))
-            if y - 1 != 0 and isinstance(matrix[x][y - 2], WallTile):
+            if y - 1 != 0 and isinstance(matrix[x][y - 2], UnknownTile):
                 potential_cells.append(Point(x, y - 2))
-            if y + 2 != size and isinstance(matrix[x][y + 2], WallTile):
+            if y + 2 != size and isinstance(matrix[x][y + 2], UnknownTile):
                 potential_cells.append(Point(x, y + 2))
 
             if len(potential_cells) != 0:
@@ -196,8 +196,8 @@ def remove_dead_ends(matrix):
     for end in ends:
         while is_end(end.x, end.y):
             neighbour = get_neighbour(end)
-            matrix[end.x][end.y] = WallTile()
-            matrix[(end.x + neighbour.x) // 2][(end.y + neighbour.y) // 2] = WallTile()
+            matrix[end.x][end.y] = UnknownTile()
+            matrix[(end.x + neighbour.x) // 2][(end.y + neighbour.y) // 2] = UnknownTile()
             end = neighbour
 
 
@@ -216,8 +216,64 @@ def upscale_3x(board):
         upscaled_board.append(copy.copy(row))
         upscaled_board.append(row)
 
-    # for x in range(size * 3):
-        # for y in range(size * 3):
+    # Fill in the correct wall tiles
+    for x in range(1, size * 3 - 2):
+        for y in range(1, size * 3 - 2):
+            if isinstance(upscaled_board[x][y], UnknownTile):
+                # Add the correct tiles to the board.
+                down = upscaled_board[x][y + 1].movement_allowed
+                up = upscaled_board[x][y - 1].movement_allowed
+                left = upscaled_board[x - 1][y].movement_allowed
+                right = upscaled_board[x + 1][y].movement_allowed
+                if down:
+                    if left:
+                        upscaled_board[x][y] = BottomLeftCornerWall()
+                        upscaled_board[x][y-1] = BottomLeftCornerWall2()
+                    elif right:
+                        upscaled_board[x][y] = BottomRightCornerWall()
+                        upscaled_board[x][y-1] = BottomRightCornerWall2()
+                    else:
+                        upscaled_board[x][y] = BottomWall()
+                        upscaled_board[x][y-1] = BottomWall2()
+                        chance = random.randint(0, 20)
+                        if chance == 1:
+                            upscaled_board[x][y].image = "edge_b_alt1"
+                            upscaled_board[x][y-1].image = "edge_b_alt1_top"
+                        if chance == 2:
+                            upscaled_board[x][y].image = "edge_b_alt2"
+                            upscaled_board[x][y-1].image = "edge_b_alt2_top"
+                elif up:
+                    if left:
+                        upscaled_board[x][y] = TopLeftCornerWall2()
+                        upscaled_board[x][y+1] = TopLeftCornerWall()
+                    elif right:
+                        upscaled_board[x][y] = TopRightCornerWall2()
+                        upscaled_board[x][y+1] = TopRightCornerWall()
+                    else:
+                        upscaled_board[x][y] = TopWall()
+                elif left:
+                    upscaled_board[x][y] = LeftWall()
+
+                elif right:
+                    upscaled_board[x][y] = RightWall()
+                else:
+                    bl = upscaled_board[x - 1][y + 1].movement_allowed
+                    tl = upscaled_board[x - 1][y - 1].movement_allowed
+                    br = upscaled_board[x + 1][y + 1].movement_allowed
+                    tr = upscaled_board[x + 1][y - 1].movement_allowed
+                    if tr:
+                        upscaled_board[x][y] = InnerBottomLeftCornerWall()
+                        upscaled_board[x][y-1] = InnerBottomLeftCornerWall2()
+                    if br:
+                        upscaled_board[x][y] = InnerTopLeftCornerWall()
+                        upscaled_board[x][y-1] = InnerTopLeftCornerWall2()
+                    if tl:
+                        upscaled_board[x][y] = InnerBottomRightCornerWall()
+                        upscaled_board[x][y-1] = InnerBottomRightCornerWall2()
+                    if bl:
+                        upscaled_board[x][y] = InnerTopRightCornerWall()
+                        upscaled_board[x][y-1] = InnerTopRightCornerWall2()
+
 
     return upscaled_board
 
@@ -229,7 +285,7 @@ def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
     if generator_size % 2 == 0:
         raise ValueError("Room size cannot be an even number.")
 
-    base = [[WallTile() for i in range(generator_size)] for j in range(generator_size)]
+    base = [[UnknownTile() for i in range(generator_size)] for j in range(generator_size)]
 
     room_centers = room_generator(base, generator_size, attempts=30)
     maze_generator(base)
