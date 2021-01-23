@@ -18,7 +18,7 @@ class HallwayHunters:
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
-        self.size = 31
+        self.size = 93
 
         self.board, self.spawn_points = generate_board(size=self.size)
 
@@ -28,7 +28,6 @@ class HallwayHunters:
         for player in self.player_list:
             # Maybe check if this is allowed, maybe not
             player.tick()
-        print("Incremented tick")
 
     def add_player(self, profile, socket_id):
         for player in self.player_list:
@@ -46,16 +45,18 @@ class HallwayHunters:
             sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass):
-        board = [[UnknownTile() for _ in row] for row in self.board]
-        for point in player.old_positions:
-            for x in range(point.x - 1, point.x + 2):
-                for y in range(point.y - 1, point.y + 2):
-                    board[x][y] = self.board[x][y]
+        # board = [[UnknownTile() for _ in row] for row in self.board]
+        # print(player.old_positions)
+        # for point in list(player.old_positions):
+        #     print("point", point)
+        #     for x in range(point.x - 1, point.x + 2):
+        #         for y in range(point.y - 1, point.y + 2):
+        #             board[x][y] = self.board[x][y]
         return {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
             "players": [player.to_json() for player in self.player_list],
-            "board": [[tile.to_json() for tile in row] for row in board],
+            "board": [[tile.to_json() for tile in row] for row in self.board],
             "board_size": self.size,
         }
 

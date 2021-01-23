@@ -89,6 +89,7 @@ function PokerTable() {
 
     this.community_card_flip_ticks = [...INITIAL_COMMUNITY_CARD_FLIPTICKS];
 
+	this.nMessages = 0;
     this.fadeMessages = [];
 
     this.setState = function(data) {
@@ -359,6 +360,7 @@ function initialize() {
 
     });
     socket.on("message", (data) => {
+		pokerTable.nMessages++;
         pokerTable.fadeMessages.push({
             message: data,
             ticks: 120
@@ -428,6 +430,10 @@ initialize();
 
 socket.on("message", (data) => {
     let log = document.getElementById("event-log");
+	let events = log.getElementsByTagName('div');
+	if (events.length > 100) {
+		events[0].remove();
+	};
     log.innerHTML += `
     <div class="event-log-entry">
         <div class="event-log-date">${new Date().toLocaleTimeString()}</div>
@@ -485,6 +491,8 @@ document.addEventListener("keydown", (ev) => {
         raise();
     } else if (ev.key === "f") {
         fold();
+    } else if (ev.key === "b") {
+        toggleReady();
     }
     showSliderValue();
 });

@@ -16,4 +16,20 @@ class Point:
     def __hash__(self):
         return hash((self.x, self.y))
 
+    def __mul__(self, other):
+        if isinstance(other, int):
+            return Point(self.x * other, self.y * other)
+        else:
+            raise NotImplemented("Only multiplying with a constant is implemented.")
+
+    __rmul__ = __mul__
+
     __repr__ = __str__
+
+
+class PlayerAngles:
+    UP = 0
+    RIGHT = 90
+    DOWN = 180
+    LEFT = 270
+
