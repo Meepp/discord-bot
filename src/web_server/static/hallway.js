@@ -69,10 +69,6 @@ function HallwayHunters() {
     };
     this.fadeMessages = [];
     this.tiles = {};
-    this.selected = {
-        x: 0,
-        y: 0,
-    };
     this.mouseDown = false;
 
     this.setState = function (data) {
@@ -109,22 +105,6 @@ function HallwayHunters() {
             fm.ticks--;
         }
     };
-
-    this.onMove = function (e) {
-        if (!game.mouseDown) return;
-        const pos = getRelativeMousePosition(canvas, e);
-
-        // Compute the offset for all tiles, to center rendering on the player.
-        const S = (TILE_SIZE + TILE_PADDING);
-        const xOffset = -game.state.player_data.position.x * S + canvas.width / 2;
-        const yOffset = -game.state.player_data.position.y * S + canvas.height / 2;
-
-
-        game.selected = {
-            x: Math.round((pos.x - xOffset) / S),
-            y: Math.round((pos.y - yOffset) / S)
-        }
-    }
 }
 
 
@@ -143,17 +123,6 @@ function render() {
     const S = (TILE_SIZE + TILE_PADDING);
     const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2;
     const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
-
-
-    // Draw selected tile by means of darker square
-    context.fillStyle = "#3c5978";
-    context.fillRect(
-        game.selected.x * S + xOffset - TILE_PADDING,
-        game.selected.y * S + yOffset  - TILE_PADDING,
-        S + TILE_PADDING,
-        S + TILE_PADDING
-    );
-
 
     // Draw tiles
     for (let x = 0; x < game.state.board_size; x++) {
@@ -177,8 +146,6 @@ function render() {
     game.drawFadeMessages();
 }
 
-let images = {};
-let audioFiles = {};
 let game = new HallwayHunters();
 
 function split_sheet() {
@@ -311,10 +278,7 @@ function initialize() {
 function sendAction() {
     let data = {
         room: ROOM_ID,
-        move: game.selected,
     };
-    console.log(data)
-    console.log(game.state.player_data.position)
     socket.emit("action", data);
 }
 
@@ -355,42 +319,25 @@ function changeSettings() {
     socket.emit("change settings", data)
 }
 
-function sendSelected() {
+function sendMove(move) {
     let data = {
         room: ROOM_ID,
-        move: game.selected,
+        move: move,
     };
     socket.emit("move", data);
 }
 
-canvas.addEventListener("mousemove", game.onMove);
-canvas.addEventListener("mousedown", (e) => {game.mouseDown = true; game.onMove(e)});
-canvas.addEventListener("mouseup", (e) => {
-    game.mouseDown = false;
-
-    sendSelected()
-});
 document.addEventListener("keydown", (ev) => {
     // Game inputs
     if (ev.key === "ArrowUp") {
-        game.selected = {...game.state.player_data.position};
-        game.selected.y -= 1;
-        sendSelected();
+        sendMove({x: 0, y: -1});
     } else if (ev.key === "ArrowDown") {
-        game.selected = {...game.state.player_data.position};
-        game.selected.y += 1;
-        sendSelected();
+        sendMove({x: 0, y: 1});
     } else if (ev.key === "ArrowLeft") {
-        game.selected = {...game.state.player_data.position};
-        game.selected.x -= 1;
-        sendSelected();
+        sendMove({x: -1, y: 0});
     } else if (ev.key === "ArrowRight") {
-        game.selected = {...game.state.player_data.position};
-        game.selected.x += 1;
-        sendSelected();
+        sendMove({x: 1, y: 0});
     } else if (ev.key === "c") {
-
-        game.selected = {...game.state.player_data.position};
         sendAction()
     }
 
