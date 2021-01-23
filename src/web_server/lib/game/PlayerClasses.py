@@ -23,7 +23,7 @@ class PlayerClass:
 
         self.socket = socket_id
 
-    def ability(self, position):
+    def ability(self):
         pass
 
     def tick(self):
@@ -89,8 +89,8 @@ class Demolisher(PlayerClass):
         self.name = "Demolisher"
         self.ability_cooldown = 30
 
-    def ability(self, position):
-
+    def ability(self):
+        position = self.position
         # if self.cooldown_timer != 0:
         #     raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
         old_position = Point(position.x, position.y)

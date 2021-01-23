@@ -106,12 +106,8 @@ def suggest_action(data):
 
     player = game.get_player(profile)
 
-    move = data.get("move")
-    position = Point(move.get("x"), move.get("y"))
-
     try:
-        print(position)
-        player.ability(position)
+        player.ability()
         game.update_players()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
