@@ -337,17 +337,6 @@ socket.on("start", () => {
     // What to do on start for all players
 });
 
-socket.on("message", (data) => {
-    let log = document.getElementById("event-log");
-    log.innerHTML += `
-    <div class="event-log-entry">
-        <div class="event-log-date">${new Date().toLocaleTimeString()}</div>
-        <div class="event-log-value">${data}</div>
-    </div>`;
-
-    log.lastChild.scrollIntoView();
-});
-
 function changeSettings() {
     let data = {
         room_id: ROOM_ID,
