@@ -106,7 +106,7 @@ class Demolisher(PlayerClass):
         elif self.direction == PlayerAngles.LEFT:
             if isinstance(self.game.board[position.x - 1][position.y], WallTile):
                 position.x = position.x - 1
-        elif self.direction == PlayerAngles.UP:
+        elif self.direction == PlayerAngles.RIGHT:
             if isinstance(self.game.board[position.x + 1][position.y], WallTile):
                 position.x = position.x + 1
         print(position, old_position)
