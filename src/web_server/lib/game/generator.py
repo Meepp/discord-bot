@@ -1,3 +1,4 @@
+import copy
 import random
 from typing import List, Tuple
 
@@ -200,14 +201,43 @@ def remove_dead_ends(matrix):
             end = neighbour
 
 
+def upscale_3x(board):
+    size = len(board)
+
+    upscaled_board = []
+    for x in range(size):
+        row = []
+        for y in range(size):
+            tile = board[x][y]
+            row.append(copy.copy(tile))
+            row.append(copy.copy(tile))
+            row.append(tile)
+        upscaled_board.append(copy.copy(row))
+        upscaled_board.append(copy.copy(row))
+        upscaled_board.append(row)
+
+    # for x in range(size * 3):
+        # for y in range(size * 3):
+
+    return upscaled_board
+
+
 def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
-    if size % 2 == 0:
+    if size % 3 != 0:
+        raise ValueError("Room size must be a multiple of 3.")
+    generator_size = size // 3
+    if generator_size % 2 == 0:
         raise ValueError("Room size cannot be an even number.")
 
-    base = [[WallTile() for i in range(size)] for j in range(size)]
+    base = [[WallTile() for i in range(generator_size)] for j in range(generator_size)]
 
-    room_centers = room_generator(base, size, attempts=30)
+    room_centers = room_generator(base, generator_size, attempts=30)
     maze_generator(base)
     connector_generator(base)
     remove_dead_ends(base)
-    return base, room_centers
+
+    board = upscale_3x(base)
+    print(room_centers)
+    room_centers = [center * 3 for center in room_centers]
+    print(room_centers)
+    return board, room_centers

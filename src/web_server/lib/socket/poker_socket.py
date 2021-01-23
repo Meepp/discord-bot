@@ -7,7 +7,7 @@ from flask_socketio import join_room, leave_room
 from database.repository import room_repository
 from src.web_server import sio
 from src.web_server.lib.poker.exceptions import PokerException
-from src.web_server.lib.poker.PokerTable import PokerTable
+from src.web_server.lib.poker.PokerTable import PokerTable, Phases
 from src.web_server.lib.user_session import session_user
 from web_server.lib.poker.PokerSettings import PokerSettings
 
@@ -94,6 +94,8 @@ def poker_start(data):
         return
 
     try:
+        if table.phase != Phases.NOT_YET_STARTED:
+            return
         table.initialize_round()
         table.update_players()
 

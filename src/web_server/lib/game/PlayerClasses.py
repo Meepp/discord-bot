@@ -51,8 +51,6 @@ class PlayerClass:
         return state
 
     def suggest_move(self, move: Point):
-        print("Tile to move to:", move)
-        print("Current position", self.position)
         if self.position == move:
             raise InvalidAction("You are already on this tile.")
 

@@ -166,11 +166,13 @@ function render() {
     }
 
     game.state.players.forEach((player) => {
-        context.drawImage(
-            game.tiles[player.name],
-            player.position.x * S + xOffset,
-            player.position.y * S + yOffset
-        );
+        const x = player.position.x * S + xOffset;
+        const y = player.position.y * S + yOffset;
+        context.translate(x, y);
+        context.rotate(player.rotation);
+        context.drawImage(game.tiles[player.name], x, y);
+        context.rotate(player.rotation);
+        context.translate(x, y);
     });
 
     game.drawFadeMessages();
