@@ -35,28 +35,28 @@ class PlayerClass:
         self.ready = False
 
     def suggest_move(self, move: Point):
-        if move.x == self.position.x + 1:
+        if move.x == 1:
             self.direction = PlayerAngles.RIGHT
-        elif move.x == self.position.x - 1:
+        if move.x == -1:
             self.direction = PlayerAngles.LEFT
-        elif move.y == self.position.y + 1:
-            self.direction = PlayerAngles.DOWN
-        elif move.y == self.position.y - 1:
+        if move.y == 1:
             self.direction = PlayerAngles.UP
+        if move.y == -1:
+            self.direction = PlayerAngles.DOWN
 
-        if self.position == move:
-            raise InvalidAction("You are already on this tile.")
+        # if self.position == move:
+        #     raise InvalidAction("You are already on this tile.")
 
         if move.x > self.game.size or move.y > self.game.size or move.x < 0 or move.y < 0:
             raise InvalidAction("You cannot move out of bounds.")
 
-        if not self.game.board[move.x][move.y].movement_allowed:
+        if not self.game.board[self.position.x + move.x][self.position.y + move.y].movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 
-        if abs(self.position.x - move.x) + abs(self.position.y - move.y) != 1:
-            raise InvalidAction("You cannot move more than one square per turn.")
+        # if abs(self.position.x - move.x) + abs(self.position.y - move.y) != 1:
+        #     raise InvalidAction("You cannot move more than one square per turn.")
 
-        self.pre_move = move
+        self.pre_move = Point(self.position.x + move.x, self.position.y + move.y)
         self.set_ready()
 
     def set_ready(self):
