@@ -13,7 +13,7 @@ socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
 
-$('#messageform').submit(function(e) {
+$('#messageform').submit(function (e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
     data = {
@@ -75,14 +75,14 @@ function HallwayHunters() {
     };
     this.mouseDown = false;
 
-    this.setState = function(data) {
+    this.setState = function (data) {
         this.state = {
             ...data,
         };
     };
 
     this.MESSAGE_HEIGHT = 40;
-    this.drawFadeMessages = function() {
+    this.drawFadeMessages = function () {
         let origHeight = 100;
         if (this.fadeMessages.length > 0) {
             if (this.fadeMessages[0].ticks < 0) {
@@ -110,14 +110,14 @@ function HallwayHunters() {
         }
     };
 
-    this.onMove = function(e) {
+    this.onMove = function (e) {
         if (!game.mouseDown) return;
         const pos = getRelativeMousePosition(canvas, e);
 
         // Compute the offset for all tiles, to center rendering on the player.
         const S = (TILE_SIZE + TILE_PADDING);
-        const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 ;
-        const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 ;
+        const xOffset = -game.state.player_data.position.x * S + canvas.width / 2;
+        const yOffset = -game.state.player_data.position.y * S + canvas.height / 2;
 
 
         game.selected = {
@@ -306,8 +306,14 @@ function initialize() {
     });
 }
 
-function sendAction(action, value) {
-    socket.emit("action", {"room": ROOM_ID, "action": action, "value": value})
+function sendAction() {
+    let data = {
+        room: ROOM_ID,
+        move: game.selected,
+    };
+    console.log(data)
+    console.log(game.state.player_data.position)
+    socket.emit("action", data);
 }
 
 let has_started = false;
@@ -337,12 +343,12 @@ socket.on("start", () => {
     // What to do on start for all players
 });
 
+
+
 function changeSettings() {
     let data = {
         room_id: ROOM_ID,
-        settings: {
-
-        }
+        settings: {}
     };
     socket.emit("change settings", data)
 }
@@ -380,6 +386,10 @@ document.addEventListener("keydown", (ev) => {
         game.selected = {...game.state.player_data.position};
         game.selected.x += 1;
         sendSelected();
+    } else if (ev.key === "c") {
+
+        game.selected = {...game.state.player_data.position};
+        sendAction()
     }
 
 });

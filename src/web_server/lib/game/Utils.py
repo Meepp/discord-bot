@@ -1,3 +1,5 @@
+from enum import Enum
+from math import pi
 
 class Point:
     def __init__(self, x, y):
@@ -27,7 +29,7 @@ class Point:
     __repr__ = __str__
 
 
-class PlayerAngles:
+class PlayerAngles(Enum):
     UP = 0
     RIGHT = 90
     DOWN = 180
