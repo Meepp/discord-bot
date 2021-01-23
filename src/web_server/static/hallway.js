@@ -5,7 +5,7 @@ let context = canvas.getContext("2d");
 context.imageSmoothingEnabled = true;
 
 const TILE_SIZE = 64;
-const TILE_PADDING = 1;
+const TILE_PADDING = 0;
 
 let socket = io("/hallway");
 
@@ -135,8 +135,9 @@ function render() {
     canvas.height = canvas.clientHeight;
 
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#EEEEEE";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    // context.fillStyle = "#EEEEEE";
+    // context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(game.tiles["floor"],0, 0, canvas.width, canvas.height);
 
     // Compute the offset for all tiles, to center rendering on the player.
     const S = (TILE_SIZE + TILE_PADDING);
@@ -168,11 +169,11 @@ function render() {
     game.state.players.forEach((player) => {
         const x = player.position.x * S + xOffset;
         const y = player.position.y * S + yOffset;
-        context.translate(x, y);
-        context.rotate(player.rotation);
+        // context.translate(x, y);
+        // context.rotate(player.rotation);
         context.drawImage(game.tiles[player.name], x, y);
-        context.rotate(player.rotation);
-        context.translate(x, y);
+        // context.rotate(player.rotation);
+        // context.translate(x, y);
     });
 
     game.drawFadeMessages();
@@ -198,15 +199,44 @@ function split_sheet() {
 
     const S = TILE_SIZE;
 
-    game.tiles["corner_tl"] = context.getImageData(0 * S, 0 * S, S, S);
-    game.tiles["edge_t"]    = context.getImageData(1 * S, 0 * S, S, S);
-    game.tiles["corner_tr"] = context.getImageData(2 * S, 0 * S, S, S);
-    game.tiles["edge_l"]    = context.getImageData(0 * S, 1 * S, S, S);
+    game.tiles["edge_b"]        = context.getImageData(6 * S, 1 * S, S, S);
+    game.tiles["edge_b_top"]    = context.getImageData(6 * S, 0 * S, S, S);
+    game.tiles["edge_b_alt1"]        = context.getImageData(8 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt1_top"]    = context.getImageData(8 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt2"]        = context.getImageData(9 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt2_top"]    = context.getImageData(9 * S, 4 * S, S, S);
+
+    game.tiles["corner_br"]     = context.getImageData(9 * S, 3 * S, S, S);
+    game.tiles["corner_br_top"] = context.getImageData(9 * S, 2 * S, S, S);
+
+    game.tiles["corner_bl"]     = context.getImageData(8 * S, 3 * S, S, S);
+    game.tiles["corner_bl_top"] = context.getImageData(8 * S, 2 * S, S, S);
+
+    game.tiles["corner_tr"]    = context.getImageData(9 * S, 1 * S, S, S);
+    game.tiles["corner_tr_top"] = context.getImageData(9 * S, 0 * S, S, S);
+
+    game.tiles["corner_tl"]    = context.getImageData(8 * S, 1 * S, S, S);
+    game.tiles["corner_tl_top"] = context.getImageData(8 * S, 0 * S, S, S);
+
+    game.tiles["inner_corner_br"]     = context.getImageData(7 * S, 3 * S, S, S);
+    game.tiles["inner_corner_br_top"] = context.getImageData(7 * S, 2 * S, S, S);
+
+    game.tiles["inner_corner_bl"]     = context.getImageData(5 * S, 3 * S, S, S);
+    game.tiles["inner_corner_bl_top"] = context.getImageData(5 * S, 2 * S, S, S);
+
+    game.tiles["inner_corner_tr"]     = context.getImageData(7 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tr_top"] = context.getImageData(7 * S, 0 * S, S, S);
+
+    game.tiles["inner_corner_tl"]     = context.getImageData(5 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0 * S, S, S);
+
+    game.tiles["edge_t"]        = context.getImageData(6 * S, 3 * S, S, S);
+    game.tiles["edge_t_top"]    = context.getImageData(5 * S, 3 * S, S, S);
+
+    game.tiles["edge_r"]    = context.getImageData(5 * S, 2 * S, S, S);
     game.tiles["void"]      = context.getImageData(1 * S, 1 * S, S, S);
-    game.tiles["edge_r"]    = context.getImageData(2 * S, 1 * S, S, S);
-    game.tiles["corner_bl"] = context.getImageData(0 * S, 2 * S, S, S);
-    game.tiles["edge_b"]    = context.getImageData(1 * S, 2 * S, S, S);
-    game.tiles["corner_br"] = context.getImageData(2 * S, 2 * S, S, S);
+    game.tiles["edge_l"]    = context.getImageData(7 * S, 2 * S, S, S);
+    game.tiles["edge_t"]    = context.getImageData(6 * S, 3 * S, S, S);
 
     game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);

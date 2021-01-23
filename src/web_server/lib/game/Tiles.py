@@ -65,7 +65,7 @@ class UnknownTile(Tile):
 class WallTile(Tile):
     def __init__(self):
         super().__init__()
-        self.image = "wall_test"
+        self.image = "void"
 
         self.movement_allowed = False
         self.opaque = True
@@ -92,10 +92,22 @@ class TopLeftCornerWall(WallTile):
         self.image = "corner_tl"
 
 
+class TopLeftCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_tl_top"
+
+
 class TopRightCornerWall(WallTile):
     def __init__(self):
         super().__init__()
         self.image = "corner_tr"
+
+
+class TopRightCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_tr_top"
 
 
 class BottomLeftCornerWall(WallTile):
@@ -104,10 +116,70 @@ class BottomLeftCornerWall(WallTile):
         self.image = "corner_bl"
 
 
+class BottomLeftCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_bl_top"
+
+
 class BottomRightCornerWall(WallTile):
     def __init__(self):
         super().__init__()
         self.image = "corner_br"
+
+
+class BottomRightCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "corner_br_top"
+
+
+class InnerTopLeftCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_tl"
+
+
+class InnerTopLeftCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_tl_top"
+
+
+class InnerTopRightCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_tr"
+
+
+class InnerTopRightCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_tr_top"
+
+
+class InnerBottomLeftCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_bl"
+
+
+class InnerBottomLeftCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_bl_top"
+
+
+class InnerBottomRightCornerWall(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_br"
+
+
+class InnerBottomRightCornerWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "inner_corner_br_top"
 
 
 class TopWall(WallTile):
@@ -132,3 +204,9 @@ class BottomWall(WallTile):
     def __init__(self):
         super().__init__()
         self.image = "edge_b"
+
+
+class BottomWall2(WallTile):
+    def __init__(self):
+        super().__init__()
+        self.image = "edge_b_top"
