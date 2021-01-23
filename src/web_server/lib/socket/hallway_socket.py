@@ -95,3 +95,23 @@ def suggest_move(data):
         game.update_players()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
+
+
+@sio.on("action", namespace="/hallway")
+def suggest_action(data):
+    room_id = int(data.get("room"))
+    game = games[room_id]
+
+    profile = session_user()
+
+    player = game.get_player(profile)
+
+    move = data.get("move")
+    position = Point(move.get("x"), move.get("y"))
+
+    try:
+        print(position)
+        player.ability(position)
+        game.update_players()
+    except InvalidAction as e:
+        sio.emit("message", e.message, room=player.socket, namespace="/hallway")

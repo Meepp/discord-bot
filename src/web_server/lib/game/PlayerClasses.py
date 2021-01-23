@@ -1,8 +1,8 @@
 from collections import namedtuple
 
 from database.models.models import Profile
-from web_server.lib.game.Tiles import GroundTile
-from web_server.lib.game.Utils import Point
+from web_server.lib.game.Tiles import GroundTile, WallTile
+from web_server.lib.game.Utils import Point, PlayerAngles
 from web_server.lib.game.exceptions import InvalidAction
 
 
@@ -16,13 +16,14 @@ class PlayerClass:
         self.cooldown_timer = 0
         self.ready = False
         self.old_positions = set()
+        self.direction = PlayerAngles.DOWN
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
 
         self.socket = socket_id
 
-    def ability(self, x, y):
+    def ability(self, position):
         pass
 
     def tick(self):
@@ -33,24 +34,16 @@ class PlayerClass:
 
         self.ready = False
 
-    def to_json(self, owner=True):
-        # Default dictionary to see other players name
-        state = {
-            "username": self.profile.discord_username,
-            "ready": self.ready,
-            "position": self.position.to_json(),
-            "name": self.name,
-        }
-        # In case you are owner add player sensitive information to state
-        if owner:
-            state.update({
-                "pre_move": self.pre_move.to_json(),
-                "cooldown": self.ability_cooldown,
-                "cooldown_timer": self.cooldown_timer,
-            })
-        return state
-
     def suggest_move(self, move: Point):
+        if move.x == self.position.x + 1:
+            self.direction = PlayerAngles.RIGHT
+        elif move.x == self.position.x - 1:
+            self.direction = PlayerAngles.LEFT
+        elif move.y == self.position.y + 1:
+            self.direction = PlayerAngles.DOWN
+        elif move.y == self.position.y - 1:
+            self.direction = PlayerAngles.UP
+
         if self.position == move:
             raise InvalidAction("You are already on this tile.")
 
@@ -70,6 +63,24 @@ class PlayerClass:
         self.ready = True
         self.game.tick()
 
+    def to_json(self, owner=True):
+        # Default dictionary to see other players name
+        state = {
+            "username": self.profile.discord_username,
+            "ready": self.ready,
+            "position": self.position.to_json(),
+            "name": self.name,
+            "direction": self.direction.value,
+        }
+        # In case you are owner add player sensitive information to state
+        if owner:
+            state.update({
+                "pre_move": self.pre_move.to_json(),
+                "cooldown": self.ability_cooldown,
+                "cooldown_timer": self.cooldown_timer,
+            })
+        return state
+
 
 class Demolisher(PlayerClass):
     def __init__(self, profile, socket_id, game):
@@ -78,13 +89,32 @@ class Demolisher(PlayerClass):
         self.name = "Demolisher"
         self.ability_cooldown = 30
 
-    def ability(self, x, y):
-        if self.cooldown_timer != 0:
-            raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
+    def ability(self, position):
 
-        if not self.game.board[x][y].movement_allowed:
-            self.game.board[x][y] = GroundTile()
-            self.cooldown_timer = self.ability_cooldown
+        # if self.cooldown_timer != 0:
+        #     raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
+        old_position = Point(position.x, position.y)
+
+        if self.direction == PlayerAngles.UP:
+            if isinstance(self.game.board[position.x][position.y - 1], WallTile):
+                print("Before", position)
+                position.y = position.y - 1
+                print("After", position)
+        elif self.direction == PlayerAngles.DOWN:
+            if isinstance(self.game.board[position.x][position.y + 1], WallTile):
+                position.y = position.y + 1
+        elif self.direction == PlayerAngles.LEFT:
+            if isinstance(self.game.board[position.x - 1][position.y], WallTile):
+                position.x = position.x - 1
+        elif self.direction == PlayerAngles.UP:
+            if isinstance(self.game.board[position.x + 1][position.y], WallTile):
+                position.x = position.x + 1
+        print(position, old_position)
+        if old_position == position:
+            raise InvalidAction("You cannot demolish this tile right now")
+        print("To demolish wall", position)
+        self.game.board[position.x][position.y] = GroundTile()
+        self.cooldown_timer = self.ability_cooldown
 
     def change_position(self, point):
         self.position = point
