@@ -55,7 +55,7 @@ class Currency(commands.Cog):
         profiles = session.query(Profile) \
             .filter(Profile.discord_id.in_(ids)) \
             .order_by(Profile.balance.desc()) \
-            .limit(10) \
+            .limit(15) \
             .all()
 
         body = "\n".join("%s: %s" % (profile.discord_username, format_money(profile.balance)) for profile in profiles)

@@ -208,6 +208,7 @@ function split_sheet() {
 
     game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
+    game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
 
     game.tiles["Demolisher"]   = context.getImageData(19 * S, 7 * S, S, S);
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
@@ -325,22 +326,41 @@ function changeSettings() {
     socket.emit("change settings", data)
 }
 
+function sendSelected() {
+    let data = {
+        room: ROOM_ID,
+        move: game.selected,
+    };
+    socket.emit("move", data);
+}
+
 canvas.addEventListener("mousemove", game.onMove);
 canvas.addEventListener("mousedown", (e) => {game.mouseDown = true; game.onMove(e)});
 canvas.addEventListener("mouseup", (e) => {
     game.mouseDown = false;
 
-    let data = {
-        room: ROOM_ID,
-        move: game.selected,
-
-    }
-    socket.emit("move", data)
-
-
+    sendSelected()
 });
 document.addEventListener("keydown", (ev) => {
     // Game inputs
+    if (ev.key === "ArrowUp") {
+        game.selected = {...game.state.player_data.position};
+        game.selected.y -= 1;
+        sendSelected();
+    } else if (ev.key === "ArrowDown") {
+        game.selected = {...game.state.player_data.position};
+        game.selected.y += 1;
+        sendSelected();
+    } else if (ev.key === "ArrowLeft") {
+        game.selected = {...game.state.player_data.position};
+        game.selected.x -= 1;
+        sendSelected();
+    } else if (ev.key === "ArrowRight") {
+        game.selected = {...game.state.player_data.position};
+        game.selected.x += 1;
+        sendSelected();
+    }
+
 });
 
 console.log("Emitting join");

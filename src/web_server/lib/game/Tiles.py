@@ -74,6 +74,18 @@ class WallTile(Tile):
         return "W"
 
 
+class DoorTile(Tile):
+    def __init__(self):
+        super().__init__()
+        self.image = "door"
+
+        self.movement_allowed = True
+        self.opaque = False
+
+    def __repr__(self):
+        return "D"
+
+
 class TopLeftCornerWall(WallTile):
     def __init__(self):
         super().__init__()
