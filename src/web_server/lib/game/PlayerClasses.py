@@ -1,8 +1,10 @@
+import copy
 from collections import namedtuple
 
 from database.models.models import Profile
-from web_server.lib.game.Tiles import GroundTile, WallTile
-from web_server.lib.game.Utils import Point, PlayerAngles
+from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile
+from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
+    point_interpolator
 from web_server.lib.game.exceptions import InvalidAction
 
 
@@ -10,13 +12,19 @@ class PlayerClass:
     def __init__(self, profile: Profile, socket_id, game):
         self.name = ""
         self.profile = profile
-        self.ability_cooldown = 0
         self.position = Point(1, 1)
-        self.pre_move = Point(1, 1)
-        self.cooldown_timer = 0
+        self.pre_move = None
+
+        self.movement_cooldown = 5  # Ticks
+        self.movement_timer = 0
+
+        self.ability_cooldown = 0
+        self.cooldown_timer = 0  # Ticks
+
         self.ready = False
-        self.old_positions = set()
         self.direction = PlayerAngles.DOWN
+
+        self.visible_tiles = []
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
@@ -24,12 +32,23 @@ class PlayerClass:
         self.socket = socket_id
 
     def ability(self):
-        pass
+        if self.cooldown_timer != 0:
+            raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
 
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
+        self.movement_timer = max(0, self.movement_timer - 1)
+        if self.movement_timer == 0 and self.pre_move is not None:
+            self.position = self.pre_move
+            self.pre_move = None
+            self.movement_timer = self.movement_cooldown
+
+        self.visible_tiles = self.compute_line_of_sight()
 
         self.ready = False
+
+    def change_position(self, point):
+        self.position = point
 
     def suggest_move(self, move: Point):
         if move.x == 1:
@@ -41,23 +60,21 @@ class PlayerClass:
         if move.y == -1:
             self.direction = PlayerAngles.UP
 
-        # if self.position == move:
-        #     raise InvalidAction("You are already on this tile.")
-
         new_position = move + self.position
 
         if new_position.x > self.game.size - 1 or new_position.y > self.game.size - 1 or new_position.x < 0 or new_position.y < 0:
             raise InvalidAction("You cannot move out of bounds.")
 
-        if not self.game.board[new_position.x][new_position.y].movement_allowed:
+        tile = self.game.board[new_position.x][new_position.y]
+        if not tile.movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 
-        self.position = new_position
-        self.set_ready()
+        # Move suggestion includes the ladder logic from Mole person
+        if isinstance(tile, LadderTile) and tile.other_ladder is not None:
+            self.pre_move = tile.other_ladder.position
+            return
 
-    def set_ready(self):
-        self.ready = True
-        self.game.tick()
+        self.pre_move = new_position
 
     def to_json(self, owner=True):
         # Default dictionary to see other players name
@@ -71,31 +88,61 @@ class PlayerClass:
         # In case you are owner add player sensitive information to state
         if owner:
             state.update({
-                "pre_move": self.pre_move.to_json(),
                 "cooldown": self.ability_cooldown,
                 "cooldown_timer": self.cooldown_timer,
             })
         return state
+
+    def convert_class(self, new_class):
+        cls = new_class(self.profile, self.socket, self.game)
+        cls.ready = self.ready
+        cls.position = self.position
+        return cls
+
+    def compute_line_of_sight(self):
+        visible_positions = set()
+
+        endpoints = line_of_sight_endpoints(self.direction, distance=7)
+        endpoints = [point + self.position for point in endpoints]
+        for point in endpoints:
+            walls = 0
+            try:
+                for intermediate in point_interpolator(self.position, point):
+                    # Allow for one wall in line of sight
+                    if walls != 0 or self.game.board[intermediate.x][intermediate.y].opaque:
+                        walls += 1
+
+                    visible_positions.add(intermediate)
+                    if walls == 2:
+                        break
+            except IndexError:
+                pass
+
+        return list(visible_positions)
+
+    def get_visible_tiles(self):
+        return [{
+            "x": position.x,
+            "y": position.y,
+            "tile": self.game.board[position.x][position.y].to_json()
+        } for position in self.visible_tiles]
 
 
 class Demolisher(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
-        self.name = "Demolisher"
+        self.name = self.__class__.__name__
         self.ability_cooldown = 30
 
     def ability(self):
-        position = self.position
-        # if self.cooldown_timer != 0:
-        #     raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
+        super().ability()
+        position = copy.copy(self.position)
         old_position = Point(position.x, position.y)
 
         if self.direction == PlayerAngles.UP:
             if isinstance(self.game.board[position.x][position.y - 1], WallTile):
-                print("Before", position)
                 position.y = position.y - 1
-                print("After", position)
         elif self.direction == PlayerAngles.DOWN:
             if isinstance(self.game.board[position.x][position.y + 1], WallTile):
                 position.y = position.y + 1
@@ -105,28 +152,58 @@ class Demolisher(PlayerClass):
         elif self.direction == PlayerAngles.RIGHT:
             if isinstance(self.game.board[position.x + 1][position.y], WallTile):
                 position.x = position.x + 1
-        print(position, old_position)
         if old_position == position:
             raise InvalidAction("You cannot demolish this tile right now")
-        print("To demolish wall", position)
-        self.game.board[position.x][position.y] = GroundTile()
-        self.cooldown_timer = self.ability_cooldown
 
-    def change_position(self, point):
-        self.position = point
-        self.old_positions.add(point)
+        self.game.board[position.x][position.y] = GroundTile()
+        self.game.change_tile(position, GroundTile())
+        self.cooldown_timer = self.ability_cooldown
 
 
 class Spy(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
+        self.name = self.__class__.__name__
 
-        self.name = "Spy"
         self.ability_cooldown = 30
 
     def ability(self):
-        pass
+        super().ability()
 
-    def change_position(self, point):
-        self.position = point
-        self.old_positions.add(point)
+
+class Scout(PlayerClass):
+    def __init__(self, profile, socket_id, game):
+        super().__init__(profile, socket_id, game)
+
+        self.name = self.__class__.__name__
+        self.ability_cooldown = 30
+
+    def ability(self):
+        super().ability()
+
+
+class MrMole(PlayerClass):
+    def __init__(self, profile, socket_id, game):
+        super().__init__(profile, socket_id, game)
+
+        self.name = self.__class__.__name__
+        self.ability_cooldown = 30
+
+        self.ladders = []
+
+    def ability(self):
+        super().ability()
+
+        position = copy.copy(self.position)
+
+        ladder = LadderTile(self.position)
+        self.ladders.append(ladder)
+        # You can have only two ladders, if you create more, the oldest one will get removed
+        if len(self.ladders) > 2:
+            to_remove_ladder = self.ladders.pop(0)
+            self.game.change_tile(to_remove_ladder.position, GroundTile())
+        if len(self.ladders) == 2:
+            ladder.other_ladder = self.ladders[0]
+            self.ladders[0].other_ladder = ladder
+
+        self.game.change_tile(position, ladder)

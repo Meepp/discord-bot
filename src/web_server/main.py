@@ -5,6 +5,7 @@ from werkzeug.exceptions import abort
 
 from database.repository import room_repository, profile_repository
 from src.web_server.lib.user_session import session_user, session_user_set
+from web_server.lib.game.PlayerClasses import PlayerClass
 
 bp = Blueprint('poker', __name__)
 
@@ -35,7 +36,8 @@ def game(room_id):
     if room.type == "poker":
         return render_template('poker.html', room=room)
     elif room.type == "hallway":
-        return render_template('hallway.html', room=room)
+        classes = [cls.__name__ for cls in PlayerClass.__subclasses__()]
+        return render_template('hallway.html', room=room, classes=classes)
 
 
 

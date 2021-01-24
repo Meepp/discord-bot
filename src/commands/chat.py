@@ -87,17 +87,17 @@ class Chat(commands.Cog):
         await message.channel.send(embed=em)
 
     @commands.command()
-    async def roll(self, args, message):
+    async def roll(self, context: Context, message=None):
         """
         !roll <N>: generate a random number between 0-N (N=100 by default). Or use NdM for dnd-type rolls. (N max 1000)
         :param args:
         :param message:
         :return:
         """
-        if len(args) < 1:
+        if message is None:
             value = str(randint(0, 100))
-        elif "d" in args[0]:
-            d = args[0].split("d")
+        elif "d" in message:
+            d = message.split("d")
             n_rolls = min(int(d[0]), 1000)
             dice = int(d[1])
 
@@ -109,11 +109,11 @@ class Chat(commands.Cog):
                 value = s
         else:
             try:
-                upper = int(args[0])
+                upper = int(message)
             except ValueError as e:
                 upper = 100
             value = str(randint(0, upper))
-        await message.channel.send("%s rolled a %s." % (message.author.nick, value))
+        await context.channel.send("%s rolled a %s." % (context.author.nick, value))
 
     @commands.command()
     async def kill(self, context: Context):

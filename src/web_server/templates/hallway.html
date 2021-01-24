@@ -4,6 +4,10 @@
     Game
 {% endblock %}
 
+{% block link %}
+<link rel="stylesheet" href="{{ url_for('static', filename='hallway.css') }}">
+{% endblock %}
+
 {% block content %}
     <div class="main-wrapper">
         <div id="lobby-wrapper" class="main-content">
@@ -36,9 +40,10 @@
 
                     {% else %}
                         Choose class
-                        <select>
-                            <option>a</option>
-                            <option>b</option>
+                        <select id="class-selector">
+                            {% for cls in classes %}
+                                <option value="{{ cls }}">{{ cls }}</option>
+                            {% endfor %}
                         </select>
                         <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
                     {% endif %}
@@ -46,18 +51,8 @@
             </article>
         </div>
         <div id="game-wrapper" class="main-content">
-            <div id="canvas-wrapper">
-                <canvas id="canvas">
-                </canvas>
-            </div>
-            <div id="button-bar">
-                <button id="call-button" class="custom-input custom-button" onclick="call()">Call</button>
-                <button class="custom-input custom-button" onclick="raise()">Raise</button>
-                <button class="custom-input custom-button" onclick="fold()">Fold</button>
-                {% if session_user().owner_id == room['author_id'] %}
-                    <div class="custom-input custom-button" onclick="startRoom()">Begin Round</div>
-                {% endif %}
-            </div>
+            <canvas id="canvas">
+            </canvas>
         </div>
         <div id="right-column" class="secondary-content">
             <div class="custom-title flex-title">Event Log</div>

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from web_server.lib.game.Items import Item
+from web_server.lib.game.Utils import Point
 
 
 class Tile:
@@ -51,7 +52,7 @@ class UnknownTile(Tile):
         self.image = "void"
 
         self.movement_allowed = False
-        self.opaque = False
+        self.opaque = True
 
     def __str__(self):
         return " "
@@ -210,3 +211,13 @@ class BottomWall2(WallTile):
     def __init__(self):
         super().__init__()
         self.image = "edge_b_top"
+
+
+class LadderTile(Tile):
+    def __init__(self, position: Point):
+        super().__init__()
+        self.image = "ladder"
+        self.opaque = False
+        self.movement_allowed = True
+        self.other_ladder = None
+        self.position = position

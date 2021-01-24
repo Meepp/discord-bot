@@ -4,6 +4,10 @@
     Poker
 {% endblock %}
 
+{% block link %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endblock %}
+
 {% block content %}
     <div class="main-wrapper">
         <div id="lobby-wrapper" class="main-content">

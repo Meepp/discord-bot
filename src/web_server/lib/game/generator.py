@@ -242,6 +242,8 @@ def upscale_3x(board):
                         if chance == 2:
                             upscaled_board[x][y].image = "edge_b_alt2"
                             upscaled_board[x][y-1].image = "edge_b_alt2_top"
+                        if chance == 3:
+                            upscaled_board[x][y].image = "edge_b_alt3"
                 elif up:
                     if left:
                         upscaled_board[x][y] = TopLeftCornerWall2()
@@ -251,6 +253,9 @@ def upscale_3x(board):
                         upscaled_board[x][y+1] = TopRightCornerWall()
                     else:
                         upscaled_board[x][y] = TopWall()
+                        chance = random.randint(0, 10)
+                        if chance == 1:
+                            upscaled_board[x][y].image = "edge_t_alt1"
                 elif left:
                     upscaled_board[x][y] = LeftWall()
 
@@ -293,7 +298,5 @@ def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
     remove_dead_ends(base)
 
     board = upscale_3x(base)
-    print(room_centers)
     room_centers = [center * 3 for center in room_centers]
-    print(room_centers)
     return board, room_centers

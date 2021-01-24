@@ -1,10 +1,10 @@
 let canvas = document.getElementById("canvas");
-canvas.width = 1000;
-canvas.height = 600;
 let context = canvas.getContext("2d");
-context.imageSmoothingEnabled = true;
+context.webkitImageSmoothingEnabled = false;
+context.mozImageSmoothingEnabled = false;
+context.imageSmoothingEnabled = false;
 
-const TILE_SIZE = 64;
+const TILE_SIZE = 48;
 const TILE_PADDING = 0;
 
 let socket = io("/hallway");
@@ -65,17 +65,32 @@ function HallwayHunters() {
             },
             cooldown: 0,
             cooldown_timer: 0,
-        }
+        },
+        visible_tiles: [
+            {x: 0, y: 0, tile: {}}
+        ],
+        board: []
     };
+    this.lookup = {};
     this.fadeMessages = [];
     this.tiles = {};
-    this.mouseDown = false;
 
     this.setState = function (data) {
         this.state = {
             ...this.state,
             ...data
         };
+
+        this.lookup = {};
+        this.state.visible_tiles.forEach((obj) => {
+            this.state.board[obj.x][obj.y] = obj.tile
+            if (this.lookup[obj.x] === undefined) {
+                this.lookup[obj.x] = {};
+            }
+            this.lookup[obj.x][obj.y] = true;
+        });
+
+
     };
 
     this.MESSAGE_HEIGHT = 40;
@@ -111,9 +126,12 @@ function HallwayHunters() {
 
 // Game rendering stuff
 function render() {
+    const start = Date.now();
+
     // Resizing the canvas should overwrite the width and height variables
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    // It has to be a multiple of 2 to remove artifacts around the tilesets
+    canvas.width = Math.round(canvas.clientWidth / 2) * 2;
+    canvas.height = Math.round(canvas.clientHeight / 2) * 2;
 
     context.clearRect(0, 0, canvas.width, canvas.height);
     // context.fillStyle = "#EEEEEE";
@@ -126,13 +144,23 @@ function render() {
     const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
 
     // Draw tiles
+    context.fillStyle = "rgb(0, 0, 0, 0.3)";
     for (let x = 0; x < game.state.board_size; x++) {
+        if (x * S + xOffset + TILE_SIZE < 0) continue;
+        if (x * S + xOffset > canvas.width) break;
         for (let y = 0; y < game.state.board_size; y++) {
+            if (y * S + yOffset + TILE_SIZE < 0) continue;
+            if (y * S + yOffset > canvas.height) break;
+
             context.drawImage(
                 game.tiles[game.state.board[x][y].image],
                 x * S + xOffset,
                 y * S + yOffset
             );
+
+            if (game.lookup[x] === undefined || !game.lookup[x][y]) {
+                context.fillRect(x * S + xOffset, y * S + yOffset, TILE_SIZE, TILE_SIZE)
+            }
         }
     }
 
@@ -143,8 +171,6 @@ function render() {
         const sprite = game.tiles[player.name + "_" + player.direction];
         context.drawImage(sprite, x, y);
     });
-
-    // game.drawFadeMessages();
 }
 
 let game = new HallwayHunters();
@@ -152,9 +178,12 @@ let game = new HallwayHunters();
 function split_sheet() {
     const scale = TILE_SIZE / 16;
     let canvas = document.createElement("canvas");
+    canvas.className = "disable-anti-aliasing";
     canvas.width = this.width * scale;
     canvas.height = this.height * scale;
+    console.log(this.width, this.height, canvas);
     let context = canvas.getContext("2d");
+
     context.clearRect(0,0, canvas.width, canvas.height);
     context.webkitImageSmoothingEnabled = false;
     context.mozImageSmoothingEnabled = false;
@@ -171,6 +200,7 @@ function split_sheet() {
     game.tiles["edge_b_alt1_top"]    = context.getImageData(8 * S, 4 * S, S, S);
     game.tiles["edge_b_alt2"]        = context.getImageData(9 * S, 5 * S, S, S);
     game.tiles["edge_b_alt2_top"]    = context.getImageData(9 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt3"]        = context.getImageData(5 * S, 4 * S, S, S);
 
     game.tiles["corner_br"]     = context.getImageData(9 * S, 3 * S, S, S);
     game.tiles["corner_br_top"] = context.getImageData(9 * S, 2 * S, S, S);
@@ -197,26 +227,36 @@ function split_sheet() {
     game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0 * S, S, S);
 
     game.tiles["edge_t"]        = context.getImageData(6 * S, 3 * S, S, S);
-    game.tiles["edge_t_top"]    = context.getImageData(5 * S, 3 * S, S, S);
+    game.tiles["edge_t_alt1"]    = context.getImageData(7 * S, 5 * S, S, S);
+
+    game.tiles["edge_l"]    = context.getImageData(7 * S, 2 * S, S, S);
+    game.tiles["edge_l_alt1"]    = context.getImageData(6 * S, 4 * S, S, S);
+    game.tiles["edge_l_alt2"]    = context.getImageData(7 * S, 4 * S, S, S);
 
     game.tiles["edge_r"]    = context.getImageData(5 * S, 2 * S, S, S);
     game.tiles["void"]      = context.getImageData(1 * S, 1 * S, S, S);
-    game.tiles["edge_l"]    = context.getImageData(7 * S, 2 * S, S, S);
     game.tiles["edge_t"]    = context.getImageData(6 * S, 3 * S, S, S);
 
     game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
+
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
+    game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
 
     game.tiles["Demolisher_0"]   = context.getImageData(0 * S, 10 * S, S, S);
-    game.tiles["Demolisher_90"]   = context.getImageData(2 * S, 10 * S, S, S);
     game.tiles["Demolisher_180"]   = context.getImageData(1 * S, 10 * S, S, S);
+    game.tiles["Demolisher_90"]   = context.getImageData(2 * S, 10 * S, S, S);
     game.tiles["Demolisher_270"]   = context.getImageData(3 * S, 10 * S, S, S);
 
     game.tiles["Spy_0"]   = context.getImageData(4 * S, 10 * S, S, S);
-    game.tiles["Spy_90"]   = context.getImageData(5 * S, 10 * S, S, S);
-    game.tiles["Spy_180"]   = context.getImageData(6 * S, 10 * S, S, S);
+    game.tiles["Spy_180"]   = context.getImageData(5 * S, 10 * S, S, S);
+    game.tiles["Spy_90"]   = context.getImageData(6 * S, 10 * S, S, S);
     game.tiles["Spy_270"]   = context.getImageData(7 * S, 10 * S, S, S);
+
+    game.tiles["MrMole_0"]   = context.getImageData(8 * S, 10 * S, S, S);
+    game.tiles["MrMole_180"]   = context.getImageData(9 * S, 10 * S, S, S);
+    game.tiles["MrMole_90"]   = context.getImageData(10 * S, 10 * S, S, S);
+    game.tiles["MrMole_270"]   = context.getImageData(11 * S, 10 * S, S, S);
 
     game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
     game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
@@ -306,8 +346,10 @@ function startRoom() {
 }
 
 function toggleReady() {
+    const cls = document.getElementById("class-selector").value;
     socket.emit("start", {
-        room: ROOM_ID
+        room: ROOM_ID,
+        player_class: cls,
     });
 }
 

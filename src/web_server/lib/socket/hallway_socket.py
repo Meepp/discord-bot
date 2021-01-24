@@ -7,6 +7,7 @@ from flask_socketio import join_room
 from database.repository import room_repository
 from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
+from web_server.lib.game.PlayerClasses import PlayerClass
 from web_server.lib.game.Utils import Point
 from web_server.lib.game.exceptions import InvalidAction
 
@@ -54,6 +55,7 @@ def get_state(data):
 @sio.on("start", namespace="/hallway")
 def start_game(data):
     room_id = int(data.get("room"))
+    selected_class = data.get("player_class")
     room = room_repository.get_room(room_id)
     profile = session_user()
 
@@ -63,6 +65,14 @@ def start_game(data):
     # All normal players toggle their ready state
     player.ready = not player.ready
 
+    # Update the player class if the user desired this
+    if player.name != selected_class:
+        cls = next((x for x in PlayerClass.__subclasses__() if x.__name__ == selected_class), None)
+        if cls:
+            player = player.convert_class(cls)
+            game.set_player(profile, player)
+            print("Updated player to:", player.name)
+
     # Only the owner may start the game
     if room.author_id != profile.discord_id:
         game.update_players()
@@ -70,19 +80,18 @@ def start_game(data):
 
     # Room owner is always true
     player.ready = True
-    if not game.check_readies():
-        sio.emit("message", "The room owner wants to start. Ready up!", room=room_id, namespace="/hallway")
-        return
+    # if not game.check_readies():
+    #     sio.emit("message", "The room owner wants to start. Ready up!", room=room_id, namespace="/hallway")
+    #     return
 
-    game.update_players()
+    if not game.game_loop_thread.is_alive():
+        game.game_loop_thread.start()
 
     sio.emit("start", None, room=room_id, namespace="/hallway")
 
 
 @sio.on("move", namespace="/hallway")
 def suggest_move(data):
-    start = datetime.now()
-
     room_id = int(data.get("room"))
     game = games[room_id]
 
@@ -95,12 +104,6 @@ def suggest_move(data):
 
     try:
         player.suggest_move(position)
-        game.update_players()
-
-        game.spent_time += (datetime.now() - start).total_seconds() * 1000
-        game.ticks += 1
-
-        print("Avg. Server FPS: ", 1000 / (game.spent_time / game.ticks))
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
 
@@ -116,6 +119,5 @@ def suggest_action(data):
 
     try:
         player.ability()
-        game.update_players()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
