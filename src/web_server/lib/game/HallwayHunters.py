@@ -19,14 +19,17 @@ class Phases(Enum):
 
 
 class HallwayHunters:
+
     def __init__(self, room_id):
         self.tick_rate = 60
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
         self.size = 93
-        self.board: List[List[Tile]] = []
+
         self.spawn_points: List[Point] = []
+        self.board: List[List[Tile]] = []
+        # self.board, self.spawn_points = generate_board(size=self.size)
 
         # Generate this to send to every player initially
         self.initial_board_json = [[UnknownTile().to_json() for _ in range(self.size)] for _ in range(self.size)]
@@ -41,9 +44,9 @@ class HallwayHunters:
         self.board_changes = []
 
     def start(self):
-
         color_set = ["blue", "red", "black", "purple", "green"]
         selected_colors = random.sample(color_set, len(self.player_list))
+
         self.board, self.spawn_points = generate_board(self.size, selected_colors)
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
@@ -86,6 +89,7 @@ class HallwayHunters:
             player.tick()
 
         self.update_players()
+
         # After having sent the update to all players, empty board changes list
         self.board_changes = []
 
@@ -109,11 +113,11 @@ class HallwayHunters:
     def export_board(self, player: PlayerClass, reduced=False):
         tiles = player.get_visible_tiles()
         data = {
-            "started": self.phase == Phases.STARTED,
-            "player_data": player.to_json(),
-            "players": player.get_visible_players(),
-            "visible_tiles": tiles,
-        }
+                "started": self.phase == Phases.STARTED,
+                "player_data": player.to_json(),
+                "players": player.get_visible_players(),
+                "visible_tiles": tiles,
+            }
         if not reduced:
             data.update({
                 "board": self.initial_board_json,
