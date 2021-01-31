@@ -18,6 +18,7 @@ class Phases(Enum):
 
 class HallwayHunters:
     def __init__(self, room_id):
+        self.tick_rate = 60
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
@@ -25,35 +26,56 @@ class HallwayHunters:
 
         self.board, self.spawn_points = generate_board(size=self.size)
 
+        # Generate this to send to every player initially
         self.initial_board_json = [[UnknownTile().to_json() for _ in range(self.size)] for _ in range(self.size)]
 
         self.spent_time = 0.00001
         self.ticks = 0
+        self.finished = False
 
         self.game_loop_thread = threading.Thread(target=self.game_loop)
+        self.game_lock = threading.Condition()
 
         self.board_changes = []
 
-    def restart(self):
+    def start(self):
         self.board, self.spawn_points = generate_board(size=self.size)
 
+        # TODO: Randomize player colour
+
+        for i, player in enumerate(self.player_list):
+            player.change_position(self.spawn_points[i % len(self.spawn_points)])
+            player.name = "red"
+
+        self.finished = False
+        self.game_lock.acquire()
+        self.game_lock.notify()
+        self.game_lock.release()
+
     def game_loop(self):
-        n_ticks_per_second = 60
-        s_per_tick = 1 / n_ticks_per_second
+        s_per_tick = 1 / self.tick_rate
         while True:
-            start = datetime.now()
+            print("Started loop")
+            while not self.finished:
+                start = datetime.now()
 
-            self.tick()
+                self.tick()
 
-            diff = (datetime.now() - start).total_seconds()
+                diff = (datetime.now() - start).total_seconds()
 
-            self.spent_time += diff
-            self.ticks += 1.
-            if self.ticks % 60 == 0:
-                print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
+                self.spent_time += diff
+                self.ticks += 1.
+                if self.ticks % self.tick_rate == 0:
+                    print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
+                    self.spent_time = 0
+                    self.ticks = 0
 
-            # Fill time sleeping while waiting for next tick
-            time.sleep(s_per_tick - diff)
+                # Fill time sleeping while waiting for next tick
+                time.sleep(s_per_tick - diff)
+
+            self.game_lock.acquire()
+            self.game_lock.wait()
+            self.game_lock.release()
 
     def tick(self):
         for player in self.player_list:
@@ -72,7 +94,6 @@ class HallwayHunters:
                 return
 
         player = Demolisher(profile, socket_id, self)
-        player.change_position(self.spawn_points.pop())
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
@@ -87,7 +108,7 @@ class HallwayHunters:
         data = {
                 "started": self.phase == Phases.STARTED,
                 "player_data": player.to_json(),
-                "players": [player.to_json() for player in self.player_list],
+                "players": player.get_visible_players(),
                 "visible_tiles": tiles,
             }
         if not reduced:
@@ -124,6 +145,9 @@ class HallwayHunters:
         if player in self.player_list:
             self.player_list.remove(player)
 
+        if len(self.player_list) == 0:
+            self.finished = True
+
     def broadcast(self, message):
         sio.emit("message", message, room=self.room_id, namespace="/hallway")
 
@@ -133,7 +157,12 @@ class HallwayHunters:
                 return False
         return True
 
+    def in_bounds(self, position):
+        return 1 < position.x < self.size - 2 and 1 < position.y < self.size - 2
+
     def change_tile(self, position, tile: Tile):
+        if not self.in_bounds(position):
+            return
         self.board[position.x][position.y] = tile
         self.board_changes.append({
             "x": position.x,

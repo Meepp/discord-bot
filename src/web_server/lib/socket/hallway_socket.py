@@ -80,13 +80,10 @@ def start_game(data):
 
     # Room owner is always true
     player.ready = True
-    # if not game.check_readies():
-    #     sio.emit("message", "The room owner wants to start. Ready up!", room=room_id, namespace="/hallway")
-    #     return
 
     if not game.game_loop_thread.is_alive():
         game.game_loop_thread.start()
-
+    game.start()
     sio.emit("start", None, room=room_id, namespace="/hallway")
 
 
@@ -114,7 +111,6 @@ def suggest_action(data):
     game = games[room_id]
 
     profile = session_user()
-
     player = game.get_player(profile)
 
     try:

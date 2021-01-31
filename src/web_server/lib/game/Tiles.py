@@ -81,7 +81,7 @@ class DoorTile(Tile):
         self.image = "door"
 
         self.movement_allowed = True
-        self.opaque = False
+        self.opaque = True
 
     def __repr__(self):
         return "D"

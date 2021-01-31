@@ -6,6 +6,7 @@ context.imageSmoothingEnabled = false;
 
 const TILE_SIZE = 48;
 const TILE_PADDING = 0;
+const FRAMES_PER_ANIMATION = 6;
 
 let socket = io("/hallway");
 
@@ -59,21 +60,35 @@ function HallwayHunters() {
                 x: 0,
                 y: 0
             },
+            previous_position: {
+                x: 0,
+                y: 0
+            },
             pre_move: {
                 x: 0,
                 y: 0
             },
+            is_moving: false,
             cooldown: 0,
             cooldown_timer: 0,
+            movement_cooldown: 0,
+            movement_timer: 0,
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
         ],
-        board: []
+        board: [],
+        objective: {
+            position: {
+                x: 10,
+                y: 10,
+            }
+        }
     };
     this.lookup = {};
     this.fadeMessages = [];
     this.tiles = {};
+    this.animations = {};
 
     this.setState = function (data) {
         this.state = {
@@ -83,7 +98,7 @@ function HallwayHunters() {
 
         this.lookup = {};
         this.state.visible_tiles.forEach((obj) => {
-            this.state.board[obj.x][obj.y] = obj.tile
+            this.state.board[obj.x][obj.y] = obj.tile;
             if (this.lookup[obj.x] === undefined) {
                 this.lookup[obj.x] = {};
             }
@@ -124,10 +139,69 @@ function HallwayHunters() {
 }
 
 
+function renderMinimap() {
+    const minimap_pixel_size = 2;
+    const size = game.state.board_size;
+    const mm_size = size * minimap_pixel_size;
+
+    const mm_offset_x = canvas.width - mm_size;
+    const mm_offset_y = 0;
+    context.clearRect(mm_offset_x, mm_offset_y, mm_size, mm_size);
+    for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+            const tile = game.state.board[x][y];
+
+            if (tile.movement_allowed) {
+                context.fillStyle = "#bbb";
+            } else if (!tile.opaque) {
+                context.fillStyle = "#7e7e7e";
+            } else {
+                context.fillStyle = "#454545";
+            }
+
+            if (game.state.player_data.position.x === x && game.state.player_data.position.y === y) {
+                context.fillStyle = "#7d1720";
+            }
+
+            if (game.state.objective.position.x === x && game.state.objective.position.y === y) {
+                context.fillStyle = "#357d2c";
+            }
+
+            context.fillRect(mm_offset_x + x * minimap_pixel_size, mm_offset_y + y * minimap_pixel_size, minimap_pixel_size, minimap_pixel_size);
+        }
+    }
+}
+
+function getAnimationFrame(player) {
+    const animationName = player.name + "_" + player.direction;
+    const animation = game.animations[animationName];
+
+    if (!player.is_moving) {
+        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+        animation.currentSprite = 0;
+    }
+
+    animation.frameNumber++;
+    if (animation.frameNumber % FRAMES_PER_ANIMATION === 0) {
+        animation.currentSprite = (animation.currentSprite + 1) % animation.sprites.length;
+    }
+    return animation.sprites[animation.currentSprite];
+}
+
+function directionToVector(direction, number) {
+    if (direction === 0) {
+        return {x: 0, y: -number};
+    } else if (direction === 90) {
+        return {x: number, y: 0};
+    } else if (direction === 180) {
+        return {x: 0, y: number};
+    } else {
+        return {x: -number, y: 0};
+    }
+}
+
 // Game rendering stuff
 function render() {
-    const start = Date.now();
-
     // Resizing the canvas should overwrite the width and height variables
     // It has to be a multiple of 2 to remove artifacts around the tilesets
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
@@ -140,8 +214,11 @@ function render() {
 
     // Compute the offset for all tiles, to center rendering on the player.
     const S = (TILE_SIZE + TILE_PADDING);
-    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2;
-    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
+
+    const interpolation = game.state.player_data.movement_timer / game.state.player_data.movement_cooldown;
+    const vector = directionToVector(game.state.player_data.direction, interpolation * S);
+    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2 + Math.round(vector.x);
+    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2 + Math.round(vector.y);
 
     // Draw tiles
     context.fillStyle = "rgb(0, 0, 0, 0.3)";
@@ -158,6 +235,15 @@ function render() {
                 y * S + yOffset
             );
 
+            // Draw item on top of tile if there is an item on this tile.
+            if (game.state.board[x][y].item !== null) {
+                context.drawImage(
+                game.tiles[game.state.board[x][y].item.name],
+                x * S + xOffset,
+                y * S + yOffset
+            );
+            }
+
             if (game.lookup[x] === undefined || !game.lookup[x][y]) {
                 context.fillRect(x * S + xOffset, y * S + yOffset, TILE_SIZE, TILE_SIZE)
             }
@@ -165,15 +251,29 @@ function render() {
     }
 
     game.state.players.forEach((player) => {
-        const x = player.position.x * S + xOffset;
-        const y = player.position.y * S + yOffset;
+        const interpolation = -(player.movement_timer / player.movement_cooldown);
+        const vector = directionToVector(player.direction, interpolation * S);
+        const x = player.position.x * S + xOffset + Math.round(vector.x);
+        const y = player.position.y * S + yOffset + Math.round(vector.y);
 
-        const sprite = game.tiles[player.name + "_" + player.direction];
+        const sprite = getAnimationFrame(player);
+
         context.drawImage(sprite, x, y);
     });
+
+    renderMinimap()
 }
 
 let game = new HallwayHunters();
+
+
+function createAnimation(sprites) {
+    return {
+        sprites: sprites,
+        frameNumber: 0,
+        currentSprite: 0,
+    };
+}
 
 function split_sheet() {
     const scale = TILE_SIZE / 16;
@@ -243,25 +343,16 @@ function split_sheet() {
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
     game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
 
-    game.tiles["Demolisher_0"]   = context.getImageData(0 * S, 10 * S, S, S);
-    game.tiles["Demolisher_180"]   = context.getImageData(1 * S, 10 * S, S, S);
-    game.tiles["Demolisher_90"]   = context.getImageData(2 * S, 10 * S, S, S);
-    game.tiles["Demolisher_270"]   = context.getImageData(3 * S, 10 * S, S, S);
+    for (let i = 0; i < 3; i++) {
+        game.tiles["red_90_" + i]   = context.getImageData(i * S, 11 * S, S, S);
+        game.tiles["red_270_" + i]   = context.getImageData((i + 3) * S, 11 * S, S, S);
+        game.tiles["red_180_" + i]   = context.getImageData((i + 6) * S, 11 * S, S, S);
+        game.tiles["red_0_" + i]   = context.getImageData((i + 9) * S, 11 * S, S, S);
+    }
 
-    game.tiles["Spy_0"]   = context.getImageData(4 * S, 10 * S, S, S);
-    game.tiles["Spy_180"]   = context.getImageData(5 * S, 10 * S, S, S);
-    game.tiles["Spy_90"]   = context.getImageData(6 * S, 10 * S, S, S);
-    game.tiles["Spy_270"]   = context.getImageData(7 * S, 10 * S, S, S);
-
-    game.tiles["MrMole_0"]   = context.getImageData(8 * S, 10 * S, S, S);
-    game.tiles["MrMole_180"]   = context.getImageData(9 * S, 10 * S, S, S);
-    game.tiles["MrMole_90"]   = context.getImageData(10 * S, 10 * S, S, S);
-    game.tiles["MrMole_270"]   = context.getImageData(11 * S, 10 * S, S, S);
-
-    game.tiles["character_red"]    = context.getImageData(20 * S, 7 * S, S, S);
-    game.tiles["character_green"]  = context.getImageData(21 * S, 7 * S, S, S);
-    game.tiles["character_purple"] = context.getImageData(22 * S, 7 * S, S, S);
-    game.tiles["character_black"]  = context.getImageData(23 * S, 7 * S, S, S);
+    for (let i = 0; i < 4; i++) {
+        game.tiles["rubbish_" + i]   = context.getImageData((i + 15) * S, 7 * S, S, S);
+    }
 
     for (const [title, data] of Object.entries(game.tiles)) {
         canvas.width = data.width;
@@ -272,6 +363,31 @@ function split_sheet() {
         image.src = canvas.toDataURL();
         game.tiles[title] = image;
     }
+
+    game.animations["red_90"] = createAnimation([
+        game.tiles["red_90_0"],
+        game.tiles["red_90_1"],
+        game.tiles["red_90_0"],
+        game.tiles["red_90_2"],
+    ]);
+    game.animations["red_270"] = createAnimation([
+        game.tiles["red_270_0"],
+        game.tiles["red_270_1"],
+        game.tiles["red_270_0"],
+        game.tiles["red_270_2"],
+    ]);
+    game.animations["red_180"] = createAnimation([
+        game.tiles["red_180_0"],
+        game.tiles["red_180_1"],
+        game.tiles["red_180_0"],
+        game.tiles["red_180_2"],
+    ]);
+    game.animations["red_0"] = createAnimation([
+        game.tiles["red_0_0"],
+        game.tiles["red_0_1"],
+        game.tiles["red_0_0"],
+        game.tiles["red_0_2"],
+    ]);
 }
 
 let tileSet = null;
@@ -375,22 +491,26 @@ function sendMove(move) {
     socket.emit("move", data);
 }
 
-document.addEventListener("keydown", (ev) => {
-    // Game inputs
-    if (ev.key === "ArrowUp") {
+let keyState = {};
+document.addEventListener("keydown", (ev) => { keyState[ev.key] = true; });
+document.addEventListener("keyup", (ev) => {
+    keyState[ev.key] = false;
+    sendMove({x: 0, y: 0});
+});
+setInterval(() => {
+    if (keyState["ArrowUp"]) {
         sendMove({x: 0, y: -1});
-    } else if (ev.key === "ArrowDown") {
+    } else if (keyState["ArrowDown"]) {
         sendMove({x: 0, y: 1});
-    } else if (ev.key === "ArrowLeft") {
+    } else if (keyState["ArrowLeft"]) {
         sendMove({x: -1, y: 0});
-    } else if (ev.key === "ArrowRight") {
+    } else if (keyState["ArrowRight"]) {
         sendMove({x: 1, y: 0});
-    } else if (ev.key === "c") {
+    } else if (keyState["c"]) {
         sendAction()
     }
-});
+}, 1000 / 60);
 
-console.log("Emitting join");
 socket.emit("join", {
     "room": ROOM_ID,
 });

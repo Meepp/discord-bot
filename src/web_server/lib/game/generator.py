@@ -2,6 +2,7 @@ import copy
 import random
 from typing import List, Tuple
 
+from web_server.lib.game.Items import RubbishItem
 from web_server.lib.game.Tiles import *
 from web_server.lib.game.Utils import Point
 
@@ -209,11 +210,11 @@ def upscale_3x(board):
         row = []
         for y in range(size):
             tile = board[x][y]
-            row.append(copy.copy(tile))
-            row.append(copy.copy(tile))
+            row.append(copy.deepcopy(tile))
+            row.append(copy.deepcopy(tile))
             row.append(tile)
-        upscaled_board.append(copy.copy(row))
-        upscaled_board.append(copy.copy(row))
+        upscaled_board.append(copy.deepcopy(row))
+        upscaled_board.append(copy.deepcopy(row))
         upscaled_board.append(row)
 
     # Fill in the correct wall tiles
@@ -279,8 +280,18 @@ def upscale_3x(board):
                         upscaled_board[x][y] = InnerTopRightCornerWall()
                         upscaled_board[x][y-1] = InnerTopRightCornerWall2()
 
-
     return upscaled_board
+
+
+def generate_props(board):
+    size = len(board)
+
+    for x in range(0, size):
+        for y in range(0, size):
+            if isinstance(board[x][y], GroundTile):
+                chance = random.randint(0, 30)
+                if chance == 0:
+                    board[x][y].item = RubbishItem()
 
 
 def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
@@ -298,5 +309,6 @@ def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
     remove_dead_ends(base)
 
     board = upscale_3x(base)
+    generate_props(board)
     room_centers = [center * 3 for center in room_centers]
     return board, room_centers

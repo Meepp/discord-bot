@@ -60,6 +60,7 @@ class LeagueAPI(commands.Cog):
             if response.get("gameLength") > 200:
                 return None
 
+            print(response.get("gameLength"))
             game_id = response.get("gameId")
 			
             for participant in response.get("participants"):

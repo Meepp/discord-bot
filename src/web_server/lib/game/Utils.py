@@ -72,7 +72,7 @@ def direction_to_point(direction: PlayerAngles):
         return Point(-1, 0)
 
 
-def line_of_sight_endpoints(direction: PlayerAngles, distance=7):
+def line_of_sight_endpoints(direction: PlayerAngles, distance=12):
     l = []
     for i in range(distance * 2 + 1):
         if direction == PlayerAngles.UP:

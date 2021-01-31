@@ -44,6 +44,7 @@ def straight_flush(cards):
         if len(suit_cards) >= 5:
             index = -1  # To get highest possible straight flush go from highest to lowest cards
             sorted_cards = sorted(suit_cards, key=lambda c: c.rank.value, reverse=False)
+
             in_row = [sorted_cards[index]]
             while len(in_row) < 5:
                 try:
