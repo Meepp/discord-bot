@@ -301,7 +301,7 @@ def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
     if generator_size % 2 == 0:
         raise ValueError("Room size cannot be an even number.")
 
-    base = [[UnknownTile() for i in range(generator_size)] for j in range(generator_size)]
+    base = [[UnknownTile() for _ in range(generator_size)] for _ in range(generator_size)]
 
     room_centers = room_generator(base, generator_size, attempts=30)
     maze_generator(base)

@@ -16,7 +16,7 @@ class PlayerClass:
         self.position = Point(1, 1)
         self.move_suggestion = None
 
-        self.movement_cooldown = 10  # Ticks
+        self.movement_cooldown = 8  # Ticks
         self.movement_timer = 0
         self.is_moving = False
 

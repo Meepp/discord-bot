@@ -200,6 +200,23 @@ function directionToVector(direction, number) {
     }
 }
 
+function renderCooldowns() {
+    const cooldown = game.state.player_data.cooldown_timer / game.state.player_data.cooldown;
+    context.lineWidth = 20;
+    context.strokeStyle = "#418eb0";
+    context.beginPath();
+    context.arc(75, canvas.height - 75, 50, 0, 2 * Math.PI);
+    context.stroke();
+
+    context.lineWidth = 18;
+    context.strokeStyle = "#3f3656";
+    context.beginPath();
+    context.arc(75, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
+    context.stroke();
+
+    console.log("Added stroke", cooldown);
+}
+
 // Game rendering stuff
 function render() {
     // Resizing the canvas should overwrite the width and height variables
@@ -261,7 +278,8 @@ function render() {
         context.drawImage(sprite, x, y);
     });
 
-    renderMinimap()
+    renderMinimap();
+    renderCooldowns();
 }
 
 let game = new HallwayHunters();
