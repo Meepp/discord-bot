@@ -8,6 +8,10 @@ from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, l
     point_interpolator
 from web_server.lib.game.exceptions import InvalidAction
 
+DEMOLISHER_COOLDOWN = 30
+SPY_COOLDOWN = 30
+SCOUT_COOLDOWN = 30
+MRMOLE_COOLDOWN = 10
 
 class PlayerClass:
     def __init__(self, profile: Profile, socket_id, game):
@@ -36,7 +40,7 @@ class PlayerClass:
     def ability(self):
         if self.cooldown_timer != 0:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
-        self.cooldown_timer = self.ability_cooldown
+
 
     def tick(self):
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
@@ -159,11 +163,12 @@ class PlayerClass:
 
 
 class Demolisher(PlayerClass):
+
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
         self.name = self.__class__.__name__
-        self.ability_cooldown = self.game.tick_rate * 30
+        self.ability_cooldown = self.game.tick_rate * DEMOLISHER_COOLDOWN
 
     def ability(self):
         super().ability()
@@ -194,12 +199,13 @@ class Demolisher(PlayerClass):
         self.cooldown_timer = self.ability_cooldown
 
 
+
 class Spy(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
         self.name = self.__class__.__name__
 
-        self.ability_cooldown = 30
+        self.ability_cooldown = SPY_COOLDOWN
 
     def ability(self):
         super().ability()
@@ -210,7 +216,7 @@ class Scout(PlayerClass):
         super().__init__(profile, socket_id, game)
 
         self.name = self.__class__.__name__
-        self.ability_cooldown = 30
+        self.ability_cooldown = SPY_COOLDOWN
 
     def ability(self):
         super().ability()
@@ -221,7 +227,7 @@ class MrMole(PlayerClass):
         super().__init__(profile, socket_id, game)
 
         self.name = self.__class__.__name__
-        self.ability_cooldown = self.game.tick_rate * 10
+        self.ability_cooldown = self.game.tick_rate * MRMOLE_COOLDOWN
 
         self.ladders = []
 

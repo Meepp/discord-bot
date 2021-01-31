@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import datetime
 from enum import Enum
+import random
 from typing import List, Optional
 
 from database.models.models import Profile
@@ -41,11 +42,11 @@ class HallwayHunters:
     def start(self):
         self.board, self.spawn_points = generate_board(size=self.size)
 
-        # TODO: Randomize player colour
-
+        color_set = ["blue", "red", "black", "purple", "green"]
+        random.shuffle(color_set)
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
-            player.name = "black"
+            player.name = color_set[i]
 
         self.finished = False
         self.game_lock.acquire()
