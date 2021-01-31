@@ -294,13 +294,6 @@ def generate_props(board):
                     board[x][y].item = RubbishItem()
 
 
-def generate_item(board, color):
-    random_x = random.randint(len(board[0]))
-    random_y = random.randint(len(board))
-    while isinstance(board[random_x][random_y], WallTile):
-        random_x = random.randint(len(board[0]))
-        random_y = random.randint(len(board))
-    board[random_x][random_y] = CollectorItem(color)
 
 
 def generate_items(board, used_colors):
@@ -324,7 +317,6 @@ def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
 
     board = upscale_3x(base)
     generate_props(board)
-    generate_items(board, used_colors)
     room_centers = [center * 3 for center in room_centers]
     print(board)
     return board, room_centers

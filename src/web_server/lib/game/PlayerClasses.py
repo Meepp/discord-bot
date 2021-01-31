@@ -1,9 +1,9 @@
 import copy
-from collections import namedtuple
+import random
 from typing import Optional
 
 from database.models.models import Profile
-from web_server.lib.game.Items import RubbishItem, Item
+from web_server.lib.game.Items import RubbishItem, Item, CollectorItem
 from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile
 from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
     point_interpolator
@@ -13,6 +13,7 @@ DEMOLISHER_COOLDOWN = 30
 SPY_COOLDOWN = 30
 SCOUT_COOLDOWN = 30
 MRMOLE_COOLDOWN = 10
+
 
 class PlayerClass:
     def __init__(self, profile: Profile, socket_id, game):
@@ -35,6 +36,8 @@ class PlayerClass:
         self.item: Optional[Item] = Item()
         self.item.name = "collector_red"
 
+        self.objective: Point = Point(0, 0)
+
         self.visible_tiles = []
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
@@ -44,11 +47,11 @@ class PlayerClass:
 
     def start(self):
         self.visible_tiles = self.compute_line_of_sight()
+        self.generate_item()
 
     def ability(self):
         if self.cooldown_timer != 0:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
-
 
     def tick(self):
         last_position = self.position
@@ -133,6 +136,7 @@ class PlayerClass:
             state.update({
                 "cooldown": self.ability_cooldown,
                 "cooldown_timer": self.cooldown_timer,
+                "objective": self.objective.to_json(),
             })
         return state
 
@@ -173,6 +177,17 @@ class PlayerClass:
     def get_visible_players(self):
         return [player.to_json() for player in self.game.player_list if player.position in self.visible_tiles]
 
+    def generate_item(self):
+        random_x = random.randint(0, len(self.game.board[0]) - 1)
+        random_y = random.randint(0, len(self.game.board) - 1)
+        while isinstance(self.game.board[random_x][random_y], WallTile):
+            random_x = random.randint(0, len(self.game.board[0]) - 1)
+            random_y = random.randint(0, len(self.game.board) - 1)
+
+        self.objective = Point(random_x, random_y)
+
+        self.game.board[random_x][random_y].item = CollectorItem(self.name)
+
 
 class Demolisher(PlayerClass):
 
@@ -211,7 +226,6 @@ class Demolisher(PlayerClass):
         self.cooldown_timer = self.ability_cooldown
 
 
-
 class Spy(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
@@ -234,7 +248,6 @@ class Scout(PlayerClass):
     def ability(self):
         super().ability()
         self.cooldown_timer = self.ability_cooldown
-
 
 
 class MrMole(PlayerClass):

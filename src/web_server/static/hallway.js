@@ -73,17 +73,18 @@ function HallwayHunters() {
             cooldown_timer: 0,
             movement_cooldown: 0,
             movement_timer: 0,
+            objective: {
+                position: {
+                    x: 10,
+                    y: 10,
+                }
+            }
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
         ],
         board: [],
-        objective: {
-            position: {
-                x: 10,
-                y: 10,
-            }
-        }
+
     };
     this.lookup = {};
     this.fadeMessages = [];
@@ -161,7 +162,7 @@ function renderMinimap() {
                 context.fillStyle = "#7d1720";
             }
 
-            if (game.state.objective.position.x === x && game.state.objective.position.y === y) {
+            if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
                 context.fillStyle = "#357d2c";
             }
 
@@ -215,10 +216,9 @@ function renderCooldowns() {
 
     const fontSize = 50;
     context.font = fontSize + "px Arial";
-    context.fillStyle = "#fff";
+    context.fillStyle = "#ffffff";
     const width = context.measureText("C").width;
     context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
-    console.log("Added stroke", cooldown);
 }
 
 // Game rendering stuff
@@ -230,7 +230,7 @@ function render() {
 
     // Clear the canvas and fill with floor tile color.
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(game.tiles["floor"],0, 0, canvas.width, canvas.height);
+    context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
 
     // Compute the offset for all tiles, to center rendering on the player.
     const S = (TILE_SIZE + TILE_PADDING);
@@ -258,10 +258,10 @@ function render() {
             // Draw item on top of tile if there is an item on this tile.
             if (game.state.board[x][y].item !== null) {
                 context.drawImage(
-                game.tiles[game.state.board[x][y].item.name],
-                x * S + xOffset,
-                y * S + yOffset
-            );
+                    game.tiles[game.state.board[x][y].item.name],
+                    x * S + xOffset,
+                    y * S + yOffset
+                );
             }
 
             if (game.lookup[x] === undefined || !game.lookup[x][y]) {
@@ -280,7 +280,7 @@ function render() {
 
         context.drawImage(sprite, x, y);
         if (player.item !== null) {
-            context.drawImage(game.tiles[player.item.name], x, y - S/2 - 7);
+            context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
         }
     });
 
@@ -308,7 +308,7 @@ function split_sheet() {
     console.log(this.width, this.height, canvas);
     let context = canvas.getContext("2d");
 
-    context.clearRect(0,0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
     context.webkitImageSmoothingEnabled = false;
     context.mozImageSmoothingEnabled = false;
     context.imageSmoothingEnabled = false;
@@ -318,50 +318,50 @@ function split_sheet() {
 
     const S = TILE_SIZE;
 
-    game.tiles["edge_b"]        = context.getImageData(6 * S, 1 * S, S, S);
-    game.tiles["edge_b_top"]    = context.getImageData(6 * S, 0 * S, S, S);
-    game.tiles["edge_b_alt1"]        = context.getImageData(8 * S, 5 * S, S, S);
-    game.tiles["edge_b_alt1_top"]    = context.getImageData(8 * S, 4 * S, S, S);
-    game.tiles["edge_b_alt2"]        = context.getImageData(9 * S, 5 * S, S, S);
-    game.tiles["edge_b_alt2_top"]    = context.getImageData(9 * S, 4 * S, S, S);
-    game.tiles["edge_b_alt3"]        = context.getImageData(5 * S, 4 * S, S, S);
+    game.tiles["edge_b"] = context.getImageData(6 * S, 1 * S, S, S);
+    game.tiles["edge_b_top"] = context.getImageData(6 * S, 0 * S, S, S);
+    game.tiles["edge_b_alt1"] = context.getImageData(8 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt1_top"] = context.getImageData(8 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt2"] = context.getImageData(9 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt2_top"] = context.getImageData(9 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt3"] = context.getImageData(5 * S, 4 * S, S, S);
 
-    game.tiles["corner_br"]     = context.getImageData(9 * S, 3 * S, S, S);
+    game.tiles["corner_br"] = context.getImageData(9 * S, 3 * S, S, S);
     game.tiles["corner_br_top"] = context.getImageData(9 * S, 2 * S, S, S);
 
-    game.tiles["corner_bl"]     = context.getImageData(8 * S, 3 * S, S, S);
+    game.tiles["corner_bl"] = context.getImageData(8 * S, 3 * S, S, S);
     game.tiles["corner_bl_top"] = context.getImageData(8 * S, 2 * S, S, S);
 
-    game.tiles["corner_tr"]    = context.getImageData(9 * S, 1 * S, S, S);
+    game.tiles["corner_tr"] = context.getImageData(9 * S, 1 * S, S, S);
     game.tiles["corner_tr_top"] = context.getImageData(9 * S, 0 * S, S, S);
 
-    game.tiles["corner_tl"]    = context.getImageData(8 * S, 1 * S, S, S);
+    game.tiles["corner_tl"] = context.getImageData(8 * S, 1 * S, S, S);
     game.tiles["corner_tl_top"] = context.getImageData(8 * S, 0 * S, S, S);
 
-    game.tiles["inner_corner_br"]     = context.getImageData(7 * S, 3 * S, S, S);
+    game.tiles["inner_corner_br"] = context.getImageData(7 * S, 3 * S, S, S);
     game.tiles["inner_corner_br_top"] = context.getImageData(7 * S, 2 * S, S, S);
 
-    game.tiles["inner_corner_bl"]     = context.getImageData(5 * S, 3 * S, S, S);
+    game.tiles["inner_corner_bl"] = context.getImageData(5 * S, 3 * S, S, S);
     game.tiles["inner_corner_bl_top"] = context.getImageData(5 * S, 2 * S, S, S);
 
-    game.tiles["inner_corner_tr"]     = context.getImageData(7 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tr"] = context.getImageData(7 * S, 1 * S, S, S);
     game.tiles["inner_corner_tr_top"] = context.getImageData(7 * S, 0 * S, S, S);
 
-    game.tiles["inner_corner_tl"]     = context.getImageData(5 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tl"] = context.getImageData(5 * S, 1 * S, S, S);
     game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0 * S, S, S);
 
-    game.tiles["edge_t"]        = context.getImageData(6 * S, 3 * S, S, S);
-    game.tiles["edge_t_alt1"]    = context.getImageData(7 * S, 5 * S, S, S);
+    game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
+    game.tiles["edge_t_alt1"] = context.getImageData(7 * S, 5 * S, S, S);
 
-    game.tiles["edge_l"]    = context.getImageData(7 * S, 2 * S, S, S);
-    game.tiles["edge_l_alt1"]    = context.getImageData(6 * S, 4 * S, S, S);
-    game.tiles["edge_l_alt2"]    = context.getImageData(7 * S, 4 * S, S, S);
+    game.tiles["edge_l"] = context.getImageData(7 * S, 2 * S, S, S);
+    game.tiles["edge_l_alt1"] = context.getImageData(6 * S, 4 * S, S, S);
+    game.tiles["edge_l_alt2"] = context.getImageData(7 * S, 4 * S, S, S);
 
-    game.tiles["edge_r"]    = context.getImageData(5 * S, 2 * S, S, S);
-    game.tiles["void"]      = context.getImageData(1 * S, 1 * S, S, S);
-    game.tiles["edge_t"]    = context.getImageData(6 * S, 3 * S, S, S);
+    game.tiles["edge_r"] = context.getImageData(5 * S, 2 * S, S, S);
+    game.tiles["void"] = context.getImageData(1 * S, 1 * S, S, S);
+    game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
 
-    game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
+    game.tiles["floor"] = context.getImageData(6 * S, 2 * S, S, S);
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
 
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
@@ -369,10 +369,10 @@ function split_sheet() {
 
     ["red", "blue", "green", "purple", "black"].map((color, row) => {
         for (let i = 0; i < 3; i++) {
-            game.tiles[color + "_90_" + i]   = context.getImageData(i * S, (11 + row) * S, S, S);
-            game.tiles[color + "_270_" + i]   = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
-            game.tiles[color + "_180_" + i]   = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
-            game.tiles[color + "_0_" + i]   = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_90_" + i] = context.getImageData(i * S, (11 + row) * S, S, S);
+            game.tiles[color + "_270_" + i] = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_180_" + i] = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_0_" + i] = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
         }
     });
 
@@ -381,7 +381,7 @@ function split_sheet() {
     });
 
     for (let i = 0; i < 4; i++) {
-        game.tiles["rubbish_" + i]   = context.getImageData((i + 15) * S, 7 * S, S, S);
+        game.tiles["rubbish_" + i] = context.getImageData((i + 15) * S, 7 * S, S, S);
     }
 
     for (const [title, data] of Object.entries(game.tiles)) {
@@ -408,6 +408,7 @@ function split_sheet() {
 }
 
 let tileSet = null;
+
 function initialize() {
     /*
      * Preload all images to reduce traffic later.
@@ -491,7 +492,6 @@ socket.on("start", () => {
 });
 
 
-
 function changeSettings() {
     let data = {
         room_id: ROOM_ID,
@@ -509,7 +509,9 @@ function sendMove(move) {
 }
 
 let keyState = {};
-document.addEventListener("keydown", (ev) => { keyState[ev.key] = true; });
+document.addEventListener("keydown", (ev) => {
+    keyState[ev.key] = true;
+});
 document.addEventListener("keyup", (ev) => {
     keyState[ev.key] = false;
     sendMove({x: 0, y: 0});
