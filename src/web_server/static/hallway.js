@@ -361,12 +361,15 @@ function split_sheet() {
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
     game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
 
-    for (let i = 0; i < 3; i++) {
-        game.tiles["red_90_" + i]   = context.getImageData(i * S, 11 * S, S, S);
-        game.tiles["red_270_" + i]   = context.getImageData((i + 3) * S, 11 * S, S, S);
-        game.tiles["red_180_" + i]   = context.getImageData((i + 6) * S, 11 * S, S, S);
-        game.tiles["red_0_" + i]   = context.getImageData((i + 9) * S, 11 * S, S, S);
-    }
+    ["red", "blue", "green", "purple", "black"].map((color, row) => {
+        for (let i = 0; i < 3; i++) {
+            game.tiles[color + "_90_" + i]   = context.getImageData(i * S, (11 + row) * S, S, S);
+            game.tiles[color + "_270_" + i]   = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_180_" + i]   = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_0_" + i]   = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
+        }
+    });
+
 
     for (let i = 0; i < 4; i++) {
         game.tiles["rubbish_" + i]   = context.getImageData((i + 15) * S, 7 * S, S, S);
@@ -382,30 +385,17 @@ function split_sheet() {
         game.tiles[title] = image;
     }
 
-    game.animations["red_90"] = createAnimation([
-        game.tiles["red_90_0"],
-        game.tiles["red_90_1"],
-        game.tiles["red_90_0"],
-        game.tiles["red_90_2"],
-    ]);
-    game.animations["red_270"] = createAnimation([
-        game.tiles["red_270_0"],
-        game.tiles["red_270_1"],
-        game.tiles["red_270_0"],
-        game.tiles["red_270_2"],
-    ]);
-    game.animations["red_180"] = createAnimation([
-        game.tiles["red_180_0"],
-        game.tiles["red_180_1"],
-        game.tiles["red_180_0"],
-        game.tiles["red_180_2"],
-    ]);
-    game.animations["red_0"] = createAnimation([
-        game.tiles["red_0_0"],
-        game.tiles["red_0_1"],
-        game.tiles["red_0_0"],
-        game.tiles["red_0_2"],
-    ]);
+    ["red", "blue", "green", "purple", "black"].forEach(color => {
+        ["0", "90", "180", "270"].forEach(rotation => {
+            game.animations[`${color}_${rotation}`] = createAnimation([
+                game.tiles[`${color}_${rotation}_0`],
+                game.tiles[`${color}_${rotation}_1`],
+                game.tiles[`${color}_${rotation}_0`],
+                game.tiles[`${color}_${rotation}_2`],
+            ]);
+        });
+    });
+
 }
 
 let tileSet = null;

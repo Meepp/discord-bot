@@ -45,7 +45,7 @@ class HallwayHunters:
 
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
-            player.name = "red"
+            player.name = "black"
 
         self.finished = False
         self.game_lock.acquire()
