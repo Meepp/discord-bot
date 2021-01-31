@@ -72,18 +72,17 @@ def direction_to_point(direction: PlayerAngles):
         return Point(-1, 0)
 
 
-def line_of_sight_endpoints(direction: PlayerAngles, distance=12):
-    l = []
-    for i in range(distance * 2 + 1):
-        if direction == PlayerAngles.UP:
-            l.append(Point(i - distance, -distance))
-        if direction == PlayerAngles.DOWN:
-            l.append(Point(i - distance, distance))
-        if direction == PlayerAngles.LEFT:
-            l.append(Point(-distance, i - distance))
-        if direction == PlayerAngles.RIGHT:
-            l.append(Point(distance, i - distance))
-    return l
+LOS_CACHE = {}
+
+
+def line_of_sight_endpoints(direction: PlayerAngles, distance=9):
+    if LOS_CACHE == {}:
+        LOS_CACHE[PlayerAngles.UP] = [Point(i - distance, -distance) for i in range(distance * 2 + 1)]
+        LOS_CACHE[PlayerAngles.DOWN] = [Point(i - distance, distance) for i in range(distance * 2 + 1)]
+        LOS_CACHE[PlayerAngles.LEFT] = [Point(-distance, i - distance) for i in range(distance * 2 + 1)]
+        LOS_CACHE[PlayerAngles.RIGHT] = [Point(distance, i - distance) for i in range(distance * 2 + 1)]
+
+    return LOS_CACHE[direction]
 
 
 def point_interpolator(point1: Point, point2: Point, n_steps=20):

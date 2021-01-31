@@ -46,6 +46,7 @@ class HallwayHunters:
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
             player.name = "black"
+            player.start()
 
         self.finished = False
         self.game_lock.acquire()
@@ -83,6 +84,7 @@ class HallwayHunters:
             player.tick()
 
         self.update_players()
+
         # After having sent the update to all players, empty board changes list
         self.board_changes = []
 

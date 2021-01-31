@@ -33,12 +33,16 @@ class PlayerClass:
 
         self.socket = socket_id
 
+    def start(self):
+        self.visible_tiles = self.compute_line_of_sight()
+
     def ability(self):
         if self.cooldown_timer != 0:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
         self.cooldown_timer = self.ability_cooldown
 
     def tick(self):
+        last_position = self.position
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.movement_timer = max(0, self.movement_timer - 1)
         if self.movement_timer == 0:
@@ -47,7 +51,9 @@ class PlayerClass:
             except:
                 pass
 
-        self.visible_tiles = self.compute_line_of_sight()
+        # Dont recompute if the player didnt move
+        if self.position != last_position:
+            self.visible_tiles = self.compute_line_of_sight()
 
         self.ready = False
 
