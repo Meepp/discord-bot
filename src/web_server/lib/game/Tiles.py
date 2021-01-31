@@ -13,6 +13,7 @@ class Tile:
         self.image = "center"
         self.movement_allowed = True
         self.opaque = True
+        self.do_animation = False
         self.item: Optional[Item] = None
 
     def to_json(self):
@@ -20,6 +21,7 @@ class Tile:
             "image": self.image,
             "movement_allowed": self.movement_allowed,
             "opaque": self.opaque,
+            "do_animation": self.do_animation,
             "item": self.item.to_json() if self.item else None,
         }
 
@@ -44,6 +46,8 @@ class GroundTile(Tile):
         return other == " "
 
     __repr__ = __str__
+
+
 
 
 class UnknownTile(Tile):
@@ -115,6 +119,15 @@ class BottomLeftCornerWall(WallTile):
     def __init__(self):
         super().__init__()
         self.image = "corner_bl"
+
+
+class ChestTile(Tile):
+    def __init__(self):
+        super().__init__()
+        self.image = "chest"
+
+        self.movement_allowed = False
+        self.opaque = False
 
 
 class BottomLeftCornerWall2(WallTile):

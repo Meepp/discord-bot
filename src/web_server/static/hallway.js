@@ -14,7 +14,7 @@ socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
 
-$('#messageform').submit(function (e) {
+$('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
     data = {
@@ -73,6 +73,7 @@ function HallwayHunters() {
             cooldown_timer: 0,
             movement_cooldown: 0,
             movement_timer: 0,
+
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
@@ -90,7 +91,7 @@ function HallwayHunters() {
     this.tiles = {};
     this.animations = {};
 
-    this.setState = function (data) {
+    this.setState = function(data) {
         this.state = {
             ...this.state,
             ...data
@@ -107,7 +108,7 @@ function HallwayHunters() {
     };
 
     this.MESSAGE_HEIGHT = 40;
-    this.drawFadeMessages = function () {
+    this.drawFadeMessages = function() {
         let origHeight = 100;
         if (this.fadeMessages.length > 0) {
             if (this.fadeMessages[0].ticks < 0) {
@@ -170,18 +171,15 @@ function renderMinimap() {
     }
 }
 
-function getAnimationFrame(player) {
-    const animationName = player.name + "_" + player.direction;
-    const animation = game.animations[animationName];
-
-    if (!player.is_moving) {
-        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-        animation.currentSprite = 0;
-    }
-
-    animation.frameNumber++;
-    if (animation.frameNumber % FRAMES_PER_ANIMATION === 0) {
-        animation.currentSprite = (animation.currentSprite + 1) % animation.sprites.length;
+function getAnimationFrame(animation) {
+    // If the animation is active, or the animation is not yet finished and it has to finish.
+    if (animation.active || (animation.finishAnimation && animation.frameNumber === 0)) {
+        // Increment amount of frames waiting for next sprite
+        animation.frameNumber = (animation.frameNumber + 1) % FRAMES_PER_ANIMATION;
+        if (animation.frameNumber === 0) {
+            // Increment sprite
+            animation.currentSprite = (animation.currentSprite + 1) % animation.sprites.length;
+        }
     }
     return animation.sprites[animation.currentSprite];
 }
@@ -216,6 +214,8 @@ function renderCooldowns() {
     const fontSize = 50;
     context.font = fontSize + "px Arial";
     context.fillStyle = "#fff";
+    if (keyState["c"])
+        context.fillStyle = "#AAA";
     const width = context.measureText("C").width;
     context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
     console.log("Added stroke", cooldown);
@@ -230,7 +230,7 @@ function render() {
 
     // Clear the canvas and fill with floor tile color.
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(game.tiles["floor"],0, 0, canvas.width, canvas.height);
+    context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
 
     // Compute the offset for all tiles, to center rendering on the player.
     const S = (TILE_SIZE + TILE_PADDING);
@@ -249,8 +249,16 @@ function render() {
             if (y * S + yOffset + TILE_SIZE < 0) continue;
             if (y * S + yOffset > canvas.height) break;
 
+            const animation = game.animations[game.state.board[x][y].image];
+            let sprite;
+            if (animation === null) {
+                sprite = game.tiles[game.state.board[x][y].image];
+            } else {
+                sprite = getAnimationFrame(animation);
+            }
+
             context.drawImage(
-                game.tiles[game.state.board[x][y].image],
+                sprite,
                 x * S + xOffset,
                 y * S + yOffset
             );
@@ -258,10 +266,10 @@ function render() {
             // Draw item on top of tile if there is an item on this tile.
             if (game.state.board[x][y].item !== null) {
                 context.drawImage(
-                game.tiles[game.state.board[x][y].item.name],
-                x * S + xOffset,
-                y * S + yOffset
-            );
+                    game.tiles[game.state.board[x][y].item.name],
+                    x * S + xOffset,
+                    y * S + yOffset
+                );
             }
 
             if (game.lookup[x] === undefined || !game.lookup[x][y]) {
@@ -276,11 +284,21 @@ function render() {
         const x = player.position.x * S + xOffset + Math.round(vector.x);
         const y = player.position.y * S + yOffset + Math.round(vector.y);
 
-        const sprite = getAnimationFrame(player);
+        // If the player is not moving, reset its animation frame to beginning.
+        const animationName = player.name + "_" + player.direction;
+        const animation = game.animations[animationName];
+
+        if (!player.is_moving) {
+            // Set player frame to this when not moving
+            animation.active = false;
+            animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+            animation.currentSprite = 0;
+        }
+        const sprite = getAnimationFrame(animation);
 
         context.drawImage(sprite, x, y);
         if (player.item !== null) {
-            context.drawImage(game.tiles[player.item.name], x, y - S/2 - 7);
+            context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
         }
     });
 
@@ -296,6 +314,8 @@ function createAnimation(sprites) {
         sprites: sprites,
         frameNumber: 0,
         currentSprite: 0,
+        active: false,
+        finishAnimation: false,
     };
 }
 
@@ -308,7 +328,7 @@ function split_sheet() {
     console.log(this.width, this.height, canvas);
     let context = canvas.getContext("2d");
 
-    context.clearRect(0,0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
     context.webkitImageSmoothingEnabled = false;
     context.mozImageSmoothingEnabled = false;
     context.imageSmoothingEnabled = false;
@@ -318,50 +338,50 @@ function split_sheet() {
 
     const S = TILE_SIZE;
 
-    game.tiles["edge_b"]        = context.getImageData(6 * S, 1 * S, S, S);
-    game.tiles["edge_b_top"]    = context.getImageData(6 * S, 0 * S, S, S);
-    game.tiles["edge_b_alt1"]        = context.getImageData(8 * S, 5 * S, S, S);
-    game.tiles["edge_b_alt1_top"]    = context.getImageData(8 * S, 4 * S, S, S);
-    game.tiles["edge_b_alt2"]        = context.getImageData(9 * S, 5 * S, S, S);
-    game.tiles["edge_b_alt2_top"]    = context.getImageData(9 * S, 4 * S, S, S);
-    game.tiles["edge_b_alt3"]        = context.getImageData(5 * S, 4 * S, S, S);
+    game.tiles["edge_b"] = context.getImageData(6 * S, 1 * S, S, S);
+    game.tiles["edge_b_top"] = context.getImageData(6 * S, 0 * S, S, S);
+    game.tiles["edge_b_alt1"] = context.getImageData(8 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt1_top"] = context.getImageData(8 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt2"] = context.getImageData(9 * S, 5 * S, S, S);
+    game.tiles["edge_b_alt2_top"] = context.getImageData(9 * S, 4 * S, S, S);
+    game.tiles["edge_b_alt3"] = context.getImageData(5 * S, 4 * S, S, S);
 
-    game.tiles["corner_br"]     = context.getImageData(9 * S, 3 * S, S, S);
+    game.tiles["corner_br"] = context.getImageData(9 * S, 3 * S, S, S);
     game.tiles["corner_br_top"] = context.getImageData(9 * S, 2 * S, S, S);
 
-    game.tiles["corner_bl"]     = context.getImageData(8 * S, 3 * S, S, S);
+    game.tiles["corner_bl"] = context.getImageData(8 * S, 3 * S, S, S);
     game.tiles["corner_bl_top"] = context.getImageData(8 * S, 2 * S, S, S);
 
-    game.tiles["corner_tr"]    = context.getImageData(9 * S, 1 * S, S, S);
+    game.tiles["corner_tr"] = context.getImageData(9 * S, 1 * S, S, S);
     game.tiles["corner_tr_top"] = context.getImageData(9 * S, 0 * S, S, S);
 
-    game.tiles["corner_tl"]    = context.getImageData(8 * S, 1 * S, S, S);
+    game.tiles["corner_tl"] = context.getImageData(8 * S, 1 * S, S, S);
     game.tiles["corner_tl_top"] = context.getImageData(8 * S, 0 * S, S, S);
 
-    game.tiles["inner_corner_br"]     = context.getImageData(7 * S, 3 * S, S, S);
+    game.tiles["inner_corner_br"] = context.getImageData(7 * S, 3 * S, S, S);
     game.tiles["inner_corner_br_top"] = context.getImageData(7 * S, 2 * S, S, S);
 
-    game.tiles["inner_corner_bl"]     = context.getImageData(5 * S, 3 * S, S, S);
+    game.tiles["inner_corner_bl"] = context.getImageData(5 * S, 3 * S, S, S);
     game.tiles["inner_corner_bl_top"] = context.getImageData(5 * S, 2 * S, S, S);
 
-    game.tiles["inner_corner_tr"]     = context.getImageData(7 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tr"] = context.getImageData(7 * S, 1 * S, S, S);
     game.tiles["inner_corner_tr_top"] = context.getImageData(7 * S, 0 * S, S, S);
 
-    game.tiles["inner_corner_tl"]     = context.getImageData(5 * S, 1 * S, S, S);
+    game.tiles["inner_corner_tl"] = context.getImageData(5 * S, 1 * S, S, S);
     game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0 * S, S, S);
 
-    game.tiles["edge_t"]        = context.getImageData(6 * S, 3 * S, S, S);
-    game.tiles["edge_t_alt1"]    = context.getImageData(7 * S, 5 * S, S, S);
+    game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
+    game.tiles["edge_t_alt1"] = context.getImageData(7 * S, 5 * S, S, S);
 
-    game.tiles["edge_l"]    = context.getImageData(7 * S, 2 * S, S, S);
-    game.tiles["edge_l_alt1"]    = context.getImageData(6 * S, 4 * S, S, S);
-    game.tiles["edge_l_alt2"]    = context.getImageData(7 * S, 4 * S, S, S);
+    game.tiles["edge_l"] = context.getImageData(7 * S, 2 * S, S, S);
+    game.tiles["edge_l_alt1"] = context.getImageData(6 * S, 4 * S, S, S);
+    game.tiles["edge_l_alt2"] = context.getImageData(7 * S, 4 * S, S, S);
 
-    game.tiles["edge_r"]    = context.getImageData(5 * S, 2 * S, S, S);
-    game.tiles["void"]      = context.getImageData(1 * S, 1 * S, S, S);
-    game.tiles["edge_t"]    = context.getImageData(6 * S, 3 * S, S, S);
+    game.tiles["edge_r"] = context.getImageData(5 * S, 2 * S, S, S);
+    game.tiles["void"] = context.getImageData(1 * S, 1 * S, S, S);
+    game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
 
-    game.tiles["floor"]      = context.getImageData(6 * S, 2 * S, S, S);
+    game.tiles["floor"] = context.getImageData(6 * S, 2 * S, S, S);
     game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
 
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
@@ -369,10 +389,13 @@ function split_sheet() {
 
     ["red", "blue", "green", "purple", "black"].map((color, row) => {
         for (let i = 0; i < 3; i++) {
-            game.tiles[color + "_90_" + i]   = context.getImageData(i * S, (11 + row) * S, S, S);
-            game.tiles[color + "_270_" + i]   = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
-            game.tiles[color + "_180_" + i]   = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
-            game.tiles[color + "_0_" + i]   = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_90_" + i] = context.getImageData(i * S, (11 + row) * S, S, S);
+            game.tiles[color + "_270_" + i] = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_180_" + i] = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
+            game.tiles[color + "_0_" + i] = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
+        }
+        for (let i = 0; i < 6; i++) {
+            game.tiles["chest_" + color + "_" + i] = context.getImageData((i + 12) * S, (11 + row) * S, S, S);
         }
     });
 
@@ -381,7 +404,7 @@ function split_sheet() {
     });
 
     for (let i = 0; i < 4; i++) {
-        game.tiles["rubbish_" + i]   = context.getImageData((i + 15) * S, 7 * S, S, S);
+        game.tiles["rubbish_" + i] = context.getImageData((i + 15) * S, 7 * S, S, S);
     }
 
     for (const [title, data] of Object.entries(game.tiles)) {
@@ -403,11 +426,30 @@ function split_sheet() {
                 game.tiles[`${color}_${rotation}_2`],
             ]);
         });
+
+        game.animations[`chest_${color}`] = createAnimation([
+            game.tiles[`chest_${color}_0`],
+            game.tiles[`chest_${color}_1`],
+            game.tiles[`chest_${color}_2`],
+            game.tiles[`chest_${color}_3`],
+            game.tiles[`chest_${color}_4`],
+            game.tiles[`chest_${color}_5`],
+            game.tiles[`chest_${color}_5`],
+            game.tiles[`chest_${color}_5`],
+            game.tiles[`chest_${color}_4`],
+            game.tiles[`chest_${color}_3`],
+            game.tiles[`chest_${color}_2`],
+            game.tiles[`chest_${color}_1`],
+            game.tiles[`chest_${color}_0`]
+        ]);
+        // Always close the chest.
+        game.animations[`chest_${color}`].finishAnimation = true;
     });
 
 }
 
 let tileSet = null;
+
 function initialize() {
     /*
      * Preload all images to reduce traffic later.
@@ -491,7 +533,6 @@ socket.on("start", () => {
 });
 
 
-
 function changeSettings() {
     let data = {
         room_id: ROOM_ID,
@@ -509,7 +550,9 @@ function sendMove(move) {
 }
 
 let keyState = {};
-document.addEventListener("keydown", (ev) => { keyState[ev.key] = true; });
+document.addEventListener("keydown", (ev) => {
+    keyState[ev.key] = true;
+});
 document.addEventListener("keyup", (ev) => {
     keyState[ev.key] = false;
     sendMove({x: 0, y: 0});

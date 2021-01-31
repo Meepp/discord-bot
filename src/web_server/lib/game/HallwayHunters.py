@@ -8,7 +8,7 @@ from typing import List, Optional
 from database.models.models import Profile
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
-from web_server.lib.game.Tiles import UnknownTile, Tile
+from web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
 from web_server.lib.game.Utils import Point
 from web_server.lib.game.generator import generate_board
 
@@ -50,9 +50,14 @@ class HallwayHunters:
         selected_colors = random.sample(color_set, len(self.player_list))
 
         for i, player in enumerate(self.player_list):
-            player.change_position(self.spawn_points[i % len(self.spawn_points)])
+            spawn_point = self.spawn_points[i % len(self.spawn_points)]
+            player.change_position(spawn_point)
             player.name = selected_colors[i]
             player.start()
+
+            chest = ChestTile()
+            self.board[spawn_point.x][spawn_point.y + 1] = chest
+            chest.image = "chest_%s" % selected_colors[i]
 
         self.finished = False
         self.game_lock.acquire()
@@ -114,11 +119,11 @@ class HallwayHunters:
     def export_board(self, player: PlayerClass, reduced=False):
         tiles = player.get_visible_tiles()
         data = {
-                "started": self.phase == Phases.STARTED,
-                "player_data": player.to_json(),
-                "players": player.get_visible_players(),
-                "visible_tiles": tiles,
-            }
+            "started": self.phase == Phases.STARTED,
+            "player_data": player.to_json(),
+            "players": player.get_visible_players(),
+            "visible_tiles": tiles,
+        }
         if not reduced:
             data.update({
                 "board": self.initial_board_json,
