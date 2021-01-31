@@ -44,11 +44,10 @@ class HallwayHunters:
         self.board_changes = []
 
     def start(self):
-        self.board, self.spawn_points = generate_board(size=self.size)
-
         color_set = ["blue", "red", "black", "purple", "green"]
         selected_colors = random.sample(color_set, len(self.player_list))
 
+        self.board, self.spawn_points = generate_board(self.size, selected_colors)
         for i, player in enumerate(self.player_list):
             spawn_point = self.spawn_points[i % len(self.spawn_points)]
             player.change_position(spawn_point)

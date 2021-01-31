@@ -73,18 +73,18 @@ function HallwayHunters() {
             cooldown_timer: 0,
             movement_cooldown: 0,
             movement_timer: 0,
-
+            objective: {
+                position: {
+                    x: 10,
+                    y: 10,
+                }
+            }
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
         ],
         board: [],
-        objective: {
-            position: {
-                x: 10,
-                y: 10,
-            }
-        }
+
     };
     this.lookup = {};
     this.fadeMessages = [];
@@ -162,7 +162,7 @@ function renderMinimap() {
                 context.fillStyle = "#7d1720";
             }
 
-            if (game.state.objective.position.x === x && game.state.objective.position.y === y) {
+            if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
                 context.fillStyle = "#357d2c";
             }
 
@@ -218,7 +218,6 @@ function renderCooldowns() {
         context.fillStyle = "#AAA";
     const width = context.measureText("C").width;
     context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
-    console.log("Added stroke", cooldown);
 }
 
 // Game rendering stuff

@@ -21,3 +21,9 @@ class RubbishItem(Item):
         super().__init__()
         chance = random.randint(0, 3)
         self.name = "rubbish_" + str(chance)
+
+class CollectorItem(Item):
+    def __init__(self, color):
+        super().__init__()
+        self.name = f"collector_{color}"
+

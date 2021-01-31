@@ -2,7 +2,7 @@ import copy
 import random
 from typing import List, Tuple
 
-from web_server.lib.game.Items import RubbishItem
+from web_server.lib.game.Items import RubbishItem, CollectorItem
 from web_server.lib.game.Tiles import *
 from web_server.lib.game.Utils import Point
 
@@ -39,7 +39,7 @@ def room_generator(board: List[List[Tile]], size, attempts=50):
         y = random.randint(0, (size - height - 2) // 2) * 2 + 1
 
         if room_fits(x, y, width, height):
-            rooms.append(Point(x + width//2, y + height//2))
+            rooms.append(Point(x + width // 2, y + height // 2))
             carve_room(x, y, width, height)
 
     return rooms
@@ -229,29 +229,29 @@ def upscale_3x(board):
                 if down:
                     if left:
                         upscaled_board[x][y] = BottomLeftCornerWall()
-                        upscaled_board[x][y-1] = BottomLeftCornerWall2()
+                        upscaled_board[x][y - 1] = BottomLeftCornerWall2()
                     elif right:
                         upscaled_board[x][y] = BottomRightCornerWall()
-                        upscaled_board[x][y-1] = BottomRightCornerWall2()
+                        upscaled_board[x][y - 1] = BottomRightCornerWall2()
                     else:
                         upscaled_board[x][y] = BottomWall()
-                        upscaled_board[x][y-1] = BottomWall2()
+                        upscaled_board[x][y - 1] = BottomWall2()
                         chance = random.randint(0, 20)
                         if chance == 1:
                             upscaled_board[x][y].image = "edge_b_alt1"
-                            upscaled_board[x][y-1].image = "edge_b_alt1_top"
+                            upscaled_board[x][y - 1].image = "edge_b_alt1_top"
                         if chance == 2:
                             upscaled_board[x][y].image = "edge_b_alt2"
-                            upscaled_board[x][y-1].image = "edge_b_alt2_top"
+                            upscaled_board[x][y - 1].image = "edge_b_alt2_top"
                         if chance == 3:
                             upscaled_board[x][y].image = "edge_b_alt3"
                 elif up:
                     if left:
                         upscaled_board[x][y] = TopLeftCornerWall2()
-                        upscaled_board[x][y+1] = TopLeftCornerWall()
+                        upscaled_board[x][y + 1] = TopLeftCornerWall()
                     elif right:
                         upscaled_board[x][y] = TopRightCornerWall2()
-                        upscaled_board[x][y+1] = TopRightCornerWall()
+                        upscaled_board[x][y + 1] = TopRightCornerWall()
                     else:
                         upscaled_board[x][y] = TopWall()
                         chance = random.randint(0, 10)
@@ -269,16 +269,16 @@ def upscale_3x(board):
                     tr = upscaled_board[x + 1][y - 1].movement_allowed
                     if tr:
                         upscaled_board[x][y] = InnerBottomLeftCornerWall()
-                        upscaled_board[x][y-1] = InnerBottomLeftCornerWall2()
+                        upscaled_board[x][y - 1] = InnerBottomLeftCornerWall2()
                     if br:
                         upscaled_board[x][y] = InnerTopLeftCornerWall()
-                        upscaled_board[x][y-1] = InnerTopLeftCornerWall2()
+                        upscaled_board[x][y - 1] = InnerTopLeftCornerWall2()
                     if tl:
                         upscaled_board[x][y] = InnerBottomRightCornerWall()
-                        upscaled_board[x][y-1] = InnerBottomRightCornerWall2()
+                        upscaled_board[x][y - 1] = InnerBottomRightCornerWall2()
                     if bl:
                         upscaled_board[x][y] = InnerTopRightCornerWall()
-                        upscaled_board[x][y-1] = InnerTopRightCornerWall2()
+                        upscaled_board[x][y - 1] = InnerTopRightCornerWall2()
 
     return upscaled_board
 
@@ -294,7 +294,14 @@ def generate_props(board):
                     board[x][y].item = RubbishItem()
 
 
-def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
+
+
+def generate_items(board, used_colors):
+    for color in used_colors:
+        generate_item(board, color)
+
+
+def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
     if size % 3 != 0:
         raise ValueError("Room size must be a multiple of 3.")
     generator_size = size // 3
@@ -311,4 +318,5 @@ def generate_board(size) -> Tuple[List[List[Tile]], List[Point]]:
     board = upscale_3x(base)
     generate_props(board)
     room_centers = [center * 3 for center in room_centers]
+    print(board)
     return board, room_centers
