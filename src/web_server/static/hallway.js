@@ -248,11 +248,13 @@ function render() {
             if (y * S + yOffset + TILE_SIZE < 0) continue;
             if (y * S + yOffset > canvas.height) break;
 
-            const animation = game.animations[game.state.board[x][y].image];
+            const tile = game.state.board[x][y];
+            const animation = game.animations[tile.image];
             let sprite;
-            if (animation === null) {
-                sprite = game.tiles[game.state.board[x][y].image];
+            if (animation === undefined) {
+                sprite = game.tiles[tile.image];
             } else {
+                animation.active = tile.do_animation;
                 sprite = getAnimationFrame(animation);
             }
 
@@ -287,9 +289,10 @@ function render() {
         const animationName = player.name + "_" + player.direction;
         const animation = game.animations[animationName];
 
+        // Player animation is bound to moving
+        animation.active = player.is_moving;
         if (!player.is_moving) {
             // Set player frame to this when not moving
-            animation.active = false;
             animation.frameNumber = FRAMES_PER_ANIMATION - 2;
             animation.currentSprite = 0;
         }

@@ -294,13 +294,6 @@ def generate_props(board):
                     board[x][y].item = RubbishItem()
 
 
-
-
-def generate_items(board, used_colors):
-    for color in used_colors:
-        generate_item(board, color)
-
-
 def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
     if size % 3 != 0:
         raise ValueError("Room size must be a multiple of 3.")
@@ -318,5 +311,4 @@ def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
     board = upscale_3x(base)
     generate_props(board)
     room_centers = [center * 3 for center in room_centers]
-    print(board)
     return board, room_centers

@@ -4,7 +4,7 @@ from typing import Optional
 
 from database.models.models import Profile
 from web_server.lib.game.Items import RubbishItem, Item, CollectorItem
-from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile
+from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile
 from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
     point_interpolator
 from web_server.lib.game.exceptions import InvalidAction
@@ -95,6 +95,11 @@ class PlayerClass:
             raise InvalidAction("You cannot move out of bounds.")
 
         tile = self.game.board[new_position.x][new_position.y]
+
+        # TODO: Stop animation at some point
+        if isinstance(tile, ChestTile):
+            tile.signal_animation = True
+
         if not tile.movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
 

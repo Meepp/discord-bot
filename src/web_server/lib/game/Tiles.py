@@ -13,7 +13,7 @@ class Tile:
         self.image = "center"
         self.movement_allowed = True
         self.opaque = True
-        self.do_animation = False
+        self.signal_animation = False
         self.item: Optional[Item] = None
 
     def to_json(self):
@@ -21,7 +21,7 @@ class Tile:
             "image": self.image,
             "movement_allowed": self.movement_allowed,
             "opaque": self.opaque,
-            "do_animation": self.do_animation,
+            "do_animation": self.signal_animation,
             "item": self.item.to_json() if self.item else None,
         }
 
