@@ -209,6 +209,7 @@ class Spy(PlayerClass):
 
     def ability(self):
         super().ability()
+        self.cooldown_timer = self.ability_cooldown
 
 
 class Scout(PlayerClass):
@@ -220,6 +221,8 @@ class Scout(PlayerClass):
 
     def ability(self):
         super().ability()
+        self.cooldown_timer = self.ability_cooldown
+
 
 
 class MrMole(PlayerClass):
@@ -249,3 +252,4 @@ class MrMole(PlayerClass):
         print("Created ladder", len(self.ladders))
 
         self.game.change_tile(position, ladder)
+        self.cooldown_timer = self.ability_cooldown

@@ -9,6 +9,7 @@ from database.models.models import Profile
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
 from web_server.lib.game.Tiles import UnknownTile, Tile
+from web_server.lib.game.Utils import Point
 from web_server.lib.game.generator import generate_board
 
 
@@ -24,8 +25,8 @@ class HallwayHunters:
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
         self.size = 93
-
-        self.board, self.spawn_points = generate_board(size=self.size)
+        self.board: List[List[Tile]] = []
+        self.spawn_points: List[Point] = []
 
         # Generate this to send to every player initially
         self.initial_board_json = [[UnknownTile().to_json() for _ in range(self.size)] for _ in range(self.size)]
@@ -40,13 +41,14 @@ class HallwayHunters:
         self.board_changes = []
 
     def start(self):
-        self.board, self.spawn_points = generate_board(size=self.size)
 
         color_set = ["blue", "red", "black", "purple", "green"]
-        random.shuffle(color_set)
+        selected_colors = random.sample(color_set, len(self.player_list))
+        self.board, self.spawn_points = generate_board(self.size, selected_colors)
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
-            player.name = color_set[i]
+            player.name = selected_colors[i]
+            player.start()
 
         self.finished = False
         self.game_lock.acquire()
@@ -107,11 +109,11 @@ class HallwayHunters:
     def export_board(self, player: PlayerClass, reduced=False):
         tiles = player.get_visible_tiles()
         data = {
-                "started": self.phase == Phases.STARTED,
-                "player_data": player.to_json(),
-                "players": player.get_visible_players(),
-                "visible_tiles": tiles,
-            }
+            "started": self.phase == Phases.STARTED,
+            "player_data": player.to_json(),
+            "players": player.get_visible_players(),
+            "visible_tiles": tiles,
+        }
         if not reduced:
             data.update({
                 "board": self.initial_board_json,
