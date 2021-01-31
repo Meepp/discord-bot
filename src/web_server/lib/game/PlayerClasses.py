@@ -1,8 +1,9 @@
 import copy
 from collections import namedtuple
+from typing import Optional
 
 from database.models.models import Profile
-from web_server.lib.game.Items import RubbishItem
+from web_server.lib.game.Items import RubbishItem, Item
 from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile
 from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
     point_interpolator
@@ -30,6 +31,10 @@ class PlayerClass:
         self.ready = False
         self.direction = PlayerAngles.DOWN
 
+        # The item you are holding
+        self.item: Optional[Item] = Item()
+        self.item.name = "collector_red"
+
         self.visible_tiles = []
 
         from web_server.lib.game.HallwayHunters import HallwayHunters
@@ -43,7 +48,6 @@ class PlayerClass:
     def ability(self):
         if self.cooldown_timer != 0:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
-
 
     def tick(self):
         last_position = self.position
@@ -121,6 +125,7 @@ class PlayerClass:
             "is_moving": self.is_moving,
             "movement_cooldown": self.movement_cooldown,
             "movement_timer": self.movement_timer,
+            "item": self.item.to_json() if self.item else None,
         }
         # In case you are owner add player sensitive information to state
         if owner:
@@ -205,7 +210,6 @@ class Demolisher(PlayerClass):
         self.cooldown_timer = self.ability_cooldown
 
 
-
 class Spy(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
@@ -255,3 +259,4 @@ class MrMole(PlayerClass):
         print("Created ladder", len(self.ladders))
 
         self.game.change_tile(position, ladder)
+        self.cooldown_timer = self.game.tick_rate * MRMOLE_COOLDOWN

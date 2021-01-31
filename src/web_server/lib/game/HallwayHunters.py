@@ -9,6 +9,7 @@ from database.models.models import Profile
 from src.web_server import sio
 from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
 from web_server.lib.game.Tiles import UnknownTile, Tile
+from web_server.lib.game.Utils import Point
 from web_server.lib.game.generator import generate_board
 
 
@@ -18,6 +19,7 @@ class Phases(Enum):
 
 
 class HallwayHunters:
+
     def __init__(self, room_id):
         self.tick_rate = 60
         self.room_id = room_id
@@ -25,7 +27,9 @@ class HallwayHunters:
         self.player_list: List[PlayerClass] = []
         self.size = 93
 
-        self.board, self.spawn_points = generate_board(size=self.size)
+        self.spawn_points: List[Point] = []
+        self.board: List[List[Tile]] = []
+        # self.board, self.spawn_points = generate_board(size=self.size)
 
         # Generate this to send to every player initially
         self.initial_board_json = [[UnknownTile().to_json() for _ in range(self.size)] for _ in range(self.size)]
@@ -43,10 +47,11 @@ class HallwayHunters:
         self.board, self.spawn_points = generate_board(size=self.size)
 
         color_set = ["blue", "red", "black", "purple", "green"]
-        random.shuffle(color_set)
+        selected_colors = random.sample(color_set, len(self.player_list))
+
         for i, player in enumerate(self.player_list):
             player.change_position(self.spawn_points[i % len(self.spawn_points)])
-            player.name = color_set[i]
+            player.name = selected_colors[i]
             player.start()
 
         self.finished = False

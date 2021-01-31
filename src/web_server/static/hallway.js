@@ -104,8 +104,6 @@ function HallwayHunters() {
             }
             this.lookup[obj.x][obj.y] = true;
         });
-
-
     };
 
     this.MESSAGE_HEIGHT = 40;
@@ -201,6 +199,7 @@ function directionToVector(direction, number) {
 }
 
 function renderCooldowns() {
+    // TODO: Refactor this to work more easily with more different cooldowns.
     const cooldown = game.state.player_data.cooldown_timer / game.state.player_data.cooldown;
     context.lineWidth = 20;
     context.strokeStyle = "#418eb0";
@@ -214,6 +213,11 @@ function renderCooldowns() {
     context.arc(75, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
     context.stroke();
 
+    const fontSize = 50;
+    context.font = fontSize + "px Arial";
+    context.fillStyle = "#fff";
+    const width = context.measureText("C").width;
+    context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
     console.log("Added stroke", cooldown);
 }
 
@@ -224,9 +228,8 @@ function render() {
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
     canvas.height = Math.round(canvas.clientHeight / 2) * 2;
 
+    // Clear the canvas and fill with floor tile color.
     context.clearRect(0, 0, canvas.width, canvas.height);
-    // context.fillStyle = "#EEEEEE";
-    // context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(game.tiles["floor"],0, 0, canvas.width, canvas.height);
 
     // Compute the offset for all tiles, to center rendering on the player.
@@ -276,6 +279,9 @@ function render() {
         const sprite = getAnimationFrame(player);
 
         context.drawImage(sprite, x, y);
+        if (player.item !== null) {
+            context.drawImage(game.tiles[player.item.name], x, y - S/2 - 7);
+        }
     });
 
     renderMinimap();
@@ -370,6 +376,9 @@ function split_sheet() {
         }
     });
 
+    ["blue", "red", "green", "purple", "black"].map((color, i) => {
+        game.tiles["collector_" + color] = context.getImageData((19 + i) * S, 6 * S, S, S);
+    });
 
     for (let i = 0; i < 4; i++) {
         game.tiles["rubbish_" + i]   = context.getImageData((i + 15) * S, 7 * S, S, S);
