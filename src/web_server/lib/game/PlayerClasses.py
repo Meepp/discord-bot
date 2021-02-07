@@ -47,6 +47,10 @@ class PlayerClass:
         self.socket = socket_id
 
     def start(self):
+        self.stored_items = []
+        self.cooldown_timer = 0
+        self.movement_timer = 0
+        self.direction = PlayerAngles.DOWN
         self.visible_tiles = self.compute_line_of_sight()
         self.generate_item()
 
