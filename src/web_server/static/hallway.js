@@ -27,6 +27,14 @@ $('#messageform').submit(function(e) {
     return false;
 });
 
+socket.on("command error", (data) => {
+    let messages = $('#messages');
+    console.log(data)
+    console.log(messages)
+    messages.append($('<li class="chat-message-entry" style="color:red">').text("Error: " + data));
+    document.getElementById("messages").lastChild.scrollIntoView();
+})
+
 socket.on("chat message", (data) => {
     let messages = $('#messages');
     messages.append($('<li class="chat-message-entry">').text(data.username + ": " + data.message));

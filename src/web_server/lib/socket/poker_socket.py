@@ -44,12 +44,13 @@ def disconnect():
 
 @sio.on("chat message", namespace="/poker")
 def message(data):
-    room = int(data.get('room'))
-    if message != "":  # Stop empty messages
+    room_id = int(data['room'])
+    text_message = data.get('message')
+    if text_message != "":  # Stop empty messages
         profile = session_user()
         data["username"] = profile.discord_username
 
-        sio.emit('chat message', data, room=room, include_self=True, namespace="/poker")
+        sio.emit('chat message', data, room=room_id, include_self=True, namespace="/poker")
 
 
 @sio.on("change settings", namespace="/poker")

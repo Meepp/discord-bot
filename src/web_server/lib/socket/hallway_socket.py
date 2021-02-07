@@ -9,7 +9,8 @@ from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
 from web_server.lib.game.PlayerClasses import PlayerClass
 from web_server.lib.game.Utils import Point
-from web_server.lib.game.exceptions import InvalidAction
+from web_server.lib.game.commands import handle_developer_command
+from web_server.lib.game.exceptions import InvalidAction, InvalidCommand
 
 games: Dict[int, HallwayHunters] = {}
 
@@ -102,7 +103,7 @@ def suggest_move(data):
     try:
         player.suggest_move(position)
     except InvalidAction as e:
-        sio.emit("message", e.message, room=player.socket, namespace="/hallway")
+        sio.emit("message", str(e.message), room=player.socket, namespace="/hallway")
 
 
 @sio.on("action", namespace="/hallway")
@@ -117,3 +118,23 @@ def suggest_action(data):
         player.ability()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
+
+
+@sio.on("chat message", namespace="/hallway")
+def message(data):
+    room_id = int(data.get('room'))
+    text_message = data.get('message')
+    if text_message != "":  # Stop empty messages
+        profile = session_user()
+        data["username"] = profile.discord_username
+        if text_message[0] == "/":
+            data["profile"] = profile
+            game = games[room_id]
+            player = game.get_player(profile)
+            try:
+                handle_developer_command(data, game)
+            except InvalidCommand as e:
+                sio.emit('command error', e.message, room=player.socket, include_self=True, namespace="/hallway")
+        else:
+
+            sio.emit('chat message', data, room=room_id, include_self=True, namespace="/hallway")
