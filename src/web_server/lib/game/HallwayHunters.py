@@ -7,11 +7,13 @@ from typing import List, Optional, Set
 
 from database.models.models import Profile
 from src.web_server import sio
-from web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
-from web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
-from web_server.lib.game.Utils import Point
-from web_server.lib.game.generator import generate_board
+from src.web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
+from src.web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
+from src.web_server.lib.game.Utils import Point
+from src.web_server.lib.game.generator import generate_board
 
+
+print(f"Imported {__name__}")
 
 class Phases(Enum):
     NOT_YET_STARTED = 0
@@ -45,6 +47,7 @@ class HallwayHunters:
         self.board_changes = []
 
     def start(self):
+        self.phase = Phases.STARTED
         color_set = ["blue", "red", "black", "purple", "green"]
         selected_colors = random.sample(color_set, len(self.player_list))
 
@@ -54,6 +57,7 @@ class HallwayHunters:
             player.change_position(spawn_point)
             player.name = selected_colors[i]
             player.start()
+            sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
             # Connect chest to player
             chest = ChestTile(player)
@@ -64,6 +68,7 @@ class HallwayHunters:
         self.game_lock.acquire()
         self.game_lock.notify()
         self.game_lock.release()
+
 
     def game_loop(self):
         s_per_tick = 1 / self.tick_rate
@@ -118,7 +123,7 @@ class HallwayHunters:
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
-        sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
+
 
     def update_players(self):
         for player in self.player_list:
@@ -168,6 +173,7 @@ class HallwayHunters:
 
         if len(self.player_list) == 0:
             self.finished = True
+            self.phase = Phases.NOT_YET_STARTED
 
     def broadcast(self, message):
         sio.emit("message", message, room=self.room_id, namespace="/hallway")

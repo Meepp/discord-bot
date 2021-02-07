@@ -2,9 +2,9 @@ import copy
 import random
 from typing import List, Tuple
 
-from web_server.lib.game.Items import RubbishItem, CollectorItem
-from web_server.lib.game.Tiles import *
-from web_server.lib.game.Utils import Point
+from src.web_server.lib.game.Items import RubbishItem, CollectorItem
+from src.web_server.lib.game.Tiles import *
+from src.web_server.lib.game.Utils import Point
 
 
 def room_generator(board: List[List[Tile]], size, attempts=50):

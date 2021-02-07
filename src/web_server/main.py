@@ -5,7 +5,7 @@ from werkzeug.exceptions import abort
 
 from database.repository import room_repository, profile_repository
 from src.web_server.lib.user_session import session_user, session_user_set
-from web_server.lib.game.PlayerClasses import PlayerClass
+from src.web_server.lib.game.PlayerClasses import PlayerClass
 
 bp = Blueprint('poker', __name__)
 

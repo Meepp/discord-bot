@@ -5,12 +5,13 @@ from flask import request
 from flask_socketio import join_room
 
 from database.repository import room_repository
+from database.repository.room_repository import get_room
 from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
-from web_server.lib.game.PlayerClasses import PlayerClass
-from web_server.lib.game.Utils import Point
-from web_server.lib.game.commands import handle_developer_command
-from web_server.lib.game.exceptions import InvalidAction, InvalidCommand
+from src.web_server.lib.game.PlayerClasses import PlayerClass
+from src.web_server.lib.game.Utils import Point
+from src.web_server.lib.game.commands import handle_developer_command
+from src.web_server.lib.game.exceptions import InvalidAction, InvalidCommand
 
 games: Dict[int, HallwayHunters] = {}
 
@@ -123,6 +124,7 @@ def suggest_action(data):
 @sio.on("chat message", namespace="/hallway")
 def message(data):
     room_id = int(data.get('room'))
+    room = room_repository.get_room(room_id)
     text_message = data.get('message')
     if text_message != "":  # Stop empty messages
         profile = session_user()
@@ -132,7 +134,7 @@ def message(data):
             game = games[room_id]
             player = game.get_player(profile)
             try:
-                handle_developer_command(data, game)
+                handle_developer_command(data, game, room)
             except InvalidCommand as e:
                 sio.emit('command error', e.message, room=player.socket, include_self=True, namespace="/hallway")
         else:

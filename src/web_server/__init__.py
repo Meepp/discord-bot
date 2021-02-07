@@ -23,7 +23,7 @@ def create_app():
     print("Created socketio")
     sio = SocketIO(app, async_mode='gevent')
 
-    import web_server.lib.socket
+    import src.web_server.lib.socket
 
 
     logging.basicConfig(
@@ -45,6 +45,6 @@ create_app()
 
 
 def cleanup():
-    from web_server.lib.socket.poker_socket import tables
+    from src.web_server.lib.socket.poker_socket import tables
     for table in tables.values():
         table.cleanup()

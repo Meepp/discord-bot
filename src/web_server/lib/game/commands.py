@@ -1,5 +1,6 @@
-from web_server.lib.game.Utils import Point
-from web_server.lib.game.exceptions import InvalidCommand
+from src.web_server.lib.game.HallwayHunters import Phases
+from src.web_server.lib.game.Utils import Point
+from src.web_server.lib.game.exceptions import InvalidCommand
 
 
 def teleport_command(text_message, player, game):
@@ -17,15 +18,21 @@ def teleport_command(text_message, player, game):
         raise InvalidCommand("You cannot teleport outside the game")
 
 
-def restart_command(game):
-    game.start()
+def restart_command(game, player, room):
+    if player.discord_id == room.author_id:
+        game.start()
+    else:
+        raise InvalidCommand("Only the room owner is allowed to restart the game")
 
 
-def handle_developer_command(data, game):
+def handle_developer_command(data, game, room):
     text_message = data.get("message")[1:]
     profile = data.get("profile")
     player = game.get_player(profile)
+    print(game.phase == Phases.NOT_YET_STARTED)
+    if game.phase.value == Phases.NOT_YET_STARTED:
+        raise InvalidCommand("The game has not even started and you are already trying to cheat!")
     if text_message.startswith('teleport'):
         teleport_command(text_message, player, game)
     if text_message.startswith('restart'):
-        restart_command(game)
+        restart_command(game, profile, room)

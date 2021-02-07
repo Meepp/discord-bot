@@ -13,7 +13,7 @@ from src.web_server.lib.poker.Card import CardSuits, Card, CardRanks
 import random
 from typing import Optional, List
 
-from web_server.lib.poker.PokerSettings import PokerSettings
+from src.web_server.lib.poker.PokerSettings import PokerSettings
 
 SMALL_BLIND_CALL_VALUE = 2
 MINIMUM_RAISE = 1

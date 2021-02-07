@@ -9,7 +9,7 @@ from src.web_server import sio
 from src.web_server.lib.poker.exceptions import PokerException
 from src.web_server.lib.poker.PokerTable import PokerTable, Phases
 from src.web_server.lib.user_session import session_user
-from web_server.lib.poker.PokerSettings import PokerSettings
+from src.web_server.lib.poker.PokerSettings import PokerSettings
 
 tables: Dict[int, PokerTable] = {}
 

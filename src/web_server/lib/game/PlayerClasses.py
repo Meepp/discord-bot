@@ -3,11 +3,11 @@ import random
 from typing import Optional, List
 
 from database.models.models import Profile
-from web_server.lib.game.Items import RubbishItem, Item, CollectorItem
-from web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile
-from web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
+from src.web_server.lib.game.Items import RubbishItem, Item, CollectorItem
+from src.web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile
+from src.web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
     point_interpolator
-from web_server.lib.game.exceptions import InvalidAction
+from src.web_server.lib.game.exceptions import InvalidAction
 
 DEMOLISHER_COOLDOWN = 30
 SPY_COOLDOWN = 30
@@ -41,7 +41,7 @@ class PlayerClass:
 
         self.visible_tiles = []
 
-        from web_server.lib.game.HallwayHunters import HallwayHunters
+        from src.web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
 
         self.socket = socket_id
@@ -181,6 +181,8 @@ class PlayerClass:
             walls = 0
             try:
                 for intermediate in point_interpolator(self.position, point):
+                    if not (0 <= intermediate.x < self.game.size and 0 <= intermediate.y < self.game.size):
+                        break
                     # Allow for one wall in line of sight
                     if walls != 0 or self.game.board[intermediate.x][intermediate.y].opaque:
                         walls += 1
