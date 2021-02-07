@@ -110,13 +110,17 @@ def suggest_move(data):
 @sio.on("action", namespace="/hallway")
 def suggest_action(data):
     room_id = int(data.get("room"))
+    action = data.get("action")
     game = games[room_id]
 
     profile = session_user()
     player = game.get_player(profile)
 
     try:
-        player.ability()
+        if action == "c":
+            player.ability()
+        elif action == "x":
+            player.sprint()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
 

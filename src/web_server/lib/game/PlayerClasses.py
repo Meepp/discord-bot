@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import Optional, List
+from typing import Optional, List, Tuple, Callable
 
 from database.models.models import Profile
 from src.web_server.lib.game.Items import RubbishItem, Item, CollectorItem
@@ -9,10 +9,37 @@ from src.web_server.lib.game.Utils import Point, PlayerAngles, direction_to_poin
     point_interpolator
 from src.web_server.lib.game.exceptions import InvalidAction
 
-DEMOLISHER_COOLDOWN = 30
-SPY_COOLDOWN = 30
-SCOUT_COOLDOWN = 30
-MRMOLE_COOLDOWN = 10
+DEMOLISHER_COOLDOWN = 30  # Seconds
+SPY_COOLDOWN = 30  # Seconds
+SCOUT_COOLDOWN = 30  # Seconds
+MRMOLE_COOLDOWN = 10  # Seconds
+
+
+MOVEMENT_COOLDOWN = 8  # Ticks
+SPRINT_COOLDOWN = 10 * 60  # Ticks
+
+
+class Passive(object):
+    def __init__(self, time, callback):
+        self.name = ""
+        self.time = time
+        self.callback = callback
+
+    def tick(self):
+        self.time -= 1
+        if self.time == 0:
+            self.callback()
+
+    def to_json(self):
+        """
+        Converts the passive to json, maybe for later to display all active passives
+
+        :return:
+        """
+        return {
+            "name": self.name,
+            "time": self.time,
+        }
 
 
 class PlayerClass:
@@ -23,12 +50,15 @@ class PlayerClass:
         self.last_position = self.position
         self.move_suggestion = None
 
-        self.movement_cooldown = 8  # Ticks
+        self.movement_cooldown = MOVEMENT_COOLDOWN  # Ticks
         self.movement_timer = 0
         self.is_moving = False
 
         self.ability_cooldown = 0
         self.cooldown_timer = 0  # Ticks
+
+        self.sprint_cooldown = SPRINT_COOLDOWN
+        self.sprint_timer = 0
 
         self.ready = False
         self.direction = PlayerAngles.DOWN
@@ -38,6 +68,8 @@ class PlayerClass:
         self.stored_items: List[Item] = []
 
         self.objective: Point = Point(0, 0)
+
+        self.passives: List[Passive] = []
 
         self.visible_tiles = []
 
@@ -58,17 +90,36 @@ class PlayerClass:
         if self.cooldown_timer != 0:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
 
+    def sprint(self):
+        if self.sprint_timer != 0:
+            raise InvalidAction("Sprint on cooldown, %d remaining." % self.sprint_timer)
+
+        self.movement_cooldown = int(MOVEMENT_COOLDOWN * 0.6)
+        self.sprint_timer = SPRINT_COOLDOWN
+        self.passives.append(Passive(60 * 2, self.stop_sprinting))
+
+    def stop_sprinting(self):
+        self.movement_cooldown = MOVEMENT_COOLDOWN
+
     def tick(self):
+        for passive in self.passives[:]:
+            passive.tick()
+            if passive.time == 0:
+                self.passives.remove(passive)
+
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.movement_timer = max(0, self.movement_timer - 1)
+        self.sprint_timer = max(0, self.sprint_timer - 1)
+
+        last_direction = self.direction
         if self.movement_timer == 0:
             try:
                 self.move()
             except:
                 pass
 
-        # Dont recompute if the player didnt move
-        if self.position != self.last_position:
+        # Dont recompute if the player didnt move or turn
+        if self.position != self.last_position or self.direction != last_direction:
             self.visible_tiles = self.compute_line_of_sight()
 
         self.last_position = self.position
@@ -161,6 +212,8 @@ class PlayerClass:
             state.update({
                 "cooldown": self.ability_cooldown,
                 "cooldown_timer": self.cooldown_timer,
+                "sprint": self.sprint_cooldown,
+                "sprint_timer": self.sprint_timer,
                 "objective": self.objective.to_json(),
                 "stored_items": [item.to_json() for item in self.stored_items],
             })

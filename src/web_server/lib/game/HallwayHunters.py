@@ -21,7 +21,6 @@ class Phases(Enum):
 
 
 class HallwayHunters:
-
     def __init__(self, room_id):
         self.tick_rate = 60
         self.room_id = room_id
@@ -63,6 +62,8 @@ class HallwayHunters:
             chest = ChestTile(player)
             self.board[spawn_point.x][spawn_point.y + 1] = chest
             chest.image = "chest_%s" % selected_colors[i]
+
+            sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
         self.finished = False
         self.game_lock.acquire()

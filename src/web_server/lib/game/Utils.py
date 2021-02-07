@@ -75,7 +75,7 @@ def direction_to_point(direction: PlayerAngles):
 LOS_CACHE = {}
 
 
-def line_of_sight_endpoints(direction: PlayerAngles, distance=9):
+def line_of_sight_endpoints(direction: PlayerAngles, distance=15):
     if LOS_CACHE == {}:
         LOS_CACHE[PlayerAngles.UP] = [Point(i - distance, -distance) for i in range(distance * 2 + 1)]
         LOS_CACHE[PlayerAngles.DOWN] = [Point(i - distance, distance) for i in range(distance * 2 + 1)]

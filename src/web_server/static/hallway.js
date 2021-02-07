@@ -81,6 +81,8 @@ function HallwayHunters() {
             cooldown_timer: 0,
             movement_cooldown: 0,
             movement_timer: 0,
+            sprint: 0,
+            sprint_timer: 0,
             objective: {
                 position: {
                     x: 10,
@@ -90,7 +92,6 @@ function HallwayHunters() {
             stored_items: [{
                 name: "",
             }]
-
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
@@ -171,11 +172,11 @@ function renderMinimap() {
             }
 
             if (game.state.player_data.position.x === x && game.state.player_data.position.y === y) {
-                context.fillStyle = "#7d1720";
+                context.fillStyle = "#ec2b3c";
             }
 
             if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
-                context.fillStyle = "#357d2c";
+                context.fillStyle = "#63ee52";
             }
 
             context.fillRect(mm_offset_x + x * minimap_pixel_size, mm_offset_y + y * minimap_pixel_size, minimap_pixel_size, minimap_pixel_size);
@@ -210,26 +211,37 @@ function directionToVector(direction, number) {
 
 function renderCooldowns() {
     // TODO: Refactor this to work more easily with more different cooldowns.
-    const cooldown = game.state.player_data.cooldown_timer / game.state.player_data.cooldown;
-    context.lineWidth = 20;
-    context.strokeStyle = "#418eb0";
-    context.beginPath();
-    context.arc(75, canvas.height - 75, 50, 0, 2 * Math.PI);
-    context.stroke();
+    const pd = game.state.player_data;
+    const timers = [[
+        pd.cooldown_timer, pd.cooldown, "C"
+    ], [
+        pd.sprint_timer, pd.sprint, "X"
+    ]];
 
-    context.lineWidth = 18;
-    context.strokeStyle = "#3f3656";
-    context.beginPath();
-    context.arc(75, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
-    context.stroke();
+    timers.map((timer, i) => {
+        console.log(timer);
+        const cooldown = timer[0] / timer[1]
+        context.lineWidth = 20;
+        context.strokeStyle = "#418eb0";
+        context.beginPath();
+        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, 2 * Math.PI);
+        context.stroke();
 
-    const fontSize = 50;
-    context.font = fontSize + "px Arial";
-    context.fillStyle = "#fff";
-    if (keyState["c"])
-        context.fillStyle = "#AAA";
-    const width = context.measureText("C").width;
-    context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
+        context.lineWidth = 18;
+        context.strokeStyle = "#3f3656";
+        context.beginPath();
+        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
+        context.stroke();
+
+        const fontSize = 50;
+        context.font = fontSize + "px Arial";
+        context.fillStyle = "#fff";
+        if (keyState[timer[2].toLowerCase()])
+            context.fillStyle = "#AAA";
+        const width = context.measureText(timer[2]).width;
+        context.fillText(timer[2], 75 + 150 * i - width / 2, canvas.height - 75 + fontSize / 3);
+    })
+
 }
 
 function renderStorage() {
@@ -260,8 +272,13 @@ function handleInput() {
         sendMove({x: -1, y: 0});
     } else if (keyState["ArrowRight"]) {
         sendMove({x: 1, y: 0});
-    } else if (keyState["c"]) {
-        sendAction()
+    }
+
+    if (keyState["c"]) {
+        sendAction("c");
+    }
+    if (keyState["x"]) {
+        sendAction("x");
     }
 }
 
@@ -354,7 +371,7 @@ function gameLoop() {
         }
     });
 
-    renderMinimap();
+    // renderMinimap();
     renderStorage();
     renderCooldowns();
 }
@@ -549,9 +566,10 @@ function initialize() {
     });
 }
 
-function sendAction() {
+function sendAction(action) {
     let data = {
         room: ROOM_ID,
+        action: action
     };
     socket.emit("action", data);
 }
