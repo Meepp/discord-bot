@@ -78,7 +78,11 @@ function HallwayHunters() {
                     x: 10,
                     y: 10,
                 }
-            }
+            },
+            stored_items: [{
+                name: "",
+            }]
+
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
@@ -173,7 +177,7 @@ function renderMinimap() {
 
 function getAnimationFrame(animation) {
     // If the animation is active, or the animation is not yet finished and it has to finish.
-    if (animation.active || (animation.finishAnimation && animation.frameNumber === 0)) {
+    if (animation.active || (animation.finishAnimation && animation.currentSprite !== 0)) {
         // Increment amount of frames waiting for next sprite
         animation.frameNumber = (animation.frameNumber + 1) % FRAMES_PER_ANIMATION;
         if (animation.frameNumber === 0) {
@@ -220,8 +224,43 @@ function renderCooldowns() {
     context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
 }
 
+function renderStorage() {
+    const padding = 10;
+    const S = (TILE_SIZE + TILE_PADDING);
+    const itemWidth = S + 2 * padding;
+    const W = game.state.player_data.stored_items.length * itemWidth;
+    const H = S + 2 * padding;
+
+    // Not opaque item list
+    context.fillStyle = "rgba(255, 255, 255, 0.1)";
+    context.fillRect(0, 0, W, H);
+    game.state.player_data.stored_items.map((item, index) => {
+        context.drawImage(
+            game.tiles[item.name],
+            padding + index * itemWidth,
+            padding
+        );
+    })
+}
+
+function handleInput() {
+    if (keyState["ArrowUp"]) {
+        sendMove({x: 0, y: -1});
+    } else if (keyState["ArrowDown"]) {
+        sendMove({x: 0, y: 1});
+    } else if (keyState["ArrowLeft"]) {
+        sendMove({x: -1, y: 0});
+    } else if (keyState["ArrowRight"]) {
+        sendMove({x: 1, y: 0});
+    } else if (keyState["c"]) {
+        sendAction()
+    }
+}
+
 // Game rendering stuff
-function render() {
+function gameLoop() {
+    handleInput();
+
     // Resizing the canvas should overwrite the width and height variables
     // It has to be a multiple of 2 to remove artifacts around the tilesets
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
@@ -254,7 +293,10 @@ function render() {
             if (animation === undefined) {
                 sprite = game.tiles[tile.image];
             } else {
-                animation.active = tile.do_animation;
+                animation.active = tile.animation_ticks > 0;
+                if (animation.active) {
+                    animation.finishAnimation = tile.finish_animation;
+                }
                 sprite = getAnimationFrame(animation);
             }
 
@@ -305,6 +347,7 @@ function render() {
     });
 
     renderMinimap();
+    renderStorage();
     renderCooldowns();
 }
 
@@ -510,7 +553,7 @@ socket.on("start", () => {
     loadMainContent("game-wrapper");
     if (!has_started) {
         has_started = true;
-        setInterval(render, 1000 / 60);
+        setInterval(gameLoop, 1000 / 60);
     }
 });
 
@@ -559,19 +602,6 @@ document.addEventListener("keyup", (ev) => {
     keyState[ev.key] = false;
     sendMove({x: 0, y: 0});
 });
-setInterval(() => {
-    if (keyState["ArrowUp"]) {
-        sendMove({x: 0, y: -1});
-    } else if (keyState["ArrowDown"]) {
-        sendMove({x: 0, y: 1});
-    } else if (keyState["ArrowLeft"]) {
-        sendMove({x: -1, y: 0});
-    } else if (keyState["ArrowRight"]) {
-        sendMove({x: 1, y: 0});
-    } else if (keyState["c"]) {
-        sendAction()
-    }
-}, 1000 / 60);
 
 socket.emit("join", {
     "room": ROOM_ID,

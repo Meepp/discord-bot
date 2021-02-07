@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from enum import Enum
 import random
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from database.models.models import Profile
 from src.web_server import sio
@@ -29,6 +29,7 @@ class HallwayHunters:
 
         self.spawn_points: List[Point] = []
         self.board: List[List[Tile]] = []
+        self.animations: Set[Tile] = set()
         # self.board, self.spawn_points = generate_board(size=self.size)
 
         # Generate this to send to every player initially
@@ -54,7 +55,8 @@ class HallwayHunters:
             player.name = selected_colors[i]
             player.start()
 
-            chest = ChestTile()
+            # Connect chest to player
+            chest = ChestTile(player)
             self.board[spawn_point.x][spawn_point.y + 1] = chest
             chest.image = "chest_%s" % selected_colors[i]
 
@@ -89,6 +91,13 @@ class HallwayHunters:
             self.game_lock.release()
 
     def tick(self):
+        for tile in list(self.animations):
+            tile.animation_ticks -= 1
+            # Remove tiles which are done animating
+            if tile.animation_ticks == 0:
+                tile.finish_animation = False
+                self.animations.remove(tile)
+
         for player in self.player_list:
             # Maybe check if this is allowed, maybe not
             player.tick()

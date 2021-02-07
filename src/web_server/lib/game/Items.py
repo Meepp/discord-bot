@@ -22,6 +22,7 @@ class RubbishItem(Item):
         chance = random.randint(0, 3)
         self.name = "rubbish_" + str(chance)
 
+
 class CollectorItem(Item):
     def __init__(self, color):
         super().__init__()

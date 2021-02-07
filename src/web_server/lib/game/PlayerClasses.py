@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import Optional
+from typing import Optional, List
 
 from database.models.models import Profile
 from web_server.lib.game.Items import RubbishItem, Item, CollectorItem
@@ -20,6 +20,7 @@ class PlayerClass:
         self.name = ""
         self.profile = profile
         self.position = Point(1, 1)
+        self.last_position = self.position
         self.move_suggestion = None
 
         self.movement_cooldown = 8  # Ticks
@@ -33,8 +34,8 @@ class PlayerClass:
         self.direction = PlayerAngles.DOWN
 
         # The item you are holding
-        self.item: Optional[Item] = Item()
-        self.item.name = "collector_red"
+        self.item: Optional[Item] = None
+        self.stored_items: List[Item] = []
 
         self.objective: Point = Point(0, 0)
 
@@ -54,7 +55,6 @@ class PlayerClass:
             raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
 
     def tick(self):
-        last_position = self.position
         self.cooldown_timer = max(0, self.cooldown_timer - 1)
         self.movement_timer = max(0, self.movement_timer - 1)
         if self.movement_timer == 0:
@@ -64,9 +64,10 @@ class PlayerClass:
                 pass
 
         # Dont recompute if the player didnt move
-        if self.position != last_position:
+        if self.position != self.last_position:
             self.visible_tiles = self.compute_line_of_sight()
 
+        self.last_position = self.position
         self.ready = False
 
     def change_position(self, point):
@@ -96,9 +97,18 @@ class PlayerClass:
 
         tile = self.game.board[new_position.x][new_position.y]
 
-        # TODO: Stop animation at some point
-        if isinstance(tile, ChestTile):
-            tile.signal_animation = True
+        # TODO: Synchronize animations server side maybe
+        if isinstance(tile, ChestTile) \
+                and tile.player == self \
+                and self.item is not None:
+            self.stored_items.append(self.item)
+            self.item = None
+            self.generate_item()
+
+            # Animate the chest opening and closing
+            tile.animation_ticks = 20
+            tile.finish_animation = True
+            self.game.animations.add(tile)
 
         if not tile.movement_allowed:
             raise InvalidAction("You cannot move on this tile.")
@@ -112,6 +122,12 @@ class PlayerClass:
             self.direction = PlayerAngles.UP
         else:
             self.position = self.position + self.move_suggestion
+
+        # Pickup item
+        if self.position == self.objective \
+                and self.game.board[self.objective.x][self.objective.y].item is not None:
+            self.item = self.game.board[self.objective.x][self.objective.y].item
+            self.game.board[self.objective.x][self.objective.y].item = None
 
         self.is_moving = True
         self.move_suggestion = None
@@ -142,6 +158,7 @@ class PlayerClass:
                 "cooldown": self.ability_cooldown,
                 "cooldown_timer": self.cooldown_timer,
                 "objective": self.objective.to_json(),
+                "stored_items": [item.to_json() for item in self.stored_items],
             })
         return state
 
@@ -185,7 +202,7 @@ class PlayerClass:
     def generate_item(self):
         random_x = random.randint(0, len(self.game.board[0]) - 1)
         random_y = random.randint(0, len(self.game.board) - 1)
-        while isinstance(self.game.board[random_x][random_y], WallTile):
+        while not isinstance(self.game.board[random_x][random_y], GroundTile):
             random_x = random.randint(0, len(self.game.board[0]) - 1)
             random_y = random.randint(0, len(self.game.board) - 1)
 
