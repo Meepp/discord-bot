@@ -107,6 +107,13 @@ class PlayerClass:
         self.passives.append(Passive(60 * 2, self.stop_sprinting, name="sprint"))
 
     def kill(self):
+        for passive in self.passives:
+            if passive.name == "kill":
+                self.passives.remove(passive)
+                self.killing = None
+                self.kill_timer = 0
+                return
+
         if self.kill_timer != 0:
             raise InvalidAction("Kill on cooldown, %d remaining." % self.kill_timer)
 

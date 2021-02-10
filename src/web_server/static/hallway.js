@@ -229,8 +229,8 @@ function directionToVector(direction, number) {
 
 
 function renderKillCam() {
-    const x = 500;
-    const y = 500;
+    const x = canvas.width - 100;
+    const y = canvas.height - 100;
 
     let killPassive = game.state.player_data.passives.filter((item) => {
         return (item.name === "kill")
@@ -346,17 +346,6 @@ function handleInput() {
         sendMove({x: -1, y: 0});
     } else if (keyState["ArrowRight"]) {
         sendMove({x: 1, y: 0});
-    }
-
-    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
-    if (keyState["c"]) {
-        sendAction("c");
-    }
-    if (keyState["x"]) {
-        sendAction("x");
-    }
-    if (keyState["z"]) {
-        sendAction("z");
     }
 }
 
@@ -682,6 +671,14 @@ function sendMove(move) {
 let keyState = {};
 document.addEventListener("keydown", (ev) => {
     keyState[ev.key] = true;
+
+    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
+    if (ev.key === "c" ||
+        ev.key === "x" ||
+        ev.key === "z")
+    {
+        sendAction(ev.key);
+    }
 });
 document.addEventListener("keyup", (ev) => {
     keyState[ev.key] = false;
