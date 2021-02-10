@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from math import pi
 
@@ -75,12 +76,25 @@ def direction_to_point(direction: PlayerAngles):
 LOS_CACHE = {}
 
 
-def line_of_sight_endpoints(direction: PlayerAngles, distance=15):
+def line_of_sight_endpoints(direction: PlayerAngles, distance=11):
     if LOS_CACHE == {}:
-        LOS_CACHE[PlayerAngles.UP] = [Point(i - distance, -distance) for i in range(distance * 2 + 1)]
-        LOS_CACHE[PlayerAngles.DOWN] = [Point(i - distance, distance) for i in range(distance * 2 + 1)]
-        LOS_CACHE[PlayerAngles.LEFT] = [Point(-distance, i - distance) for i in range(distance * 2 + 1)]
-        LOS_CACHE[PlayerAngles.RIGHT] = [Point(distance, i - distance) for i in range(distance * 2 + 1)]
+        LOS_CACHE[PlayerAngles.DOWN] = []
+        LOS_CACHE[PlayerAngles.UP] = []
+        LOS_CACHE[PlayerAngles.LEFT] = []
+        LOS_CACHE[PlayerAngles.RIGHT] = []
+
+        step = 25
+        start = 1/10
+        end = 9/10
+        for i in range(1, step):
+            x = ((start + i * ((end - start) / step)) * math.pi)
+            LOS_CACHE[PlayerAngles.DOWN].append(Point(math.cos(x) * distance, math.sin(x) * distance))
+            x += math.pi / 2
+            LOS_CACHE[PlayerAngles.LEFT].append(Point(math.cos(x) * distance, math.sin(x) * distance))
+            x += math.pi / 2
+            LOS_CACHE[PlayerAngles.UP].append(Point(math.cos(x) * distance, math.sin(x) * distance))
+            x += math.pi / 2
+            LOS_CACHE[PlayerAngles.RIGHT].append(Point(math.cos(x) * distance, math.sin(x) * distance))
 
     return LOS_CACHE[direction]
 
