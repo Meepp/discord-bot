@@ -10,9 +10,14 @@ def teleport_command(text_message, player, game):
     """
     split_message = text_message.split()
     if len(split_message) == 2:
-        other_player = profile_repository.get_profile(username=split_message[-1])
-        other_player_teleport = game.get_player(other_player)
-        player.position = other_player_teleport.position
+        if split_message[-1] == "item":
+            player.position = player.objective
+        elif split_message[-1] == "chest":
+            player.position = player.spawn_position
+        else:
+            other_player = profile_repository.get_profile(username=split_message[-1])
+            other_player_teleport = game.get_player(other_player)
+            player.position = other_player_teleport.position
     elif len(split_message) == 3:
         try:
             x_coordinate = int(split_message[1])

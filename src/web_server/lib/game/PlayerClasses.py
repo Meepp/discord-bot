@@ -50,6 +50,7 @@ class PlayerClass:
     def __init__(self, profile: Profile, socket_id, game):
         self.name = ""
         self.profile = profile
+        self.spawn_position = Point(1, 1)
         self.position = Point(1, 1)
         self.last_position = self.position
         self.move_suggestion = None
@@ -164,7 +165,7 @@ class PlayerClass:
         self.ready = False
 
     def change_position(self, point):
-        self.position = point
+        self.position = self.spawn_position = point
 
     def move(self):
         # If there is no suggested move, we can stop right here
