@@ -66,7 +66,7 @@ class PlayerClass:
 
         self.kill_cooldown = KILL_COOLDOWN
         self.kill_timer = 0
-        self.killing = None
+        self.killing: Optional[PlayerClass] = None
 
         self.ready = False
         self.direction = PlayerAngles.DOWN
@@ -248,7 +248,7 @@ class PlayerClass:
                 "sprint": self.sprint_cooldown,
                 "sprint_timer": self.sprint_timer,
                 "passives": [passive.to_json() for passive in self.passives],
-                "killing": self.killing.to_json() if self.killing else None,
+                "killing": self.killing.to_json(owner=False) if self.killing else None,
                 "objective": self.objective.to_json(),
                 "stored_items": [item.to_json() for item in self.stored_items],
             })
