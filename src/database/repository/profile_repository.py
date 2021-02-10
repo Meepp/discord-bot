@@ -18,7 +18,7 @@ def get_money(user: User):
     return result
 
 
-def get_profile(user: User = None, user_id: int = None):
+def get_profile(user: User = None, user_id: int = None, username: str = None):
     session = db.session()
 
     sub = session.query(Profile)
@@ -26,3 +26,5 @@ def get_profile(user: User = None, user_id: int = None):
         return sub.filter(Profile.discord_id == user.id).one_or_none()
     if user_id is not None:
         return sub.filter(Profile.discord_id == user_id).one_or_none()
+    if username is not None:
+        return sub.filter(Profile.discord_username == username).one_or_none()
