@@ -16,6 +16,11 @@ from src.web_server.lib.game.exceptions import InvalidAction, InvalidCommand
 games: Dict[int, HallwayHunters] = {}
 
 
+@sio.on('ping', namespace="/hallway")
+def ping():
+    sio.emit("pong", room=request.sid, namespace="/hallway")
+
+
 @sio.on("join", namespace="/hallway")
 def on_join(data):
     room_id = int(data['room'])
@@ -110,13 +115,21 @@ def suggest_move(data):
 @sio.on("action", namespace="/hallway")
 def suggest_action(data):
     room_id = int(data.get("room"))
+    action = data.get("action")
     game = games[room_id]
 
     profile = session_user()
     player = game.get_player(profile)
 
     try:
-        player.ability()
+        if action == "c":
+            player.ability()
+        elif action == "x":
+            player.sprint()
+        elif action == "z":
+            # Kill the first player in the list of visible players
+            # TODO: Maybe a better method of selection
+            player.kill()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
 

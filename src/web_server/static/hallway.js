@@ -14,6 +14,17 @@ socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
 
+let startTime;
+setInterval(function() {
+    startTime = Date.now();
+    socket.emit('ping');
+}, 2000);
+
+socket.on('pong', function() {
+    console.log("Ping: " + (Date.now() - startTime) + "ms");
+});
+
+
 $('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
@@ -81,6 +92,8 @@ function HallwayHunters() {
             cooldown_timer: 0,
             movement_cooldown: 0,
             movement_timer: 0,
+            sprint: 0,
+            sprint_timer: 0,
             objective: {
                 position: {
                     x: 10,
@@ -89,8 +102,14 @@ function HallwayHunters() {
             },
             stored_items: [{
                 name: "",
+            }],
+            kill_timer: 0,
+            kill_cooldown: 0,
+            passives: [{
+                name: "",
+                time: 0,
+                total_time: 0
             }]
-
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
@@ -171,11 +190,11 @@ function renderMinimap() {
             }
 
             if (game.state.player_data.position.x === x && game.state.player_data.position.y === y) {
-                context.fillStyle = "#7d1720";
+                context.fillStyle = "#ec2b3c";
             }
 
             if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
-                context.fillStyle = "#357d2c";
+                context.fillStyle = "#63ee52";
             }
 
             context.fillRect(mm_offset_x + x * minimap_pixel_size, mm_offset_y + y * minimap_pixel_size, minimap_pixel_size, minimap_pixel_size);
@@ -208,28 +227,68 @@ function directionToVector(direction, number) {
     }
 }
 
-function renderCooldowns() {
-    // TODO: Refactor this to work more easily with more different cooldowns.
-    const cooldown = game.state.player_data.cooldown_timer / game.state.player_data.cooldown;
+
+function renderKillCam() {
+    const x = 500;
+    const y = 500;
+
+    let killPassive = game.state.player_data.passives.filter((item) => {
+        return (item.name === "kill")
+    });
+    if (killPassive.length === 0) return;
+    console.log(killPassive);
+    killPassive = killPassive[0];
+
+    const cooldown = killPassive.time / killPassive.total_time;
     context.lineWidth = 20;
     context.strokeStyle = "#418eb0";
     context.beginPath();
-    context.arc(75, canvas.height - 75, 50, 0, 2 * Math.PI);
+    context.arc(x, y, 50, 0, 2 * Math.PI);
     context.stroke();
 
     context.lineWidth = 18;
     context.strokeStyle = "#3f3656";
     context.beginPath();
-    context.arc(75, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
+    context.arc(x, y, 50, 0, cooldown * 2 * Math.PI);
     context.stroke();
 
-    const fontSize = 50;
-    context.font = fontSize + "px Arial";
-    context.fillStyle = "#fff";
-    if (keyState["c"])
-        context.fillStyle = "#AAA";
-    const width = context.measureText("C").width;
-    context.fillText("C", 75 - width / 2, canvas.height - 75 + fontSize / 3);
+    drawPlayer(game.state.player_data.killing, TILE_SIZE, x, y);
+}
+
+function renderCooldowns() {
+    // TODO: Refactor this to work more easily with more different cooldowns.
+    const pd = game.state.player_data;
+    const timers = [[
+        pd.cooldown_timer, pd.cooldown, "C"
+    ], [
+        pd.sprint_timer, pd.sprint, "X"
+    ], [
+        pd.kill_timer, pd.kill_cooldown, "Z"
+    ]];
+
+    timers.map((timer, i) => {
+        const cooldown = timer[0] / timer[1];
+        context.lineWidth = 20;
+        context.strokeStyle = "#418eb0";
+        context.beginPath();
+        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, 2 * Math.PI);
+        context.stroke();
+
+        context.lineWidth = 18;
+        context.strokeStyle = "#3f3656";
+        context.beginPath();
+        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
+        context.stroke();
+
+        const fontSize = 50;
+        context.font = fontSize + "px Arial";
+        context.fillStyle = "#fff";
+        if (keyState[timer[2].toLowerCase()])
+            context.fillStyle = "#AAA";
+        const width = context.measureText(timer[2]).width;
+        context.fillText(timer[2], 75 + 150 * i - width / 2, canvas.height - 75 + fontSize / 3);
+    })
+
 }
 
 function renderStorage() {
@@ -260,8 +319,42 @@ function handleInput() {
         sendMove({x: -1, y: 0});
     } else if (keyState["ArrowRight"]) {
         sendMove({x: 1, y: 0});
-    } else if (keyState["c"]) {
-        sendAction()
+    }
+
+    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
+    if (keyState["c"]) {
+        sendAction("c");
+    }
+    if (keyState["x"]) {
+        sendAction("x");
+    }
+    if (keyState["z"]) {
+        sendAction("z");
+    }
+}
+
+function drawPlayer(player, S, xOffset, yOffset) {
+    const interpolation = -(player.movement_timer / player.movement_cooldown);
+    const vector = directionToVector(player.direction, interpolation * S);
+    const x = player.position.x * S + xOffset + Math.round(vector.x);
+    const y = player.position.y * S + yOffset + Math.round(vector.y);
+
+    // If the player is not moving, reset its animation frame to beginning.
+    const animationName = player.name + "_" + player.direction;
+    const animation = game.animations[animationName];
+
+    // Player animation is bound to moving
+    animation.active = player.is_moving;
+    if (!player.is_moving) {
+        // Set player frame to this when not moving
+        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+        animation.currentSprite = 0;
+    }
+    const sprite = getAnimationFrame(animation);
+
+    context.drawImage(sprite, x, y);
+    if (player.item !== null) {
+        context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
     }
 }
 
@@ -330,33 +423,13 @@ function gameLoop() {
     }
 
     game.state.players.forEach((player) => {
-        const interpolation = -(player.movement_timer / player.movement_cooldown);
-        const vector = directionToVector(player.direction, interpolation * S);
-        const x = player.position.x * S + xOffset + Math.round(vector.x);
-        const y = player.position.y * S + yOffset + Math.round(vector.y);
-
-        // If the player is not moving, reset its animation frame to beginning.
-        const animationName = player.name + "_" + player.direction;
-        const animation = game.animations[animationName];
-
-        // Player animation is bound to moving
-        animation.active = player.is_moving;
-        if (!player.is_moving) {
-            // Set player frame to this when not moving
-            animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-            animation.currentSprite = 0;
-        }
-        const sprite = getAnimationFrame(animation);
-
-        context.drawImage(sprite, x, y);
-        if (player.item !== null) {
-            context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
-        }
+        drawPlayer(player, S, xOffset, yOffset);
     });
 
-    renderMinimap();
+    // renderMinimap();
     renderStorage();
     renderCooldowns();
+    renderKillCam();
 }
 
 let game = new HallwayHunters();
@@ -537,10 +610,11 @@ function initialize() {
 
     });
     socket.on("message", (data) => {
-        game.fadeMessages.push({
-            message: data,
-            ticks: 120
-        });
+        console.log(data);
+        // game.fadeMessages.push({
+        //     message: data,
+        //     ticks: 120
+        // });
     });
 
     // Request game state on initialization.
@@ -549,9 +623,10 @@ function initialize() {
     });
 }
 
-function sendAction() {
+function sendAction(action) {
     let data = {
         room: ROOM_ID,
+        action: action
     };
     socket.emit("action", data);
 }
