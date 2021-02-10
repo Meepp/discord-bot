@@ -236,7 +236,6 @@ function renderKillCam() {
         return (item.name === "kill")
     });
     if (killPassive.length === 0) return;
-    console.log(killPassive);
     killPassive = killPassive[0];
 
     const cooldown = killPassive.time / killPassive.total_time;
@@ -252,7 +251,35 @@ function renderKillCam() {
     context.arc(x, y, 50, 0, cooldown * 2 * Math.PI);
     context.stroke();
 
-    drawPlayer(game.state.player_data.killing, TILE_SIZE, x, y);
+    const animationName = game.state.player_data.killing.name + "_" + game.state.player_data.killing.direction;
+    const animation = game.animations[animationName];
+    const sprite = animation.sprites[animation.currentSprite];
+    context.drawImage(sprite, x - TILE_SIZE / 2, y - TILE_SIZE / 2);
+}
+
+function drawPlayer(player, S, xOffset, yOffset) {
+    const interpolation = -(player.movement_timer / player.movement_cooldown);
+    const vector = directionToVector(player.direction, interpolation * S);
+    const x = player.position.x * S + xOffset + Math.round(vector.x);
+    const y = player.position.y * S + yOffset + Math.round(vector.y);
+
+    // If the player is not moving, reset its animation frame to beginning.
+    const animationName = player.name + "_" + player.direction;
+    const animation = game.animations[animationName];
+
+    // Player animation is bound to moving
+    animation.active = player.is_moving;
+    if (!player.is_moving) {
+        // Set player frame to this when not moving
+        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+        animation.currentSprite = 0;
+    }
+    const sprite = getAnimationFrame(animation);
+
+    context.drawImage(sprite, x, y);
+    if (player.item !== null) {
+        context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
+    }
 }
 
 function renderCooldowns() {
@@ -330,31 +357,6 @@ function handleInput() {
     }
     if (keyState["z"]) {
         sendAction("z");
-    }
-}
-
-function drawPlayer(player, S, xOffset, yOffset) {
-    const interpolation = -(player.movement_timer / player.movement_cooldown);
-    const vector = directionToVector(player.direction, interpolation * S);
-    const x = player.position.x * S + xOffset + Math.round(vector.x);
-    const y = player.position.y * S + yOffset + Math.round(vector.y);
-
-    // If the player is not moving, reset its animation frame to beginning.
-    const animationName = player.name + "_" + player.direction;
-    const animation = game.animations[animationName];
-
-    // Player animation is bound to moving
-    animation.active = player.is_moving;
-    if (!player.is_moving) {
-        // Set player frame to this when not moving
-        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-        animation.currentSprite = 0;
-    }
-    const sprite = getAnimationFrame(animation);
-
-    context.drawImage(sprite, x, y);
-    if (player.item !== null) {
-        context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
     }
 }
 
