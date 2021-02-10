@@ -15,6 +15,7 @@ from src.web_server.lib.game.generator import generate_board
 
 print(f"Imported {__name__}")
 
+
 class Phases(Enum):
     NOT_YET_STARTED = 0
     STARTED = 1
@@ -70,7 +71,6 @@ class HallwayHunters:
         self.game_lock.notify()
         self.game_lock.release()
 
-
     def game_loop(self):
         s_per_tick = 1 / self.tick_rate
         while True:
@@ -124,8 +124,6 @@ class HallwayHunters:
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
-
-
     def update_players(self):
         for player in self.player_list:
             sio.emit("game_state", self.export_board(player, reduced=True), room=player.socket, namespace="/hallway")
@@ -135,7 +133,7 @@ class HallwayHunters:
         data = {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
-            "players": player.get_visible_players(),
+            "players": [player.to_json() for player in player.get_visible_players()],
             "visible_tiles": tiles,
         }
         if not reduced:
@@ -177,7 +175,11 @@ class HallwayHunters:
             self.phase = Phases.NOT_YET_STARTED
 
     def broadcast(self, message):
-        sio.emit("message", message, room=self.room_id, namespace="/hallway")
+        data = {
+            "username": "SYSTEM",
+            "message": message,
+        }
+        sio.emit("chat message", data, room=self.room_id, namespace="/hallway")
 
     def check_readies(self):
         for player in self.player_list:

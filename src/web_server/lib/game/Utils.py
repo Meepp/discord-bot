@@ -83,18 +83,16 @@ def line_of_sight_endpoints(direction: PlayerAngles, distance=11):
         LOS_CACHE[PlayerAngles.LEFT] = []
         LOS_CACHE[PlayerAngles.RIGHT] = []
 
-        step = 25
-        start = 1/10
-        end = 9/10
+        step = 25  # Amount of steps to consider when filling in the angles
+        start = 1/10  # Angle in pi
+        end = 9/10  # Angle in pi
+        hp = math.pi / 2  # Half pi
         for i in range(1, step):
             x = ((start + i * ((end - start) / step)) * math.pi)
             LOS_CACHE[PlayerAngles.DOWN].append(Point(math.cos(x) * distance, math.sin(x) * distance))
-            x += math.pi / 2
-            LOS_CACHE[PlayerAngles.LEFT].append(Point(math.cos(x) * distance, math.sin(x) * distance))
-            x += math.pi / 2
-            LOS_CACHE[PlayerAngles.UP].append(Point(math.cos(x) * distance, math.sin(x) * distance))
-            x += math.pi / 2
-            LOS_CACHE[PlayerAngles.RIGHT].append(Point(math.cos(x) * distance, math.sin(x) * distance))
+            LOS_CACHE[PlayerAngles.LEFT].append(Point(math.cos(x + hp) * distance, math.sin(x + hp) * distance))
+            LOS_CACHE[PlayerAngles.UP].append(Point(math.cos(x + 2*hp) * distance, math.sin(x + 2*hp) * distance))
+            LOS_CACHE[PlayerAngles.RIGHT].append(Point(math.cos(x + 3*hp) * distance, math.sin(x + 3*hp) * distance))
 
     return LOS_CACHE[direction]
 

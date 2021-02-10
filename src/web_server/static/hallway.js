@@ -14,6 +14,17 @@ socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
 
+let startTime;
+setInterval(function() {
+    startTime = Date.now();
+    socket.emit('ping');
+}, 2000);
+
+socket.on('pong', function() {
+    console.log("Ping: " + (Date.now() - startTime) + "ms");
+});
+
+
 $('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
@@ -91,6 +102,13 @@ function HallwayHunters() {
             },
             stored_items: [{
                 name: "",
+            }],
+            kill_timer: 0,
+            kill_cooldown: 0,
+            passives: [{
+                name: "",
+                time: 0,
+                total_time: 0
             }]
         },
         visible_tiles: [
@@ -209,6 +227,34 @@ function directionToVector(direction, number) {
     }
 }
 
+
+function renderKillCam() {
+    const x = 500;
+    const y = 500;
+
+    let killPassive = game.state.player_data.passives.filter((item) => {
+        return (item.name === "kill")
+    });
+    if (killPassive.length === 0) return;
+    console.log(killPassive);
+    killPassive = killPassive[0];
+
+    const cooldown = killPassive.time / killPassive.total_time;
+    context.lineWidth = 20;
+    context.strokeStyle = "#418eb0";
+    context.beginPath();
+    context.arc(x, y, 50, 0, 2 * Math.PI);
+    context.stroke();
+
+    context.lineWidth = 18;
+    context.strokeStyle = "#3f3656";
+    context.beginPath();
+    context.arc(x, y, 50, 0, cooldown * 2 * Math.PI);
+    context.stroke();
+
+    drawPlayer(game.state.player_data.killing, TILE_SIZE, x, y);
+}
+
 function renderCooldowns() {
     // TODO: Refactor this to work more easily with more different cooldowns.
     const pd = game.state.player_data;
@@ -216,11 +262,12 @@ function renderCooldowns() {
         pd.cooldown_timer, pd.cooldown, "C"
     ], [
         pd.sprint_timer, pd.sprint, "X"
+    ], [
+        pd.kill_timer, pd.kill_cooldown, "Z"
     ]];
 
     timers.map((timer, i) => {
-        console.log(timer);
-        const cooldown = timer[0] / timer[1]
+        const cooldown = timer[0] / timer[1];
         context.lineWidth = 20;
         context.strokeStyle = "#418eb0";
         context.beginPath();
@@ -274,11 +321,40 @@ function handleInput() {
         sendMove({x: 1, y: 0});
     }
 
+    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
     if (keyState["c"]) {
         sendAction("c");
     }
     if (keyState["x"]) {
         sendAction("x");
+    }
+    if (keyState["z"]) {
+        sendAction("z");
+    }
+}
+
+function drawPlayer(player, S, xOffset, yOffset) {
+    const interpolation = -(player.movement_timer / player.movement_cooldown);
+    const vector = directionToVector(player.direction, interpolation * S);
+    const x = player.position.x * S + xOffset + Math.round(vector.x);
+    const y = player.position.y * S + yOffset + Math.round(vector.y);
+
+    // If the player is not moving, reset its animation frame to beginning.
+    const animationName = player.name + "_" + player.direction;
+    const animation = game.animations[animationName];
+
+    // Player animation is bound to moving
+    animation.active = player.is_moving;
+    if (!player.is_moving) {
+        // Set player frame to this when not moving
+        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+        animation.currentSprite = 0;
+    }
+    const sprite = getAnimationFrame(animation);
+
+    context.drawImage(sprite, x, y);
+    if (player.item !== null) {
+        context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
     }
 }
 
@@ -347,33 +423,13 @@ function gameLoop() {
     }
 
     game.state.players.forEach((player) => {
-        const interpolation = -(player.movement_timer / player.movement_cooldown);
-        const vector = directionToVector(player.direction, interpolation * S);
-        const x = player.position.x * S + xOffset + Math.round(vector.x);
-        const y = player.position.y * S + yOffset + Math.round(vector.y);
-
-        // If the player is not moving, reset its animation frame to beginning.
-        const animationName = player.name + "_" + player.direction;
-        const animation = game.animations[animationName];
-
-        // Player animation is bound to moving
-        animation.active = player.is_moving;
-        if (!player.is_moving) {
-            // Set player frame to this when not moving
-            animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-            animation.currentSprite = 0;
-        }
-        const sprite = getAnimationFrame(animation);
-
-        context.drawImage(sprite, x, y);
-        if (player.item !== null) {
-            context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
-        }
+        drawPlayer(player, S, xOffset, yOffset);
     });
 
     // renderMinimap();
     renderStorage();
     renderCooldowns();
+    renderKillCam();
 }
 
 let game = new HallwayHunters();
@@ -554,10 +610,11 @@ function initialize() {
 
     });
     socket.on("message", (data) => {
-        game.fadeMessages.push({
-            message: data,
-            ticks: 120
-        });
+        console.log(data);
+        // game.fadeMessages.push({
+        //     message: data,
+        //     ticks: 120
+        // });
     });
 
     // Request game state on initialization.
