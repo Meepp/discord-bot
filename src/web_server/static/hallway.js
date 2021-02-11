@@ -555,13 +555,12 @@ function initialize() {
      */
     socket.on("game_state", (data) => {
         game.setState(data);
-
+        let list = !game.state.started ? $(".user-list") : $(".player-list")
+        list.empty()
         if (!game.state.started) {
             // Lobby stuff
-            let userList = $(".user-list");
-            userList.empty();
             data.all_players.forEach(player => {
-                userList.append(`
+                list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
                     <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
@@ -573,12 +572,11 @@ function initialize() {
             settings.innerHTML = `<div>   
             </div>`;
         } else {
-            let playerList = $(".player-list");
-            playerList.empty();
             data.all_players.forEach(player => {
-                playerList.append(`
+                list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
+                    <div class="user-entry-name">${!player.dead ? "Alive" : "Dead"}</div>
                     <div class="user-entry-ready">${player.stored_items.length}</div>
                     </div>
                 `);
