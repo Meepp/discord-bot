@@ -117,7 +117,6 @@ class PlayerClass:
         self.can_move = False
         self.game.broadcast("%s died" % self.profile.discord_username)
 
-
     def kill(self):
         for passive in self.passives:
             if passive.name == "kill":
@@ -262,20 +261,24 @@ class PlayerClass:
         position = self.position + (-1 * direction_to_point(self.direction)) * progress
         return position
 
-    def to_json(self, owner=True):
-        # Default dictionary to see other players name
+    def to_json(self, owner=True, reduced=False):
         state = {
             "username": self.profile.discord_username,
             "dead": self.dead,
             "ready": self.ready,
-            "position": self.get_interpolated_position().to_json(),
-            "name": self.name,
-            "direction": self.direction.value,
-            "is_moving": self.is_moving,
-            "movement_cooldown": self.movement_cooldown,
-            "movement_timer": self.movement_timer,
-            "item": self.item.to_json() if self.item else None,
         }
+        if not reduced:
+            # Default dictionary to see other players name
+            state.update({
+                "position": self.get_interpolated_position().to_json(),
+                "name": self.name,
+                "direction": self.direction.value,
+                "is_moving": self.is_moving,
+                "movement_cooldown": self.movement_cooldown,
+                "movement_timer": self.movement_timer,
+                "item": self.item.to_json() if self.item else None,
+            })
+
         # In case you are owner add player sensitive information to state
         if owner:
             state.update({

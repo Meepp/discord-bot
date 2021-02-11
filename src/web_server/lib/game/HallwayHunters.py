@@ -129,7 +129,6 @@ class HallwayHunters:
             sio.emit("game_state", self.export_board(player, reduced=True), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass, reduced=False):
-        tiles = player.get_visible_tiles()
         data = {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
