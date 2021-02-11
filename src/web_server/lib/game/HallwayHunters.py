@@ -134,6 +134,7 @@ class HallwayHunters:
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
             "players": [player.to_json() for player in player.get_visible_players()],
+            "all_players": [player.to_json() for player in self.player_list],
             "visible_tiles": tiles,
         }
         if not reduced:

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}
-    Game
+Game
 {% endblock %}
 
 {% block link %}
@@ -9,73 +9,76 @@
 {% endblock %}
 
 {% block content %}
-    <div class="main-wrapper">
-        <div id="lobby-wrapper" class="main-content">
-            <article class="post">
-                <header>
-                    <div>
-                        <h1>Room: <u>{{ room.name }}</u></h1>
-                        <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
-                        <div class="about">Room leader: {{ room.author }}
-                            <div id="room-settings">
+<div class="main-wrapper">
+    <div id="lobby-wrapper" class="main-content">
+        <article class="post">
+            <header>
+                <div>
+                    <h1>Room: <u>{{ room.name }}</u></h1>
+                    <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
+                    <div class="about">Room leader: {{ room.author }}
+                        <div id="room-settings">
 
-                            </div>
-                        </div>
-                        <div>
-                            <h3>
-                                User list</h3>
-                            <div class="user-list"></div>
                         </div>
                     </div>
-                    {% if session_user().owner_id == room['author_id'] %}
-                        <div class="settings-column">
-                            <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
-                            <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
-                            <label class="custom-text" for="small-blind-value">Small blind:</label><br>
-                            <input class="custom-input" type="text" id="small-blind-value" name="Small blind" value="2"><br>
-                            <input class="custom-input custom-button" type="button" value="Submit" onclick="changeSettings()">
+                    <div>
+                        <h3>
+                            User list</h3>
+                        <div class="user-list"></div>
+                    </div>
+                </div>
+                {% if session_user().owner_id == room['author_id'] %}
+                <div class="settings-column">
+                    <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
+                    <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
+                    <label class="custom-text" for="small-blind-value">Small blind:</label><br>
+                    <input class="custom-input" type="text" id="small-blind-value" name="Small blind" value="2"><br>
+                    <input class="custom-input custom-button" type="button" value="Submit" onclick="changeSettings()">
 
-                            <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
-                        </div>
+                    <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
+                </div>
 
-                    {% else %}
-                        Choose class
-                        <select id="class-selector">
-                            {% for cls in classes %}
-                                <option value="{{ cls }}">{{ cls }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
-                    {% endif %}
-                </header>
-            </article>
+                {% else %}
+                Choose class
+                <select id="class-selector">
+                    {% for cls in classes %}
+                    <option value="{{ cls }}">{{ cls }}</option>
+                    {% endfor %}
+                </select>
+                <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
+                {% endif %}
+            </header>
+        </article>
+    </div>
+    <div id="game-wrapper" class="main-content">
+        <canvas id="canvas">
+        </canvas>
+    </div>
+    <div id="right-column" class="secondary-content">
+        <div class="custom-title flex-title">
+            Players
+            <div class="player-list"></div>
         </div>
-        <div id="game-wrapper" class="main-content">
-            <canvas id="canvas">
-            </canvas>
-        </div>
-        <div id="right-column" class="secondary-content">
-            <div class="custom-title flex-title">Players</div>
 
-            <div class="custom-title flex-title">Chat</div>
-            <div id="chat-wrapper">
-                <ul id="messages"></ul>
-                <form id="messageform" method="post">
-                    <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
-                    <input id="roomid" type="hidden" value="{{ room.id }}"/>
-                    <input id="username" type="hidden" value="{{ session_user().owner }}"/>
-                    <button class="custom-input custom-button">Send</button>
-                </form>
-            </div>
+        <div class="custom-title flex-title">Chat</div>
+        <div id="chat-wrapper">
+            <ul id="messages"></ul>
+            <form id="messageform" method="post">
+                <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
+                <input id="roomid" type="hidden" value="{{ room.id }}"/>
+                <input id="username" type="hidden" value="{{ session_user().owner }}"/>
+                <button class="custom-input custom-button">Send</button>
+            </form>
         </div>
     </div>
+</div>
 {% endblock %}
 
 
 {% block script %}
-    <script>
-        const ROOM_ID = "{{ room.id }}";
-        const USER_NAME = "{{ session_user().owner }}";
-    </script>
-    <script src="{{ url_for("static", filename="hallway.js") }}"></script>
-{% endblock %}
+<script>
+    const ROOM_ID = "{{ room.id }}";
+    const USER_NAME = "{{ session_user().owner }}";
+</script>
+<script src="{{ url_for('static', filename='hallway.js') }}"></script>
+{%     endblock %}

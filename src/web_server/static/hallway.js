@@ -15,17 +15,17 @@ socket.on("join", (data) => {
 });
 
 let startTime;
-setInterval(function() {
+setInterval(function () {
     startTime = Date.now();
     socket.emit('ping');
 }, 2000);
 
-socket.on('pong', function() {
+socket.on('pong', function () {
     console.log("Ping: " + (Date.now() - startTime) + "ms");
 });
 
 
-$('#messageform').submit(function(e) {
+$('#messageform').submit(function (e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
     data = {
@@ -73,6 +73,7 @@ function HallwayHunters() {
     this.state = {
         board_size: 30,
         players: [],
+        all_players: [],
         player_data: {
             name: "",
             position: {
@@ -122,7 +123,7 @@ function HallwayHunters() {
     this.tiles = {};
     this.animations = {};
 
-    this.setState = function(data) {
+    this.setState = function (data) {
         this.state = {
             ...this.state,
             ...data
@@ -139,7 +140,7 @@ function HallwayHunters() {
     };
 
     this.MESSAGE_HEIGHT = 40;
-    this.drawFadeMessages = function() {
+    this.drawFadeMessages = function () {
         let origHeight = 100;
         if (this.fadeMessages.length > 0) {
             if (this.fadeMessages[0].ticks < 0) {
@@ -360,6 +361,56 @@ function handleInput() {
     }
 }
 
+function extracted(x, y, sprite, S, xOffset, yOffset) {
+
+    context.drawImage(
+        sprite,
+        x * S + xOffset,
+        y * S + yOffset
+    );
+
+    // Draw item on top of tile if there is an item on this tile.
+    if (game.state.board[x][y].item !== null) {
+        context.drawImage(
+            game.tiles[game.state.board[x][y].item.name],
+            x * S + xOffset,
+            y * S + yOffset
+        );
+    }
+
+    if (game.lookup[x] === undefined || !game.lookup[x][y]) {
+        context.fillRect(x * S + xOffset, y * S + yOffset, TILE_SIZE, TILE_SIZE)
+    }
+}
+
+function renderTiles(S, xOffset, yOffset) {
+    context.fillStyle = "rgb(0, 0, 0, 0.3)";
+
+
+    for (let x = 0; x < game.state.board_size; x++) {
+        if (x * S + xOffset + TILE_SIZE < 0) continue;
+        if (x * S + xOffset > canvas.width) break;
+        for (let y = 0; y < game.state.board_size; y++) {
+            if (y * S + yOffset + TILE_SIZE < 0) continue;
+            if (y * S + yOffset > canvas.height) break;
+            const tile = game.state.board[x][y];
+            const animation = game.animations[tile.image];
+            let sprite;
+            if (animation === undefined) {
+                sprite = game.tiles[tile.image];
+            } else {
+                animation.active = tile.animation_ticks > 0;
+                if (animation.active) {
+                    animation.finishAnimation = tile.finish_animation;
+                }
+                sprite = getAnimationFrame(animation);
+            }
+
+            extracted(x, y, sprite, S, xOffset, yOffset);
+        }
+    }
+}
+
 // Game rendering stuff
 function gameLoop() {
     handleInput();
@@ -382,47 +433,7 @@ function gameLoop() {
     const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2 + Math.round(vector.y);
 
     // Draw tiles
-    context.fillStyle = "rgb(0, 0, 0, 0.3)";
-    for (let x = 0; x < game.state.board_size; x++) {
-        if (x * S + xOffset + TILE_SIZE < 0) continue;
-        if (x * S + xOffset > canvas.width) break;
-        for (let y = 0; y < game.state.board_size; y++) {
-            if (y * S + yOffset + TILE_SIZE < 0) continue;
-            if (y * S + yOffset > canvas.height) break;
-
-            const tile = game.state.board[x][y];
-            const animation = game.animations[tile.image];
-            let sprite;
-            if (animation === undefined) {
-                sprite = game.tiles[tile.image];
-            } else {
-                animation.active = tile.animation_ticks > 0;
-                if (animation.active) {
-                    animation.finishAnimation = tile.finish_animation;
-                }
-                sprite = getAnimationFrame(animation);
-            }
-
-            context.drawImage(
-                sprite,
-                x * S + xOffset,
-                y * S + yOffset
-            );
-
-            // Draw item on top of tile if there is an item on this tile.
-            if (game.state.board[x][y].item !== null) {
-                context.drawImage(
-                    game.tiles[game.state.board[x][y].item.name],
-                    x * S + xOffset,
-                    y * S + yOffset
-                );
-            }
-
-            if (game.lookup[x] === undefined || !game.lookup[x][y]) {
-                context.fillRect(x * S + xOffset, y * S + yOffset, TILE_SIZE, TILE_SIZE)
-            }
-        }
-    }
+    renderTiles(S, xOffset, yOffset);
 
     game.state.players.forEach((player) => {
         drawPlayer(player, S, xOffset, yOffset);
@@ -591,12 +602,14 @@ function initialize() {
      */
     socket.on("game_state", (data) => {
         game.setState(data);
-
+        console.log(game)
         if (!game.state.started) {
             // Lobby stuff
             let userList = $(".user-list");
             userList.empty();
-            data.players.forEach(player => {
+            console.log(data)
+            data.all_players.forEach(player => {
+                console.log(player)
                 userList.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -608,6 +621,18 @@ function initialize() {
             let settings = document.getElementById("room-settings");
             settings.innerHTML = `<div>   
             </div>`;
+        } else {
+            let playerList = $(".player-list");
+            playerList.empty();
+            console.log(data)
+            data.all_players.forEach(player => {
+                playerList.append(`
+                    <div class="user-entry">
+                    <div class="user-entry-name">${player.username}</div>
+                    <div class="user-entry-ready">${player.stored_items.length}</div>
+                    </div>
+                `);
+            });
         }
 
     });
