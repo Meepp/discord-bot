@@ -86,7 +86,7 @@ class HallwayHunters:
                 self.ticks += 1.
                 if self.ticks % self.tick_rate == 0:
                     print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
-                    self.spent_time = 0
+                    self.spent_time = 0.000001
                     self.ticks = 0
 
                 # Fill time sleeping while waiting for next tick
@@ -129,7 +129,11 @@ class HallwayHunters:
             sio.emit("game_state", self.export_board(player, reduced=True), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass, reduced=False):
-        tiles = player.get_visible_tiles()
+        if player.updated:
+            tiles = player.get_visible_tiles()
+        else:
+            tiles = None
+
         data = {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),

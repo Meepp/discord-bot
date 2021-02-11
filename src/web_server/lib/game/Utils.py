@@ -22,7 +22,7 @@ class Point:
         return hash((self.x, self.y))
 
     def __mul__(self, other):
-        if isinstance(other, int):
+        if isinstance(other, int) or isinstance(other, float):
             return Point(self.x * other, self.y * other)
         else:
             raise NotImplemented("Only multiplying with a constant is implemented.")

@@ -14,7 +14,6 @@ SPY_COOLDOWN = 30  # Seconds
 SCOUT_COOLDOWN = 30  # Seconds
 MRMOLE_COOLDOWN = 10  # Seconds
 
-
 MOVEMENT_COOLDOWN = 8  # Ticks
 SPRINT_COOLDOWN = 10 * 60  # Ticks
 KILL_COOLDOWN = 10 * 60  # Ticks
@@ -54,6 +53,7 @@ class PlayerClass:
         self.position = Point(1, 1)
         self.last_position = self.position
         self.move_suggestion = None
+        self.updated = True
 
         self.movement_cooldown = MOVEMENT_COOLDOWN  # Ticks
         self.movement_timer = 0
@@ -159,7 +159,10 @@ class PlayerClass:
 
         # Dont recompute if the player didnt move or turn
         if self.position != self.last_position or self.direction != last_direction:
+            self.updated = True
             self.visible_tiles = self.compute_line_of_sight()
+        else:
+            self.updated = False
 
         self.last_position = self.position
         self.ready = False
@@ -233,12 +236,18 @@ class PlayerClass:
 
         self.move_suggestion = move
 
+    def get_interpolated_position(self):
+        progress = self.movement_timer / self.movement_cooldown
+
+        position = self.position + (-1 * direction_to_point(self.direction)) * progress
+        return position
+
     def to_json(self, owner=True):
         # Default dictionary to see other players name
         state = {
             "username": self.profile.discord_username,
             "ready": self.ready,
-            "position": self.position.to_json(),
+            "position": self.get_interpolated_position().to_json(),
             "name": self.name,
             "direction": self.direction.value,
             "is_moving": self.is_moving,

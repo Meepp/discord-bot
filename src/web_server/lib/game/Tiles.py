@@ -50,8 +50,6 @@ class GroundTile(Tile):
     __repr__ = __str__
 
 
-
-
 class UnknownTile(Tile):
     def __init__(self):
         super().__init__()
