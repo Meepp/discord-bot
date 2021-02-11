@@ -72,8 +72,8 @@ function getRelativeMousePosition(canvas, evt) {
 function HallwayHunters() {
     this.state = {
         board_size: 30,
+        visible_players: [],
         players: [],
-        all_players: [],
         player_data: {
             dead: false,
             name: "",
@@ -387,7 +387,7 @@ function gameLoop() {
         }
     }
 
-    game.state.players.forEach((player) => {
+    game.state.visible_players.forEach((player) => {
         drawPlayer(player, S, xOffset, yOffset);
     });
 
