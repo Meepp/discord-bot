@@ -52,6 +52,10 @@ class PlayerClass:
         self.spawn_position = Point(1, 1)
         self.position = Point(1, 1)
         self.last_position = self.position
+
+        self.dead = False
+        self.can_move = True
+
         self.move_suggestion = None
         self.updated = True
 
@@ -107,9 +111,17 @@ class PlayerClass:
         self.sprint_timer = SPRINT_COOLDOWN
         self.passives.append(Passive(60 * 2, self.stop_sprinting, name="sprint"))
 
+    def die(self):
+        self.passives = []
+        self.dead = True
+        self.can_move = False
+        self.game.broadcast("%s died" % self.profile.discord_username)
+
+
     def kill(self):
         for passive in self.passives:
             if passive.name == "kill":
+                self.can_move = True
                 self.passives.remove(passive)
                 self.killing = None
                 self.kill_timer = 0
@@ -123,6 +135,9 @@ class PlayerClass:
         if len(visible_players) == 0:
             raise InvalidAction("There is nobody around to kill.")
 
+        # Cant move while killing
+        self.can_move = False
+
         self.kill_timer = KILL_COOLDOWN
         self.killing = visible_players[0]
         # self.movement_timer = 0  # Cannot move during kill
@@ -131,10 +146,12 @@ class PlayerClass:
     def finish_kill(self):
         self.movement_timer = 0
         self.kill_timer = KILL_COOLDOWN
+        self.can_move = True
 
-        self.game.broadcast("%s died" % self.killing.profile.discord_username)
+        # TODO: check if this is your target
+        self.killing.die()
+
         self.killing = None
-        # TODO: Actually kill the person
 
     def stop_sprinting(self):
         self.movement_cooldown = MOVEMENT_COOLDOWN
@@ -171,6 +188,9 @@ class PlayerClass:
         self.position = self.spawn_position = point
 
     def move(self):
+        if not self.can_move:
+            return
+
         # If there is no suggested move, we can stop right here
         if self.move_suggestion is None:
             self.is_moving = False
@@ -246,6 +266,7 @@ class PlayerClass:
         # Default dictionary to see other players name
         state = {
             "username": self.profile.discord_username,
+            "dead": self.dead,
             "ready": self.ready,
             "position": self.get_interpolated_position().to_json(),
             "name": self.name,

@@ -74,6 +74,7 @@ function HallwayHunters() {
         board_size: 30,
         players: [],
         player_data: {
+            dead: false,
             name: "",
             position: {
                 x: 0,
@@ -258,23 +259,27 @@ function renderKillCam() {
 }
 
 function drawPlayer(player, S, xOffset, yOffset) {
-    const interpolation = -(player.movement_timer / player.movement_cooldown);
-    const vector = directionToVector(player.direction, interpolation * S);
-    const x = player.position.x * S + xOffset + Math.round(vector.x);
-    const y = player.position.y * S + yOffset + Math.round(vector.y);
+    const x = player.position.x * S + xOffset;
+    const y = player.position.y * S + yOffset;
 
-    // If the player is not moving, reset its animation frame to beginning.
-    const animationName = player.name + "_" + player.direction;
-    const animation = game.animations[animationName];
+    let sprite;
+    if (player.dead) {
+        sprite = game.tiles[player.name + "_dead"];
+    } else {
+        // If the player is not moving, reset its animation frame to beginning.
+        const animationName = player.name + "_" + player.direction;
+        const animation = game.animations[animationName];
 
-    // Player animation is bound to moving
-    animation.active = player.is_moving;
-    if (!player.is_moving) {
-        // Set player frame to this when not moving
-        animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-        animation.currentSprite = 0;
+
+        // Player animation is bound to moving
+        animation.active = player.is_moving;
+        if (!player.is_moving) {
+            // Set player frame to this when not moving
+            animation.frameNumber = FRAMES_PER_ANIMATION - 2;
+            animation.currentSprite = 0;
+        }
+        sprite = getAnimationFrame(animation);
     }
-    const sprite = getAnimationFrame(animation);
 
     context.drawImage(sprite, x, y);
     if (player.item !== null) {
@@ -365,10 +370,8 @@ function gameLoop() {
     // Compute the offset for all tiles, to center rendering on the player.
     const S = (TILE_SIZE + TILE_PADDING);
 
-    const interpolation = game.state.player_data.movement_timer / game.state.player_data.movement_cooldown;
-    const vector = directionToVector(game.state.player_data.direction, interpolation * S);
-    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2 + Math.round(vector.x);
-    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2 + Math.round(vector.y);
+    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2;
+    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
 
     // Draw tiles
     context.fillStyle = "rgb(0, 0, 0, 0.3)";
@@ -511,8 +514,9 @@ function split_sheet() {
             game.tiles[color + "_180_" + i] = context.getImageData((i + 6) * S, (11 + row) * S, S, S);
             game.tiles[color + "_0_" + i] = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
         }
+        game.tiles[color + "_dead"] = context.getImageData(12 * S, (11 + row) * S, S, S);
         for (let i = 0; i < 6; i++) {
-            game.tiles["chest_" + color + "_" + i] = context.getImageData((i + 12) * S, (11 + row) * S, S, S);
+            game.tiles["chest_" + color + "_" + i] = context.getImageData((i + 13) * S, (11 + row) * S, S, S);
         }
     });
 
@@ -675,8 +679,7 @@ document.addEventListener("keydown", (ev) => {
     // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
     if (ev.key === "c" ||
         ev.key === "x" ||
-        ev.key === "z")
-    {
+        ev.key === "z") {
         sendAction(ev.key);
     }
 });

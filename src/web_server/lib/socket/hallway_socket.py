@@ -56,6 +56,9 @@ def get_state(data):
 
     profile = session_user()
     player = game.get_player(profile=profile)
+    if player is None:
+        game.add_player(profile, request.sid)
+
     sio.emit("game_state", game.export_board(player), room=player.socket, namespace="/hallway")
 
 

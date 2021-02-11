@@ -129,17 +129,22 @@ class HallwayHunters:
             sio.emit("game_state", self.export_board(player, reduced=True), room=player.socket, namespace="/hallway")
 
     def export_board(self, player: PlayerClass, reduced=False):
-        if player.updated:
-            tiles = player.get_visible_tiles()
+        # Show all players when not yet started.
+        if self.phase == Phases.NOT_YET_STARTED:
+            players = self.player_list
         else:
-            tiles = None
+            players = player.get_visible_players()
 
         data = {
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
-            "players": [player.to_json() for player in player.get_visible_players()],
-            "visible_tiles": tiles,
+            "players": [player.to_json() for player in players],
         }
+
+        # If this players line of sight changed, send new data.
+        if player.updated:
+            data.update({"visible_tiles": player.get_visible_tiles()})
+
         if not reduced:
             data.update({
                 "board": self.initial_board_json,
