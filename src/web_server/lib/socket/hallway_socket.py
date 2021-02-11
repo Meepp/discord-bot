@@ -94,6 +94,7 @@ def start_game(data):
     if not game.game_loop_thread.is_alive():
         game.game_loop_thread.start()
     game.start()
+
     sio.emit("start", None, room=room_id, namespace="/hallway")
 
 

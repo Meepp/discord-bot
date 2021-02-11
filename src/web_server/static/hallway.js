@@ -73,6 +73,7 @@ function HallwayHunters() {
     this.state = {
         board_size: 30,
         players: [],
+        all_players: [],
         player_data: {
             dead: false,
             name: "",
@@ -123,7 +124,7 @@ function HallwayHunters() {
     this.tiles = {};
     this.animations = {};
 
-    this.setState = function(data) {
+    this.setState = function (data) {
         this.state = {
             ...this.state,
             ...data
@@ -137,35 +138,6 @@ function HallwayHunters() {
             }
             this.lookup[obj.x][obj.y] = true;
         });
-    };
-
-    this.MESSAGE_HEIGHT = 40;
-    this.drawFadeMessages = function() {
-        let origHeight = 100;
-        if (this.fadeMessages.length > 0) {
-            if (this.fadeMessages[0].ticks < 0) {
-                this.fadeMessages = this.fadeMessages.slice(1);
-            } else {
-                origHeight -= (1 - Math.min(1, this.fadeMessages[0].ticks / 30)) * this.MESSAGE_HEIGHT * 1.5;
-            }
-        }
-        let n_visible = Math.min(5, this.fadeMessages.length);
-        for (let i = 0; i < n_visible; i++) {
-            let fm = this.fadeMessages[i];
-            let percent = Math.min(1, fm.ticks / 30);
-
-            context.font = `${this.MESSAGE_HEIGHT}px Arial`;
-            context.strokeStyle = `rgba(0, 0, 0, ${percent})`;
-            context.lineWidth = 0.5;
-            context.fillStyle = `rgba(165, 70, 50, ${percent})`;
-
-            let len = context.measureText(fm.message);
-            context.fillText(fm.message, 480 - len.width / 2, origHeight + i * this.MESSAGE_HEIGHT * 1.5);
-            context.strokeText(fm.message, 480 - len.width / 2, origHeight + i * this.MESSAGE_HEIGHT * 1.5);
-            context.stroke();
-
-            fm.ticks--;
-        }
     };
 }
 
@@ -381,7 +353,6 @@ function gameLoop() {
         for (let y = 0; y < game.state.board_size; y++) {
             if (y * S + yOffset + TILE_SIZE < 0) continue;
             if (y * S + yOffset > canvas.height) break;
-
             const tile = game.state.board[x][y];
             const animation = game.animations[tile.image];
             let sprite;
@@ -589,7 +560,7 @@ function initialize() {
             // Lobby stuff
             let userList = $(".user-list");
             userList.empty();
-            data.players.forEach(player => {
+            data.all_players.forEach(player => {
                 userList.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -601,6 +572,17 @@ function initialize() {
             let settings = document.getElementById("room-settings");
             settings.innerHTML = `<div>   
             </div>`;
+        } else {
+            let playerList = $(".player-list");
+            playerList.empty();
+            data.all_players.forEach(player => {
+                playerList.append(`
+                    <div class="user-entry">
+                    <div class="user-entry-name">${player.username}</div>
+                    <div class="user-entry-ready">${player.stored_items.length}</div>
+                    </div>
+                `);
+            });
         }
 
     });
