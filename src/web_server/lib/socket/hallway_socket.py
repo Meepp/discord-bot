@@ -134,6 +134,8 @@ def suggest_action(data):
             # Kill the first player in the list of visible players
             # TODO: Maybe a better method of selection
             player.kill()
+        elif action == "Shift":
+            player.drop_item()
     except InvalidAction as e:
         sio.emit("message", e.message, room=player.socket, namespace="/hallway")
 
