@@ -151,10 +151,12 @@ class View {
         this.zoom = 1;
         this.context = context;
         this.objects = [[], [], [], []];
+        this.renderable = true;
 
         this.children = [];
         this.frametime = 0;
         this.fps = 0;
+
 
         this._lastInvokation = 0;
     }
@@ -167,6 +169,8 @@ class View {
     }
 
     render() {
+        if (!this.renderable) return;
+
         const start = performance.now();
 
         const hw = this.width / 2;

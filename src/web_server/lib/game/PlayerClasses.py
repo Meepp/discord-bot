@@ -184,13 +184,14 @@ class PlayerClass:
         # Dont recompute if the player didnt move or turn
         # TODO: Update line of sight only when player is done moving (not in the middle of animation)
         if self.position != self.last_position or self.direction != last_direction:
-            self.updated = True
-            self.visible_tiles = self.compute_line_of_sight()
-        else:
-            self.updated = False
+            self.update_line_of_sight()
 
         self.last_position = self.position
         self.ready = False
+
+    def update_line_of_sight(self):
+        self.updated = True
+        self.visible_tiles = self.compute_line_of_sight()
 
     def change_position(self, point):
         self.position = self.spawn_position = point
@@ -360,8 +361,8 @@ class PlayerClass:
         if self.item is not None and \
                 not isinstance(self.game.board[self.position.x][self.position.y].item, CollectorItem):
             self.game.board[self.position.x][self.position.y].item = self.item
-            print(type(self.item))
             self.item = None
+            self.update_line_of_sight()
 
 
 class Demolisher(PlayerClass):
@@ -398,7 +399,7 @@ class Demolisher(PlayerClass):
                 tile.item = RubbishItem()
                 self.game.change_tile(position + diff, tile)
         self.ability_timer = self.ability_cooldown
-        self.updated = True
+        self.update_line_of_sight()
 
 
 class Spy(PlayerClass):
@@ -453,4 +454,4 @@ class MrMole(PlayerClass):
 
         self.game.change_tile(position, ladder)
         self.ability_timer = self.ability_cooldown
-        self.updated = True
+        self.update_line_of_sight()

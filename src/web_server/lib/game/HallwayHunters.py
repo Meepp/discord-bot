@@ -139,6 +139,7 @@ class HallwayHunters:
         # If this players line of sight changed, send new data.
         if player.updated:
             data.update({"visible_tiles": player.get_visible_tiles()})
+            player.updated = False
 
         if not reduced:
             data.update({

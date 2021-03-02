@@ -30,6 +30,9 @@ class Player {
         this.direction = 0;
         this.moving = false;
 
+        // Only useful when you are the scout
+        this.cameraTiles = null;
+
         const padding = 10;
         const radius = 30;
         this.zCooldown = new CircularCooldown(padding + radius * 2, view.height - padding, radius);
@@ -63,6 +66,17 @@ class Player {
         player.moving = data.is_moving;
         player.direction = data.direction;
 
+        if (data.item !== null)
+            this.item = new SpriteTile(game.tiles[data.item.name]);
+        else
+            this.item = null;
+
+        for (let i = 0; i < data.camera_list.length; i++) {
+            let tile = game.tiles[data.camera_list[i].name];
+            player.cameraTiles[i].setImage(tile)
+        }
+
+
         this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
         this.xCooldown.progress = data.sprint_timer / data.sprint_cooldown;
         this.cCooldown.progress = data.ability_timer / data.ability_cooldown;
@@ -90,16 +104,27 @@ class Player {
         sprite.y = this.y * 16;
         sprite.render(context);
 
-        // item.x = this.x * 16;
-        // item.y = this.y * 16;
-        // item.render(context);
+        // Render item on top of players head
+        if (this.item !== null) {
+            this.item.x = this.x * 16;
+            this.item.y = this.y * 16 - 11;
+            this.item.render(context);
+        }
     }
 }
+
 const view = new View(context);
 const statsView = new View(context);
 const UIView = new View(context);
+
+// Only turn this on if you are the camera class
+const cameraView = new View(context);
+cameraView.renderable = false;
+cameraView.zoom = 2.5;
+
 view.addChild(UIView);
 view.addChild(statsView);
+UIView.addChild(cameraView);
 
 view.zoom = 3;
 const TILE_SIZE = 48;
@@ -258,6 +283,7 @@ function updateItems(tiles) {
             if (tile.tile.item === null) {
                 // TODO: Remove this object from the renderable list
                 game.state.board[tile.x][tile.y].item.renderable = false;
+                game.state.board[tile.x][tile.y].item = undefined;
             } else {
                 game.state.board[tile.x][tile.y].item.setImage(game.tiles[tile.tile.item.name]);
             }
@@ -288,6 +314,7 @@ function HallwayHunters() {
                 x: 0,
                 y: 0
             },
+            camera_list: [],
             previous_position: {
                 x: 0,
                 y: 0
@@ -379,7 +406,6 @@ function HallwayHunters() {
         this.stats.stateTime.put(performance.now() - start);
     };
 }
-
 
 function renderMinimap() {
     const minimap_pixel_size = 2;
@@ -541,8 +567,15 @@ function gameLoop() {
     // It has to be a multiple of 2 to remove artifacts around the tilesets
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
     canvas.height = Math.round(canvas.clientHeight / 2) * 2;
-    view.width = canvas.width;
-    view.height = canvas.height;
+
+    if (canvas.width !== view.width || canvas.height !== view.height) {
+        view.width = canvas.width;
+        view.height = canvas.height;
+
+        // Its just works
+        cameraView.cameraCenter.x = ((cameraView.width / 2) - view.width) / cameraView.zoom;
+        cameraView.cameraCenter.y = (cameraView.height / 2) / cameraView.zoom;
+    }
 
     // Clear the canvas and fill with floor tile color.
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -581,7 +614,6 @@ function splitTileset(width, height) {
     canvas.className = "disable-anti-aliasing";
     canvas.width = width * scale;
     canvas.height = height * scale;
-    console.log(width, height, canvas);
     let context = canvas.getContext("2d");
 
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -642,6 +674,10 @@ function splitTileset(width, height) {
 
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
     game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
+
+    game.tiles["UI_corner_bl"] = context.getImageData(19 * S, 11 * S, S, S);
+    game.tiles["UI_edge_left"] = context.getImageData(20 * S, 11 * S, S, S);
+    game.tiles["UI_edge_bottom"] = context.getImageData(21 * S, 11 * S, S, S);
 
     ["red", "blue", "green", "purple", "black"].map((color, row) => {
         for (let i = 0; i < 3; i++) {
@@ -711,6 +747,42 @@ function splitTileset(width, height) {
 
 let player;
 
+function initializeCamera() {
+    player.cameraTiles = [];
+    const camWidth = 5;
+    for (let i = 0; i < camWidth; i++) {
+        for (let j = 0; j < camWidth; j++) {
+            const tile = new SpriteTile(game.tiles["void"]);
+            tile.renderable = true;
+            tile.x = (i - 5) * 16;
+            tile.y = j * 16;
+            cameraView.objects[0].push(tile);
+            player.cameraTiles.push(tile);
+        }
+    }
+
+    let tile = new SpriteTile(game.tiles["UI_corner_bl"]);
+    tile.renderable = true;
+    tile.x = -5 * 16;
+    tile.y = 4 * 16;
+    cameraView.objects[1].push(tile);
+    for (let i = 0; i < camWidth - 1; i++) {
+        // Render left border
+        tile = new SpriteTile(game.tiles["UI_edge_left"]);
+        tile.renderable = true;
+        tile.x = -5 * 16;
+        tile.y = i * 16;
+        cameraView.objects[1].push(tile);
+
+        // Render bottom border
+        tile = new SpriteTile(game.tiles["UI_edge_bottom"]);
+        tile.renderable = true;
+        tile.x = (i - 4) * 16;
+        tile.y = 4 * 16;
+        cameraView.objects[1].push(tile);
+    }
+}
+
 function initialize() {
     player = new Player(game.tiles["red_0_0"]);
     [0, 90, 180, 270].forEach(d => {
@@ -740,6 +812,10 @@ function initialize() {
         game.statsText.ping,
         game.statsText.stateTime
     );
+
+    initializeCamera();
+    cameraView.renderable = true;
+
     /*
      * Register all socket.io functions to the game object.
      */
