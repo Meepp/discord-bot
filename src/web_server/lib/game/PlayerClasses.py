@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from database.models.models import Profile
 from src.web_server.lib.game.Items import RubbishItem, Item, CollectorItem
-from src.web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile
+from src.web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile, CameraTile
 from src.web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
     point_interpolator
 from src.web_server.lib.game.exceptions import InvalidAction
@@ -85,6 +85,8 @@ class PlayerClass:
         self.passives: List[Passive] = []
 
         self.visible_tiles = []
+        self.camera: Optional[CameraTile] = None
+        self.camera_list = []
 
         from src.web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
@@ -291,6 +293,15 @@ class PlayerClass:
                 "movement_timer": self.movement_timer,
                 "item": self.item.to_json() if self.item else None,
             })
+        # TODO: Fix this mess
+        if self.camera:
+            state.update({
+                "camera_list": [tile.to_json() for tile in self.camera_list]
+            })
+        else:
+            state.update({
+                "camera_list": []
+            })
 
         # In case you are owner add player sensitive information to state
         if owner:
@@ -305,6 +316,7 @@ class PlayerClass:
                 "killing": self.killing.to_json(owner=False) if self.killing else None,
                 "stored_items": [item.to_json() for item in self.stored_items],
             })
+
         return state
 
     def convert_class(self, new_class):
@@ -423,7 +435,19 @@ class Scout(PlayerClass):
 
     def ability(self):
         super().ability()
+        self.camera = CameraTile(self.position)
+        self.game.change_tile(self.position, self.camera)
         self.ability_timer = self.ability_cooldown
+        self.updated = True
+
+    def tick(self):
+        self.camera_list = []
+        if self.camera is not None:
+            for x in range(self.camera.top_left_position.x, self.camera.bottom_right_position.x):
+                for y in range(self.camera.top_left_position.y, self.camera.bottom_right_position.y):
+                    self.camera_list.append(self.game.board[x][y])
+
+        super().tick()
 
 
 class MrMole(PlayerClass):
