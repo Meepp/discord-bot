@@ -14,7 +14,6 @@ class RollingAverage {
     put(value) {
         this.values.unshift(value);
         this.values = this.values.slice(0, this.n);
-        console.log(this.values);
     }
 
     get() {
@@ -40,6 +39,8 @@ class Player {
         this.cCooldown = new CircularCooldown(padding + radius * 8, view.height - padding, radius);
         this.cCooldown.textObject.text = "C";
 
+        this.item = null;
+
         // Fallback
         this.sprite = new SpriteTile(image);
         this.walkAnimations = [
@@ -59,7 +60,7 @@ class Player {
     update(data) {
         player.x = data.position.x;
         player.y = data.position.y;
-        player.moving = data.moving;
+        player.moving = data.is_moving;
         player.direction = data.direction;
 
         this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
@@ -88,6 +89,10 @@ class Player {
         sprite.x = this.x * 16;
         sprite.y = this.y * 16;
         sprite.render(context);
+
+        // item.x = this.x * 16;
+        // item.y = this.y * 16;
+        // item.render(context);
     }
 }
 const view = new View(context);
@@ -298,6 +303,8 @@ function HallwayHunters() {
             ability_timer: 0,
             sprint_cooldown: 0,
             sprint_timer: 0,
+            kill_cooldown: 0,
+            kill_timer: 0,
             stored_items: [{
                 name: "",
             }],
