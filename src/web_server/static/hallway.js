@@ -274,8 +274,8 @@ function updateItems(tiles) {
 function HallwayHunters() {
     this.state = {
         board_size: 30,
+        all_players: [],
         visible_players: [],
-        players: [],
         player_data: {
             dead: false,
             name: "",
@@ -291,22 +291,13 @@ function HallwayHunters() {
                 x: 0,
                 y: 0
             },
-            moving: false,
+            is_moving: false,
             movement_cooldown: 0,
             movement_timer: 0,
-
             ability_cooldown: 0,
             ability_timer: 0,
             sprint_cooldown: 0,
             sprint_timer: 0,
-            kill_timer: 0,
-            kill_cooldown: 0,
-            objective: {
-                position: {
-                    x: 10,
-                    y: 10,
-                }
-            },
             stored_items: [{
                 name: "",
             }],
@@ -407,9 +398,9 @@ function renderMinimap() {
                 context.fillStyle = "#ec2b3c";
             }
 
-            if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
-                context.fillStyle = "#63ee52";
-            }
+            // if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
+            //     context.fillStyle = "#63ee52";
+            // }
 
             context.fillRect(mm_offset_x + x * minimap_pixel_size, mm_offset_y + y * minimap_pixel_size, minimap_pixel_size, minimap_pixel_size);
         }
@@ -751,7 +742,7 @@ function initialize() {
         list.empty()
         if (!game.state.started) {
             // Lobby stuff
-            data.players.forEach(player => {
+            data.all_players.forEach(player => {
                 list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -764,7 +755,7 @@ function initialize() {
             settings.innerHTML = `<div>   
             </div>`;
         } else {
-            data.players.forEach(player => {
+            data.all_players.forEach(player => {
                 list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -848,11 +839,11 @@ function sendMove(move) {
 let keyState = {};
 document.addEventListener("keydown", (ev) => {
     keyState[ev.key] = true;
-
     // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
     if (ev.key === "c" ||
         ev.key === "x" ||
-        ev.key === "z") {
+        ev.key === "z" ||
+        ev.key === "Shift") {
         sendAction(ev.key);
     }
 });

@@ -249,10 +249,12 @@ class PlayerClass:
             self.position = self.position + self.move_suggestion
 
         # Pickup item
-        if self.position == self.objective \
-                and self.game.board[self.objective.x][self.objective.y].item is not None:
-            self.item = self.game.board[self.objective.x][self.objective.y].item
-            self.game.board[self.objective.x][self.objective.y].item = None
+        # TODO: Can add check of self.objective back here
+        ground_item = self.game.board[self.position.x][self.position.y].item
+        if ground_item is not None and self.item is None:
+            if isinstance(ground_item, CollectorItem):
+                self.item = ground_item
+                self.game.board[self.position.x][self.position.y].item = None
 
         self.is_moving = True
         self.move_suggestion = None
@@ -283,7 +285,7 @@ class PlayerClass:
                 "position": self.get_interpolated_position().to_json(),
                 "name": self.name,
                 "direction": self.direction.value,
-                "moving": self.is_moving,
+                "is_moving": self.is_moving,
                 "movement_cooldown": self.movement_cooldown,
                 "movement_timer": self.movement_timer,
                 "item": self.item.to_json() if self.item else None,
@@ -300,7 +302,7 @@ class PlayerClass:
                 "sprint_timer": self.sprint_timer,
                 "passives": [passive.to_json() for passive in self.passives],
                 "killing": self.killing.to_json(owner=False) if self.killing else None,
-                "objective": self.objective.to_json(),
+                "stored_items": [item.to_json() for item in self.stored_items],
             })
         return state
 
@@ -353,6 +355,13 @@ class PlayerClass:
         self.objective = Point(random_x, random_y)
 
         self.game.board[random_x][random_y].item = CollectorItem(self.name)
+
+    def drop_item(self):
+        if self.item is not None and \
+                not isinstance(self.game.board[self.position.x][self.position.y].item, CollectorItem):
+            self.game.board[self.position.x][self.position.y].item = self.item
+            print(type(self.item))
+            self.item = None
 
 
 class Demolisher(PlayerClass):

@@ -133,7 +133,7 @@ class HallwayHunters:
             "started": self.phase == Phases.STARTED,
             "player_data": player.to_json(),
             "visible_players": [player.to_json() for player in player.get_visible_players()],
-            "players": [player.to_json(reduced=True) for player in self.player_list],
+            "all_players": [player.to_json(reduced=True) for player in self.player_list],
         }
 
         # If this players line of sight changed, send new data.
