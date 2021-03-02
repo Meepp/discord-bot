@@ -4,31 +4,145 @@ context.webkitImageSmoothingEnabled = false;
 context.mozImageSmoothingEnabled = false;
 context.imageSmoothingEnabled = false;
 
-const TILE_SIZE = 48;
-const TILE_PADDING = 0;
-const FRAMES_PER_ANIMATION = 6;
 
+class RollingAverage {
+    constructor(n) {
+        this.values = [];
+        this.n = n;
+    }
+
+    put(value) {
+        this.values.unshift(value);
+        this.values = this.values.slice(0, this.n);
+        console.log(this.values);
+    }
+
+    get() {
+        return this.values.reduce((a, b) => a + b, 0) / this.values.length;
+    }
+}
+
+
+class Player {
+    constructor(image) {
+        this.renderable = true;
+        this.x = 0;
+        this.y = 0;
+        this.direction = 0;
+        this.moving = false;
+
+        const padding = 10;
+        const radius = 30;
+        this.zCooldown = new CircularCooldown(padding + radius * 2, view.height - padding, radius);
+        this.zCooldown.textObject.text = "Z";
+        this.xCooldown = new CircularCooldown(padding + radius * 5, view.height - padding, radius);
+        this.xCooldown.textObject.text = "X";
+        this.cCooldown = new CircularCooldown(padding + radius * 8, view.height - padding, radius);
+        this.cCooldown.textObject.text = "C";
+
+        // Fallback
+        this.sprite = new SpriteTile(image);
+        this.walkAnimations = [
+            null,
+            null,
+            null,
+            null
+        ];
+        this.idleAnimations = [
+            null,
+            null,
+            null,
+            null
+        ];
+    }
+
+    update(data) {
+        player.x = data.position.x;
+        player.y = data.position.y;
+        player.moving = data.moving;
+        player.direction = data.direction;
+
+        this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
+        this.xCooldown.progress = data.sprint_timer / data.sprint_cooldown;
+        this.cCooldown.progress = data.ability_timer / data.ability_cooldown;
+    }
+
+    setWalkingAnimation(direction, sprites) {
+        this.walkAnimations[direction / 90] = new AnimatedSpriteTile(sprites);
+    }
+
+    setIdleAnimation(direction, sprites) {
+        this.idleAnimations[direction / 90] = new AnimatedSpriteTile(sprites);
+    }
+
+    render(context) {
+        let sprite = null;
+
+        if (this.moving)
+            sprite = this.walkAnimations[this.direction / 90];
+        else
+            sprite = this.idleAnimations[this.direction / 90];
+
+        if (sprite === null) sprite = this.sprite;
+
+        sprite.x = this.x * 16;
+        sprite.y = this.y * 16;
+        sprite.render(context);
+    }
+}
+const view = new View(context);
+const statsView = new View(context);
+const UIView = new View(context);
+view.addChild(UIView);
+view.addChild(statsView);
+
+view.zoom = 3;
+const TILE_SIZE = 48;
+const STATS_INTERVAL = 1000 / 10;
+
+const FRAMES_PER_ANIMATION = 6;
 let socket = io("/hallway");
+let tileSet;
+
+let game = new HallwayHunters();
+
+async function loadImages(src) {
+    return new Promise((resolve, reject) => {
+        tileSet = new Image();
+        tileSet.onload = () => {
+            splitTileset(tileSet.width, tileSet.height);
+            resolve();
+        };
+        tileSet.onerror = reject;
+        tileSet.src = src;
+    });
+}
+
+
+loadImages("/static/images/tiles/dungeon_sheet.png").then(e => {
+        initialize();
+    }
+);
 
 socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
-
 let startTime;
+
 setInterval(function() {
     startTime = Date.now();
     socket.emit('ping');
-}, 2000);
+}, STATS_INTERVAL);
+
 
 socket.on('pong', function() {
-    console.log("Ping: " + (Date.now() - startTime) + "ms");
+    game.stats.ping.put(Date.now() - startTime);
 });
-
 
 $('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
-    data = {
+    let data = {
         "message": m.val(),
         "room": $('#roomid').val(),
         "username": $('#username').val()
@@ -40,11 +154,11 @@ $('#messageform').submit(function(e) {
 
 socket.on("command error", (data) => {
     let messages = $('#messages');
-    console.log(data)
-    console.log(messages)
+    console.log(data);
+    console.log(messages);
     messages.append($('<li class="chat-message-entry" style="color:red">').text("Error: " + data));
     document.getElementById("messages").lastChild.scrollIntoView();
-})
+});
 
 socket.on("chat message", (data) => {
     let messages = $('#messages');
@@ -69,6 +183,94 @@ function getRelativeMousePosition(canvas, evt) {
     };
 }
 
+function initializeBoard(board_size) {
+    for (let x = 0; x < board_size; x++) {
+        let list = [];
+        for (let y = 0; y < board_size; y++) {
+            let sprite = new SpriteTile(game.tiles["void"]);
+            sprite.x = x * 16;
+            sprite.y = y * 16;
+            list.push(sprite);
+            view.objects[0].push(sprite);
+        }
+        game.state.board.push(list);
+    }
+}
+
+function updateBoardSprites(tiles) {
+    tiles.forEach(obj => {
+        let oldTile = game.state.board[obj.x][obj.y];
+        oldTile.setImage(game.tiles[obj.tile.image])
+    });
+}
+
+function updateRenderable(oldCenter, newCenter) {
+    const w = view.width / view.zoom;
+    const h = view.height / view.zoom;
+    const coordScale = 16;
+    const oldRenderbox = new Rectangle(oldCenter.x - w / 2 - coordScale, oldCenter.y - h / 2 - coordScale, w + 32, h + 32);
+    const newRenderbox = new Rectangle(newCenter.x - w / 2 - coordScale, newCenter.y - h / 2 - coordScale, w + 32, h + 32);
+
+    [oldRenderbox, newRenderbox].forEach(e => {
+        e.x = Math.max(Math.floor(e.x / coordScale), 0);
+        e.y = Math.max(Math.floor(e.y / coordScale), 0);
+        e.width = Math.ceil(e.width / coordScale);
+        e.height = Math.ceil(e.height / coordScale);
+    });
+
+    // Remove the renderable property from the old box
+    let width = Math.min(oldRenderbox.x + oldRenderbox.width, game.state.board_size);
+    let height = Math.min(oldRenderbox.y + oldRenderbox.height, game.state.board_size);
+    for (let x = oldRenderbox.x; x < width; x++) {
+        for (let y = oldRenderbox.y; y < height; y++) {
+            game.state.board[x][y].renderable = false;
+        }
+    }
+    // Add the renderable property to the new box
+    width = Math.min(newRenderbox.x + newRenderbox.width, game.state.board_size);
+    height = Math.min(newRenderbox.y + newRenderbox.height, game.state.board_size);
+
+    // TODO: Dont recompute the entire vision lines every new data update
+    view.objects[2] = [];
+    for (let x = newRenderbox.x; x < width; x++) {
+        for (let y = newRenderbox.y; y < height; y++) {
+            game.state.board[x][y].renderable = true;
+
+            if (game.lookup[x] === undefined || !game.lookup[x][y]) {
+                let tile = new ColorTile("rgba(0,0,0,0.2)");
+                tile.x = x * 16;
+                tile.y = y * 16;
+                tile.renderable = true;
+                view.objects[2].push(tile);
+            }
+        }
+    }
+}
+
+function updateItems(tiles) {
+    tiles.forEach(tile => {
+        if (game.state.board[tile.x][tile.y].item !== undefined) {
+            if (tile.tile.item === null) {
+                // TODO: Remove this object from the renderable list
+                game.state.board[tile.x][tile.y].item.renderable = false;
+            } else {
+                game.state.board[tile.x][tile.y].item.setImage(game.tiles[tile.tile.item.name]);
+            }
+            return;
+        }
+        if (tile.tile.item !== null) {
+            let item = new SpriteTile(game.tiles[tile.tile.item.name]);
+            // FIXME: Items aren't always renderable, update this.
+            item.renderable = true;
+            item.x = tile.x * 16;
+            item.y = tile.y * 16;
+            game.state.board[tile.x][tile.y].item = item;
+            view.objects[1].push(item);
+        }
+    });
+}
+
+
 function HallwayHunters() {
     this.state = {
         board_size: 30,
@@ -89,13 +291,16 @@ function HallwayHunters() {
                 x: 0,
                 y: 0
             },
-            is_moving: false,
-            cooldown: 0,
-            cooldown_timer: 0,
+            moving: false,
             movement_cooldown: 0,
             movement_timer: 0,
-            sprint: 0,
+
+            ability_cooldown: 0,
+            ability_timer: 0,
+            sprint_cooldown: 0,
             sprint_timer: 0,
+            kill_timer: 0,
+            kill_cooldown: 0,
             objective: {
                 position: {
                     x: 10,
@@ -105,8 +310,6 @@ function HallwayHunters() {
             stored_items: [{
                 name: "",
             }],
-            kill_timer: 0,
-            kill_cooldown: 0,
             passives: [{
                 name: "",
                 time: 0,
@@ -119,25 +322,63 @@ function HallwayHunters() {
         board: [],
 
     };
+    this.stats = {
+        ping: new RollingAverage(5),
+        stateTime: new RollingAverage(5),
+        fps: new RollingAverage(5),
+        frameTime: new RollingAverage(5)
+    };
+    this.statsText = {
+        ping: new DrawableText(5, 5),
+        fps: new DrawableText(5, 5 + 12),
+        stateTime: new DrawableText(5, 5 + 24),
+        frameTime: new DrawableText(5, 5 + 36),
+    };
     this.lookup = {};
-    this.fadeMessages = [];
     this.tiles = {};
     this.animations = {};
+    this.items = [];
+    this.playerText = new DrawableText(0, 0);
 
-    this.setState = function (data) {
+    this.setState = function(data) {
+        let start = performance.now();
+        if (this.state.board.length === 0) {
+            initializeBoard(data.board_size);
+        }
+
+        if (data.visible_tiles !== undefined) {
+            updateBoardSprites(data.visible_tiles);
+            updateItems(data.visible_tiles);
+        }
+
         this.state = {
             ...this.state,
             ...data
         };
 
+        // This marks the tiles which are visible
         this.lookup = {};
         this.state.visible_tiles.forEach((obj) => {
-            this.state.board[obj.x][obj.y] = obj.tile;
             if (this.lookup[obj.x] === undefined) {
                 this.lookup[obj.x] = {};
             }
             this.lookup[obj.x][obj.y] = true;
         });
+
+        let newCameraCenter = new Point(data.player_data.position.x * 16, data.player_data.position.y * 16);
+        player.update(data.player_data);
+
+        this.playerText.text = data.player_data.username;
+        // Sprite width / 2
+        this.playerText.x = player.x * 16 + 8 - (view.context.measureText(data.player_data.username).width / 4);
+        this.playerText.y = player.y * 16 - this.playerText.fontSize;
+
+        if (this.state.started)
+            updateRenderable(view.cameraCenter, newCameraCenter);
+
+        view.cameraCenter = newCameraCenter;
+
+        this.stats.stateTime.put(performance.now() - start);
     };
 }
 
@@ -259,45 +500,9 @@ function drawPlayer(player, S, xOffset, yOffset) {
     }
 }
 
-function renderCooldowns() {
-    // TODO: Refactor this to work more easily with more different cooldowns.
-    const pd = game.state.player_data;
-    const timers = [[
-        pd.cooldown_timer, pd.cooldown, "C"
-    ], [
-        pd.sprint_timer, pd.sprint, "X"
-    ], [
-        pd.kill_timer, pd.kill_cooldown, "Z"
-    ]];
-
-    timers.map((timer, i) => {
-        const cooldown = timer[0] / timer[1];
-        context.lineWidth = 20;
-        context.strokeStyle = "#418eb0";
-        context.beginPath();
-        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, 2 * Math.PI);
-        context.stroke();
-
-        context.lineWidth = 18;
-        context.strokeStyle = "#3f3656";
-        context.beginPath();
-        context.arc(75 + 150 * i, canvas.height - 75, 50, 0, cooldown * 2 * Math.PI);
-        context.stroke();
-
-        const fontSize = 50;
-        context.font = fontSize + "px Arial";
-        context.fillStyle = "#fff";
-        if (keyState[timer[2].toLowerCase()])
-            context.fillStyle = "#AAA";
-        const width = context.measureText(timer[2]).width;
-        context.fillText(timer[2], 75 + 150 * i - width / 2, canvas.height - 75 + fontSize / 3);
-    })
-
-}
-
 function renderStorage() {
     const padding = 10;
-    const S = (TILE_SIZE + TILE_PADDING);
+    const S = TILE_SIZE;
     const itemWidth = S + 2 * padding;
     const W = game.state.player_data.stored_items.length * itemWidth;
     const H = S + 2 * padding;
@@ -312,6 +517,10 @@ function renderStorage() {
             padding
         );
     })
+}
+
+function round(number) {
+    return Math.round(number * 100) / 100;
 }
 
 function handleInput() {
@@ -334,71 +543,29 @@ function gameLoop() {
     // It has to be a multiple of 2 to remove artifacts around the tilesets
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
     canvas.height = Math.round(canvas.clientHeight / 2) * 2;
+    view.width = canvas.width;
+    view.height = canvas.height;
 
     // Clear the canvas and fill with floor tile color.
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
 
+    game.stats.fps.put(view.fps);
+    game.stats.frameTime.put(view.frametime);
+
+    game.statsText.fps.text = round(game.stats.fps.get()) + " fps";
+    game.statsText.stateTime.text = "State update time: " + round(game.stats.stateTime.get()) + " ms";
+    game.statsText.ping.text = "Latency: " + round(game.stats.ping.get()) + " ms";
+    game.statsText.frameTime.text = "Frame time: " + round(game.stats.frameTime.get()) + " ms";
+
     // Compute the offset for all tiles, to center rendering on the player.
-    const S = (TILE_SIZE + TILE_PADDING);
-
-    const xOffset = -game.state.player_data.position.x * S + canvas.width / 2 - TILE_SIZE / 2;
-    const yOffset = -game.state.player_data.position.y * S + canvas.height / 2 - TILE_SIZE / 2;
-
-    // Draw tiles
-    context.fillStyle = "rgb(0, 0, 0, 0.3)";
-    for (let x = 0; x < game.state.board_size; x++) {
-        if (x * S + xOffset + TILE_SIZE < 0) continue;
-        if (x * S + xOffset > canvas.width) break;
-        for (let y = 0; y < game.state.board_size; y++) {
-            if (y * S + yOffset + TILE_SIZE < 0) continue;
-            if (y * S + yOffset > canvas.height) break;
-            const tile = game.state.board[x][y];
-            const animation = game.animations[tile.image];
-            let sprite;
-            if (animation === undefined) {
-                sprite = game.tiles[tile.image];
-            } else {
-                animation.active = tile.animation_ticks > 0;
-                if (animation.active) {
-                    animation.finishAnimation = tile.finish_animation;
-                }
-                sprite = getAnimationFrame(animation);
-            }
-
-            context.drawImage(
-                sprite,
-                x * S + xOffset,
-                y * S + yOffset
-            );
-
-            // Draw item on top of tile if there is an item on this tile.
-            if (game.state.board[x][y].item !== null) {
-                context.drawImage(
-                    game.tiles[game.state.board[x][y].item.name],
-                    x * S + xOffset,
-                    y * S + yOffset
-                );
-            }
-
-            if (game.lookup[x] === undefined || !game.lookup[x][y]) {
-                context.fillRect(x * S + xOffset, y * S + yOffset, TILE_SIZE, TILE_SIZE)
-            }
-        }
+    try {
+        view.render();
+    } catch (e) {
+        console.log(e);
+        clearInterval(intervalID);
     }
-
-    game.state.visible_players.forEach((player) => {
-        drawPlayer(player, S, xOffset, yOffset);
-    });
-
-    // renderMinimap();
-    renderStorage();
-    renderCooldowns();
-    renderKillCam();
 }
-
-let game = new HallwayHunters();
-
 
 function createAnimation(sprites) {
     return {
@@ -410,13 +577,13 @@ function createAnimation(sprites) {
     };
 }
 
-function split_sheet() {
+function splitTileset(width, height) {
     const scale = TILE_SIZE / 16;
     let canvas = document.createElement("canvas");
     canvas.className = "disable-anti-aliasing";
-    canvas.width = this.width * scale;
-    canvas.height = this.height * scale;
-    console.log(this.width, this.height, canvas);
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    console.log(width, height, canvas);
     let context = canvas.getContext("2d");
 
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -486,6 +653,9 @@ function split_sheet() {
             game.tiles[color + "_0_" + i] = context.getImageData((i + 9) * S, (11 + row) * S, S, S);
         }
         game.tiles[color + "_dead"] = context.getImageData(12 * S, (11 + row) * S, S, S);
+
+        // Base chest sprite without animation
+        game.tiles["chest_" + color] = context.getImageData(13 * S, (11 + row) * S, S, S);
         for (let i = 0; i < 6; i++) {
             game.tiles["chest_" + color + "_" + i] = context.getImageData((i + 13) * S, (11 + row) * S, S, S);
         }
@@ -538,18 +708,40 @@ function split_sheet() {
         game.animations[`chest_${color}`].finishAnimation = true;
     });
 
+    console.log("Done loading images.");
 }
 
-let tileSet = null;
+let player;
 
 function initialize() {
-    /*
-     * Preload all images to reduce traffic later.
-     */
-    tileSet = new Image();
-    tileSet.onload = split_sheet;
-    tileSet.src = "/static/images/tiles/dungeon_sheet.png";
+    player = new Player(game.tiles["red_0_0"]);
+    [0, 90, 180, 270].forEach(d => {
+        player.setWalkingAnimation(d, [
+            game.tiles[`red_${d}_0`],
+            game.tiles[`red_${d}_1`],
+            game.tiles[`red_${d}_0`],
+            game.tiles[`red_${d}_2`],
+        ]);
 
+        player.setIdleAnimation(d, [
+            game.tiles[`red_${d}_0`]
+        ]);
+    });
+    view.objects[3].push(player);
+    view.objects[3].push(game.playerText);
+    game.playerText.fontSize = 6;
+    game.playerText.color = "#000";
+
+    UIView.objects[0].push(player.zCooldown);
+    UIView.objects[0].push(player.xCooldown);
+    UIView.objects[0].push(player.cCooldown);
+
+    statsView.objects[0].push(
+        game.statsText.frameTime,
+        game.statsText.fps,
+        game.statsText.ping,
+        game.statsText.stateTime
+    );
     /*
      * Register all socket.io functions to the game object.
      */
@@ -559,7 +751,7 @@ function initialize() {
         list.empty()
         if (!game.state.started) {
             // Lobby stuff
-            data.all_players.forEach(player => {
+            data.players.forEach(player => {
                 list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -572,7 +764,7 @@ function initialize() {
             settings.innerHTML = `<div>   
             </div>`;
         } else {
-            data.all_players.forEach(player => {
+            data.players.forEach(player => {
                 list.append(`
                     <div class="user-entry">
                     <div class="user-entry-name">${player.username}</div>
@@ -607,11 +799,12 @@ function sendAction(action) {
 }
 
 let has_started = false;
+let intervalID;
 socket.on("start", () => {
     loadMainContent("game-wrapper");
     if (!has_started) {
         has_started = true;
-        setInterval(gameLoop, 1000 / 60);
+        intervalID = setInterval(gameLoop, 1000 / 60);
     }
 });
 
@@ -629,7 +822,7 @@ function toggleReady() {
         room: ROOM_ID,
         player_class: cls,
     });
-}
+};
 
 socket.on("start", () => {
     // What to do on start for all players
@@ -671,6 +864,3 @@ document.addEventListener("keyup", (ev) => {
 socket.emit("join", {
     "room": ROOM_ID,
 });
-
-
-initialize();

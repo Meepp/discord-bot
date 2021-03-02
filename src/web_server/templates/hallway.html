@@ -80,5 +80,6 @@ Game
     const ROOM_ID = "{{ room.id }}";
     const USER_NAME = "{{ session_user().owner }}";
 </script>
+<script src="{{ url_for('static', filename='engine.js') }}"></script>
 <script src="{{ url_for('static', filename='hallway.js') }}"></script>
 {%     endblock %}

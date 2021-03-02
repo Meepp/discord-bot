@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import Optional, List, Tuple, Callable
+from typing import Optional, List
 
 from database.models.models import Profile
 from src.web_server.lib.game.Items import RubbishItem, Item, CollectorItem
@@ -64,7 +64,7 @@ class PlayerClass:
         self.is_moving = False
 
         self.ability_cooldown = 0
-        self.cooldown_timer = 0  # Ticks
+        self.ability_timer = 0  # Ticks
 
         self.sprint_cooldown = SPRINT_COOLDOWN
         self.sprint_timer = 0
@@ -93,19 +93,24 @@ class PlayerClass:
 
     def start(self):
         self.stored_items = []
-        self.cooldown_timer = 0
+        self.ability_timer = 0
         self.movement_timer = 0
         self.direction = PlayerAngles.DOWN
         self.visible_tiles = self.compute_line_of_sight()
         self.generate_item()
 
     def ability(self):
-        if self.cooldown_timer != 0:
-            raise InvalidAction("Ability on cooldown, %d remaining." % self.cooldown_timer)
+        if self.ability_timer != 0:
+            raise InvalidAction("Ability on cooldown, %d remaining." % self.ability_timer)
+        if self.dead:
+            raise InvalidAction("You cannot use your ability when dead!")
 
     def sprint(self):
         if self.sprint_timer != 0:
             raise InvalidAction("Sprint on cooldown, %d remaining." % self.sprint_timer)
+
+        if self.dead:
+            raise InvalidAction("You cannot sprint when dead!")
 
         self.movement_cooldown = int(MOVEMENT_COOLDOWN * 0.6)
         self.sprint_timer = SPRINT_COOLDOWN
@@ -118,6 +123,9 @@ class PlayerClass:
         self.game.broadcast("%s died" % self.profile.discord_username)
 
     def kill(self):
+        if self.dead:
+            raise InvalidAction("You cannot kill when dead!")
+
         for passive in self.passives:
             if passive.name == "kill":
                 self.can_move = True
@@ -161,7 +169,7 @@ class PlayerClass:
             if passive.time == 0:
                 self.passives.remove(passive)
 
-        self.cooldown_timer = max(0, self.cooldown_timer - 1)
+        self.ability_timer = max(0, self.ability_timer - 1)
         self.movement_timer = max(0, self.movement_timer - 1)
         self.sprint_timer = max(0, self.sprint_timer - 1)
         self.kill_timer = max(0, self.kill_timer - 1)
@@ -174,6 +182,7 @@ class PlayerClass:
                 pass
 
         # Dont recompute if the player didnt move or turn
+        # TODO: Update line of sight only when player is done moving (not in the middle of animation)
         if self.position != self.last_position or self.direction != last_direction:
             self.updated = True
             self.visible_tiles = self.compute_line_of_sight()
@@ -265,6 +274,7 @@ class PlayerClass:
         state = {
             "username": self.profile.discord_username,
             "dead": self.dead,
+            "stored_items": [item.to_json() for item in self.stored_items],
             "ready": self.ready,
         }
         if not reduced:
@@ -273,7 +283,7 @@ class PlayerClass:
                 "position": self.get_interpolated_position().to_json(),
                 "name": self.name,
                 "direction": self.direction.value,
-                "is_moving": self.is_moving,
+                "moving": self.is_moving,
                 "movement_cooldown": self.movement_cooldown,
                 "movement_timer": self.movement_timer,
                 "item": self.item.to_json() if self.item else None,
@@ -282,16 +292,15 @@ class PlayerClass:
         # In case you are owner add player sensitive information to state
         if owner:
             state.update({
-                "cooldown": self.ability_cooldown,
-                "cooldown_timer": self.cooldown_timer,
+                "ability_cooldown": self.ability_cooldown,
+                "ability_timer": self.ability_timer,
                 "kill_cooldown": self.kill_cooldown,
                 "kill_timer": self.kill_timer,
-                "sprint": self.sprint_cooldown,
+                "sprint_cooldown": self.sprint_cooldown,
                 "sprint_timer": self.sprint_timer,
                 "passives": [passive.to_json() for passive in self.passives],
                 "killing": self.killing.to_json(owner=False) if self.killing else None,
                 "objective": self.objective.to_json(),
-                "stored_items": [item.to_json() for item in self.stored_items],
             })
         return state
 
@@ -379,7 +388,8 @@ class Demolisher(PlayerClass):
                 tile = GroundTile()
                 tile.item = RubbishItem()
                 self.game.change_tile(position + diff, tile)
-        self.cooldown_timer = self.ability_cooldown
+        self.ability_timer = self.ability_cooldown
+        self.updated = True
 
 
 class Spy(PlayerClass):
@@ -391,7 +401,7 @@ class Spy(PlayerClass):
 
     def ability(self):
         super().ability()
-        self.cooldown_timer = self.ability_cooldown
+        self.ability_timer = self.ability_cooldown
 
 
 class Scout(PlayerClass):
@@ -403,7 +413,7 @@ class Scout(PlayerClass):
 
     def ability(self):
         super().ability()
-        self.cooldown_timer = self.ability_cooldown
+        self.ability_timer = self.ability_cooldown
 
 
 class MrMole(PlayerClass):
@@ -433,4 +443,5 @@ class MrMole(PlayerClass):
         print("Created ladder", len(self.ladders))
 
         self.game.change_tile(position, ladder)
-        self.cooldown_timer = self.ability_cooldown
+        self.ability_timer = self.ability_cooldown
+        self.updated = True

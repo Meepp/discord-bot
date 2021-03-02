@@ -142,7 +142,6 @@ class HallwayHunters:
 
         if not reduced:
             data.update({
-                "board": self.initial_board_json,
                 "board_size": self.size
             })
 
