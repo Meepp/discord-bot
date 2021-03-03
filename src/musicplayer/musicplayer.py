@@ -319,7 +319,7 @@ class MusicPlayer(commands.Cog):
         for i in range(page * page_size, min(size, (page + 1) * page_size)):
             _, url = self.bot.music_player.queue.queue[i]
             song = music_repository.get_song(url)
-            out += "%d: %s | %s\n" % (i, song.title, song.discord_username)
+            out += "%d: %s | %s\n" % (i, song.title, song.title)
         out += "```"
         await message.channel.send(out, delete_after=30)
 

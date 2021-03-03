@@ -748,8 +748,38 @@ function splitTileset(width, height) {
 let player;
 
 function initializeCamera() {
-    player.cameraTiles = [];
     const camWidth = 5;
+    if (player.cameraTiles === null) {
+        // Only do this once
+        let tile = new SpriteTile(game.tiles["UI_corner_bl"]);
+        tile.renderable = true;
+        tile.x = -5 * 16;
+        tile.y = 4 * 16;
+        cameraView.objects[1].push(tile);
+        for (let i = 0; i < camWidth - 1; i++) {
+            // Render left border
+            tile = new SpriteTile(game.tiles["UI_edge_left"]);
+            tile.renderable = true;
+            tile.x = -5 * 16;
+            tile.y = i * 16;
+            cameraView.objects[1].push(tile);
+
+            // Render bottom border
+            tile = new SpriteTile(game.tiles["UI_edge_bottom"]);
+            tile.renderable = true;
+            tile.x = (i - 4) * 16;
+            tile.y = 4 * 16;
+            cameraView.objects[1].push(tile);
+        }
+        tile = new SpriteTile(game.tiles["floor"]);
+        tile.renderable = true;
+        tile.x = -camWidth * 16;
+        tile.y = 0;
+        tile.width = camWidth * 16;
+        tile.height = camWidth * 16;
+        cameraView.objects[0].push(tile);
+    }
+    player.cameraTiles = [];
     for (let i = 0; i < camWidth; i++) {
         for (let j = 0; j < camWidth; j++) {
             const tile = new SpriteTile(game.tiles["void"]);
@@ -761,26 +791,6 @@ function initializeCamera() {
         }
     }
 
-    let tile = new SpriteTile(game.tiles["UI_corner_bl"]);
-    tile.renderable = true;
-    tile.x = -5 * 16;
-    tile.y = 4 * 16;
-    cameraView.objects[1].push(tile);
-    for (let i = 0; i < camWidth - 1; i++) {
-        // Render left border
-        tile = new SpriteTile(game.tiles["UI_edge_left"]);
-        tile.renderable = true;
-        tile.x = -5 * 16;
-        tile.y = i * 16;
-        cameraView.objects[1].push(tile);
-
-        // Render bottom border
-        tile = new SpriteTile(game.tiles["UI_edge_bottom"]);
-        tile.renderable = true;
-        tile.x = (i - 4) * 16;
-        tile.y = 4 * 16;
-        cameraView.objects[1].push(tile);
-    }
 }
 
 function initialize() {
