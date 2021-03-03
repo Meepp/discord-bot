@@ -152,12 +152,22 @@ class LeagueAPI(commands.Cog):
         profile = session.query(Profile).filter(Profile.discord_id == context.author.id).one_or_none()
         if profile.league_user_id is None:
             return await context.channel.send("You dont have a league account linked yet. Set this account using !connect <summonername>")
-
         if profile.balance < amount:
             return await context.channel.send("You dont have the currency to place this bet.")
-
+        if amount < 0:
+            return await context.channel.send("You cannot bet negative amounts.")
         if next((x for x in CONDITIONS if x[0] == condition), None) is None:
             return await context.channel.send("%s is not a valid condition. Pick one from %s" % (condition, ", ".join(x[0] for x in CONDITIONS)))
+
+        existing = session.query(LeagueGame)\
+            .filter(LeagueGame.owner_id == context.author.id)\
+            .filter(LeagueGame.type == condition)\
+            .filter(LeagueGame.game_id == None).one_or_none()
+
+        if existing:
+            existing.bet += amount
+            session.commit()
+            return await context.channel.send("You increased the bet amount to %d to get first %s the next game." % (existing.bet, condition))
 
         # Create a game object to keep track of bets.
         game = LeagueGame(context.author)
