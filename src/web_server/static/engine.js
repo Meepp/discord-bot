@@ -168,6 +168,13 @@ class View {
         this.children.push(child);
     }
 
+    removeObject(object, layer) {
+        const index = this.objects[layer].indexOf(object);
+        if (index > -1) {
+            this.objects[layer] = this.objects[layer].splice(index, 1);
+        }
+    }
+
     render() {
         if (!this.renderable) return;
 
@@ -188,7 +195,9 @@ class View {
         });
 
         this.context.setTransform(1, 0, 0, 1, 0, 0);
-        this.children.forEach(child => {child.render()});
+        this.children.forEach(child => {
+            child.render()
+        });
         this.frametime = (performance.now() - start);
 
         this.fps = 1000 / (performance.now() - this._lastInvokation);

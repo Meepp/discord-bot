@@ -30,7 +30,13 @@ class Player {
         this.direction = 0;
         this.moving = false;
 
+        this.name = new DrawableText(0, 0);
+        // Default values
+        this.name.fontSize = 6;
+        this.name.color = "#000";
+
         // Only useful when you are the scout
+        this.cameraPosition = new Point(0, 0);
         this.cameraTiles = null;
 
         const padding = 10;
@@ -61,25 +67,65 @@ class Player {
     }
 
     update(data) {
-        player.x = data.position.x;
-        player.y = data.position.y;
-        player.moving = data.is_moving;
-        player.direction = data.direction;
+        this.x = data.position.x;
+        this.y = data.position.y;
+        this.moving = data.is_moving;
+        this.direction = data.direction;
 
-        if (data.item !== null)
+        if (data.item !== null && data.item !== undefined)
             this.item = new SpriteTile(game.tiles[data.item.name]);
         else
             this.item = null;
 
-        for (let i = 0; i < data.camera_list.length; i++) {
-            let tile = game.tiles[data.camera_list[i].image];
-            player.cameraTiles[i].setImage(tile)
-        }
+        // Update the camera display if you receive camera updates (only relevant for scout class)
+        if (data.camera_list !== undefined && data.camera_list.length > 0) {
+            // Store this position to know where to render players relative to their own position
+            this.cameraPosition.x = data.camera_list[0].x;
+            this.cameraPosition.y = data.camera_list[0].y;
 
+            for (let i = 0; i < data.camera_list.length; i++) {
+                let tile = data.camera_list[i].tile;
+                let image = game.tiles[tile.image];
+                this.cameraTiles[i].setImage(image);
+                let item = this.cameraTiles[i].item;
+                // Update the item if
+                if (tile.item !== null) {
+                    let itemImage = game.tiles[tile.item.name];
+                    item.renderable = true;
+                    item.setImage(itemImage);
+                } else {
+                    item.renderable = false;
+                }
+            }
+
+            // Update players which are visible on camera
+            for (const [colour, player] of Object.entries(game.players)) {
+                let xDiff = player.x - this.cameraPosition.x;
+                let yDiff = player.y - this.cameraPosition.y;
+                if (xDiff >= 0 && xDiff < 5 && yDiff > -1 && yDiff <= 4) {
+                    cameraView.players[colour].update({
+                        position: new Point((xDiff - 5), yDiff),
+                        username: data.username,
+                        is_moving: data.is_moving,
+                        direction: data.direction,
+                    });
+                    cameraView.players[colour].renderable = true;
+                } else {
+                    cameraView.players[colour].renderable = false;
+                }
+            }
+        }
 
         this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
         this.xCooldown.progress = data.sprint_timer / data.sprint_cooldown;
         this.cCooldown.progress = data.ability_timer / data.ability_cooldown;
+
+        // Set player name
+        this.name.text = data.username;
+        // Sprite width / 2
+        this.name.x = this.x * 16 + 8 - (view.context.measureText(data.username).width / 4);
+        this.name.y = this.y * 16 - this.name.fontSize;
+
     }
 
     setWalkingAnimation(direction, sprites) {
@@ -110,6 +156,9 @@ class Player {
             this.item.y = this.y * 16 - 11;
             this.item.render(context);
         }
+
+        // Render name above player
+        this.name.render(context);
     }
 }
 
@@ -129,8 +178,6 @@ UIView.addChild(cameraView);
 view.zoom = 3;
 const TILE_SIZE = 48;
 const STATS_INTERVAL = 1000 / 10;
-
-const FRAMES_PER_ANIMATION = 6;
 let socket = io("/hallway");
 let tileSet;
 
@@ -149,7 +196,7 @@ async function loadImages(src) {
 }
 
 
-loadImages("/static/images/tiles/dungeon_sheet.png").then(e => {
+loadImages("/static/images/tiles/dungeon_sheet.png").then(() => {
         initialize();
     }
 );
@@ -203,14 +250,6 @@ function loadMainContent(gameWrapper) {
     });
 
     document.getElementById(gameWrapper).style.display = "flex";
-}
-
-function getRelativeMousePosition(canvas, evt) {
-    let rect = canvas.getBoundingClientRect();
-    return {
-        x: evt.clientX - rect.left,
-        y: evt.clientY - rect.top
-    };
 }
 
 function initializeBoard(board_size) {
@@ -314,7 +353,6 @@ function HallwayHunters() {
                 x: 0,
                 y: 0
             },
-            camera_list: [],
             previous_position: {
                 x: 0,
                 y: 0
@@ -362,9 +400,9 @@ function HallwayHunters() {
     };
     this.lookup = {};
     this.tiles = {};
-    this.animations = {};
     this.items = [];
-    this.playerText = new DrawableText(0, 0);
+
+    this.players = {};
 
     this.setState = function(data) {
         let start = performance.now();
@@ -390,13 +428,17 @@ function HallwayHunters() {
             this.lookup[obj.x][obj.y] = true;
         });
 
+        // Fix renderable players like this.
+        for (const player of Object.values(this.players)) {
+            player.renderable = false;
+        }
+        data.visible_players.forEach(player => {
+            this.players[player.name].renderable = true;
+            this.players[player.name].update(player);
+        });
+
         let newCameraCenter = new Point(data.player_data.position.x * 16, data.player_data.position.y * 16);
         player.update(data.player_data);
-
-        this.playerText.text = data.player_data.username;
-        // Sprite width / 2
-        this.playerText.x = player.x * 16 + 8 - (view.context.measureText(data.player_data.username).width / 4);
-        this.playerText.y = player.y * 16 - this.playerText.fontSize;
 
         if (this.state.started)
             updateRenderable(view.cameraCenter, newCameraCenter);
@@ -407,141 +449,6 @@ function HallwayHunters() {
     };
 }
 
-function renderMinimap() {
-    const minimap_pixel_size = 2;
-    const size = game.state.board_size;
-    const mm_size = size * minimap_pixel_size;
-
-    const mm_offset_x = canvas.width - mm_size;
-    const mm_offset_y = 0;
-    context.clearRect(mm_offset_x, mm_offset_y, mm_size, mm_size);
-    for (let x = 0; x < size; x++) {
-        for (let y = 0; y < size; y++) {
-            const tile = game.state.board[x][y];
-
-            if (tile.movement_allowed) {
-                context.fillStyle = "#bbb";
-            } else if (!tile.opaque) {
-                context.fillStyle = "#7e7e7e";
-            } else {
-                context.fillStyle = "#454545";
-            }
-
-            if (game.state.player_data.position.x === x && game.state.player_data.position.y === y) {
-                context.fillStyle = "#ec2b3c";
-            }
-
-            // if (game.state.player_data.objective.x === x && game.state.player_data.objective.y === y) {
-            //     context.fillStyle = "#63ee52";
-            // }
-
-            context.fillRect(mm_offset_x + x * minimap_pixel_size, mm_offset_y + y * minimap_pixel_size, minimap_pixel_size, minimap_pixel_size);
-        }
-    }
-}
-
-function getAnimationFrame(animation) {
-    // If the animation is active, or the animation is not yet finished and it has to finish.
-    if (animation.active || (animation.finishAnimation && animation.currentSprite !== 0)) {
-        // Increment amount of frames waiting for next sprite
-        animation.frameNumber = (animation.frameNumber + 1) % FRAMES_PER_ANIMATION;
-        if (animation.frameNumber === 0) {
-            // Increment sprite
-            animation.currentSprite = (animation.currentSprite + 1) % animation.sprites.length;
-        }
-    }
-    return animation.sprites[animation.currentSprite];
-}
-
-function directionToVector(direction, number) {
-    if (direction === 0) {
-        return {x: 0, y: -number};
-    } else if (direction === 90) {
-        return {x: number, y: 0};
-    } else if (direction === 180) {
-        return {x: 0, y: number};
-    } else {
-        return {x: -number, y: 0};
-    }
-}
-
-
-function renderKillCam() {
-    const x = canvas.width - 100;
-    const y = canvas.height - 100;
-
-    let killPassive = game.state.player_data.passives.filter((item) => {
-        return (item.name === "kill")
-    });
-    if (killPassive.length === 0) return;
-    killPassive = killPassive[0];
-
-    const cooldown = killPassive.time / killPassive.total_time;
-    context.lineWidth = 20;
-    context.strokeStyle = "#418eb0";
-    context.beginPath();
-    context.arc(x, y, 50, 0, 2 * Math.PI);
-    context.stroke();
-
-    context.lineWidth = 18;
-    context.strokeStyle = "#3f3656";
-    context.beginPath();
-    context.arc(x, y, 50, 0, cooldown * 2 * Math.PI);
-    context.stroke();
-
-    const animationName = game.state.player_data.killing.name + "_" + game.state.player_data.killing.direction;
-    const animation = game.animations[animationName];
-    const sprite = animation.sprites[animation.currentSprite];
-    context.drawImage(sprite, x - TILE_SIZE / 2, y - TILE_SIZE / 2);
-}
-
-function drawPlayer(player, S, xOffset, yOffset) {
-    const x = player.position.x * S + xOffset;
-    const y = player.position.y * S + yOffset;
-
-    let sprite;
-    if (player.dead) {
-        sprite = game.tiles[player.name + "_dead"];
-    } else {
-        // If the player is not moving, reset its animation frame to beginning.
-        const animationName = player.name + "_" + player.direction;
-        const animation = game.animations[animationName];
-
-
-        // Player animation is bound to moving
-        animation.active = player.is_moving;
-        if (!player.is_moving) {
-            // Set player frame to this when not moving
-            animation.frameNumber = FRAMES_PER_ANIMATION - 2;
-            animation.currentSprite = 0;
-        }
-        sprite = getAnimationFrame(animation);
-    }
-
-    context.drawImage(sprite, x, y);
-    if (player.item !== null) {
-        context.drawImage(game.tiles[player.item.name], x, y - S / 2 - 7);
-    }
-}
-
-function renderStorage() {
-    const padding = 10;
-    const S = TILE_SIZE;
-    const itemWidth = S + 2 * padding;
-    const W = game.state.player_data.stored_items.length * itemWidth;
-    const H = S + 2 * padding;
-
-    // Not opaque item list
-    context.fillStyle = "rgba(255, 255, 255, 0.1)";
-    context.fillRect(0, 0, W, H);
-    game.state.player_data.stored_items.map((item, index) => {
-        context.drawImage(
-            game.tiles[item.name],
-            padding + index * itemWidth,
-            padding
-        );
-    })
-}
 
 function round(number) {
     return Math.round(number * 100) / 100;
@@ -598,15 +505,6 @@ function gameLoop() {
     }
 }
 
-function createAnimation(sprites) {
-    return {
-        sprites: sprites,
-        frameNumber: 0,
-        currentSprite: 0,
-        active: false,
-        finishAnimation: false,
-    };
-}
 
 function splitTileset(width, height) {
     const scale = TILE_SIZE / 16;
@@ -626,8 +524,8 @@ function splitTileset(width, height) {
 
     const S = TILE_SIZE;
 
-    game.tiles["edge_b"] = context.getImageData(6 * S, 1 * S, S, S);
-    game.tiles["edge_b_top"] = context.getImageData(6 * S, 0 * S, S, S);
+    game.tiles["edge_b"] = context.getImageData(6 * S, S, S, S);
+    game.tiles["edge_b_top"] = context.getImageData(6 * S, 0, S, S);
     game.tiles["edge_b_alt1"] = context.getImageData(8 * S, 5 * S, S, S);
     game.tiles["edge_b_alt1_top"] = context.getImageData(8 * S, 4 * S, S, S);
     game.tiles["edge_b_alt2"] = context.getImageData(9 * S, 5 * S, S, S);
@@ -640,11 +538,11 @@ function splitTileset(width, height) {
     game.tiles["corner_bl"] = context.getImageData(8 * S, 3 * S, S, S);
     game.tiles["corner_bl_top"] = context.getImageData(8 * S, 2 * S, S, S);
 
-    game.tiles["corner_tr"] = context.getImageData(9 * S, 1 * S, S, S);
-    game.tiles["corner_tr_top"] = context.getImageData(9 * S, 0 * S, S, S);
+    game.tiles["corner_tr"] = context.getImageData(9 * S, S, S, S);
+    game.tiles["corner_tr_top"] = context.getImageData(9 * S, 0, S, S);
 
-    game.tiles["corner_tl"] = context.getImageData(8 * S, 1 * S, S, S);
-    game.tiles["corner_tl_top"] = context.getImageData(8 * S, 0 * S, S, S);
+    game.tiles["corner_tl"] = context.getImageData(8 * S, S, S, S);
+    game.tiles["corner_tl_top"] = context.getImageData(8 * S, 0, S, S);
 
     game.tiles["inner_corner_br"] = context.getImageData(7 * S, 3 * S, S, S);
     game.tiles["inner_corner_br_top"] = context.getImageData(7 * S, 2 * S, S, S);
@@ -652,11 +550,11 @@ function splitTileset(width, height) {
     game.tiles["inner_corner_bl"] = context.getImageData(5 * S, 3 * S, S, S);
     game.tiles["inner_corner_bl_top"] = context.getImageData(5 * S, 2 * S, S, S);
 
-    game.tiles["inner_corner_tr"] = context.getImageData(7 * S, 1 * S, S, S);
-    game.tiles["inner_corner_tr_top"] = context.getImageData(7 * S, 0 * S, S, S);
+    game.tiles["inner_corner_tr"] = context.getImageData(7 * S, S, S, S);
+    game.tiles["inner_corner_tr_top"] = context.getImageData(7 * S, 0, S, S);
 
-    game.tiles["inner_corner_tl"] = context.getImageData(5 * S, 1 * S, S, S);
-    game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0 * S, S, S);
+    game.tiles["inner_corner_tl"] = context.getImageData(5 * S, S, S, S);
+    game.tiles["inner_corner_tl_top"] = context.getImageData(5 * S, 0, S, S);
 
     game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
     game.tiles["edge_t_alt1"] = context.getImageData(7 * S, 5 * S, S, S);
@@ -666,11 +564,11 @@ function splitTileset(width, height) {
     game.tiles["edge_l_alt2"] = context.getImageData(7 * S, 4 * S, S, S);
 
     game.tiles["edge_r"] = context.getImageData(5 * S, 2 * S, S, S);
-    game.tiles["void"] = context.getImageData(1 * S, 1 * S, S, S);
+    game.tiles["void"] = context.getImageData(S, S, S, S);
     game.tiles["edge_t"] = context.getImageData(6 * S, 3 * S, S, S);
 
     game.tiles["floor"] = context.getImageData(6 * S, 2 * S, S, S);
-    game.tiles["wall_test"] = context.getImageData(6 * S, 1 * S, S, S);
+    game.tiles["wall_test"] = context.getImageData(6 * S, S, S, S);
 
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
     game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
@@ -714,39 +612,35 @@ function splitTileset(width, height) {
         game.tiles[title] = image;
     }
 
-    ["red", "blue", "green", "purple", "black"].forEach(color => {
-        ["0", "90", "180", "270"].forEach(rotation => {
-            game.animations[`${color}_${rotation}`] = createAnimation([
-                game.tiles[`${color}_${rotation}_0`],
-                game.tiles[`${color}_${rotation}_1`],
-                game.tiles[`${color}_${rotation}_0`],
-                game.tiles[`${color}_${rotation}_2`],
-            ]);
-        });
-
-        game.animations[`chest_${color}`] = createAnimation([
-            game.tiles[`chest_${color}_0`],
-            game.tiles[`chest_${color}_1`],
-            game.tiles[`chest_${color}_2`],
-            game.tiles[`chest_${color}_3`],
-            game.tiles[`chest_${color}_4`],
-            game.tiles[`chest_${color}_5`],
-            game.tiles[`chest_${color}_5`],
-            game.tiles[`chest_${color}_5`],
-            game.tiles[`chest_${color}_4`],
-            game.tiles[`chest_${color}_3`],
-            game.tiles[`chest_${color}_2`],
-            game.tiles[`chest_${color}_1`],
-            game.tiles[`chest_${color}_0`]
-        ]);
-        // Always close the chest.
-        game.animations[`chest_${color}`].finishAnimation = true;
-    });
-
     console.log("Done loading images.");
 }
 
-let player;
+/*
+ * This function should get called when the game has started, and we know how many player entities need to be rendered
+ */
+function initializePlayers(dictionary) {
+    const colours = ["red", "blue", "green", "purple", "black"];
+    colours.forEach(colour => {
+        let player = new Player(game.tiles[`${colour}_0_0`]);
+        [0, 90, 180, 270].forEach(d => {
+            player.setWalkingAnimation(d, [
+                game.tiles[`${colour}_${d}_0`],
+                game.tiles[`${colour}_${d}_1`],
+                game.tiles[`${colour}_${d}_0`],
+                game.tiles[`${colour}_${d}_2`],
+            ]);
+
+            player.setIdleAnimation(d, [
+                game.tiles[`${colour}_${d}_0`]
+            ]);
+        });
+        dictionary[colour] = player;
+    })
+
+}
+
+
+let player = null;
 
 function initializeCamera() {
     const camWidth = 5;
@@ -756,21 +650,21 @@ function initializeCamera() {
         tile.renderable = true;
         tile.x = -5 * 16;
         tile.y = 4 * 16;
-        cameraView.objects[1].push(tile);
+        cameraView.objects[3].push(tile);
         for (let i = 0; i < camWidth - 1; i++) {
             // Render left border
             tile = new SpriteTile(game.tiles["UI_edge_left"]);
             tile.renderable = true;
             tile.x = -5 * 16;
             tile.y = i * 16;
-            cameraView.objects[1].push(tile);
+            cameraView.objects[3].push(tile);
 
             // Render bottom border
             tile = new SpriteTile(game.tiles["UI_edge_bottom"]);
             tile.renderable = true;
             tile.x = (i - 4) * 16;
             tile.y = 4 * 16;
-            cameraView.objects[1].push(tile);
+            cameraView.objects[3].push(tile);
         }
         tile = new SpriteTile(game.tiles["floor"]);
         tile.renderable = true;
@@ -779,7 +673,13 @@ function initializeCamera() {
         tile.width = camWidth * 16;
         tile.height = camWidth * 16;
         cameraView.objects[0].push(tile);
+    } else {
+        // Cleanup existing objects, its O(n^2)..
+        player.cameraTiles.forEach(e => {
+            cameraView.removeObject(e, 0);
+        });
     }
+
     player.cameraTiles = [];
     for (let i = 0; i < camWidth; i++) {
         for (let j = 0; j < camWidth; j++) {
@@ -787,36 +687,44 @@ function initializeCamera() {
             tile.renderable = true;
             tile.x = (i - 5) * 16;
             tile.y = j * 16;
+            // Create an item but make it not-renderable.
+            tile.item = new SpriteTile(game.tiles["void"]);
+            tile.item.x = tile.x;
+            tile.item.y = tile.y;
             cameraView.objects[0].push(tile);
+            cameraView.objects[0].push(tile.item);
             player.cameraTiles.push(tile);
         }
     }
 
 }
 
-function initialize() {
-    player = new Player(game.tiles["red_0_0"]);
-    [0, 90, 180, 270].forEach(d => {
-        player.setWalkingAnimation(d, [
-            game.tiles[`red_${d}_0`],
-            game.tiles[`red_${d}_1`],
-            game.tiles[`red_${d}_0`],
-            game.tiles[`red_${d}_2`],
-        ]);
+function postStartInitialize(data) {
+    player = game.players[data.player_data.name];
 
-        player.setIdleAnimation(d, [
-            game.tiles[`red_${d}_0`]
-        ]);
-    });
-    view.objects[3].push(player);
-    view.objects[3].push(game.playerText);
-    game.playerText.fontSize = 6;
-    game.playerText.color = "#000";
-
+    // Setup UI cooldowns
     UIView.objects[0].push(player.zCooldown);
     UIView.objects[0].push(player.xCooldown);
     UIView.objects[0].push(player.cCooldown);
 
+    // Setup camera
+    initializeCamera();
+}
+
+function initialize() {
+    initializePlayers(game.players);
+    // Store player objects in the cameraView.
+    cameraView.players = {};
+    initializePlayers(cameraView.players);
+    for (let key in game.players) {
+        if (game.players.hasOwnProperty(key)) {
+            game.players[key].renderable = true;
+            view.objects[3].push(game.players[key]);
+            cameraView.objects[2].push(cameraView.players[key])
+        }
+    }
+
+    // Setup stats view
     statsView.objects[0].push(
         game.statsText.frameTime,
         game.statsText.fps,
@@ -824,16 +732,19 @@ function initialize() {
         game.statsText.stateTime
     );
 
-    initializeCamera();
+
     cameraView.renderable = true;
 
     /*
      * Register all socket.io functions to the game object.
      */
     socket.on("game_state", (data) => {
+        if (player === null) {
+            postStartInitialize(data);
+        }
         game.setState(data);
-        let list = !game.state.started ? $(".user-list") : $(".player-list")
-        list.empty()
+        let list = !game.state.started ? $(".user-list") : $(".player-list");
+        list.empty();
         if (!game.state.started) {
             // Lobby stuff
             data.all_players.forEach(player => {
@@ -907,8 +818,7 @@ function toggleReady() {
         room: ROOM_ID,
         player_class: cls,
     });
-};
-
+}
 socket.on("start", () => {
     // What to do on start for all players
 });

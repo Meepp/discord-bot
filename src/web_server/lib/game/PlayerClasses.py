@@ -277,6 +277,7 @@ class PlayerClass:
 
     def to_json(self, owner=True, reduced=False):
         state = {
+            "name": self.name,
             "username": self.profile.discord_username,
             "dead": self.dead,
             "stored_items": [item.to_json() for item in self.stored_items],
@@ -286,21 +287,16 @@ class PlayerClass:
             # Default dictionary to see other players name
             state.update({
                 "position": self.get_interpolated_position().to_json(),
-                "name": self.name,
                 "direction": self.direction.value,
                 "is_moving": self.is_moving,
                 "movement_cooldown": self.movement_cooldown,
                 "movement_timer": self.movement_timer,
                 "item": self.item.to_json() if self.item else None,
-            })
-        # TODO: Fix this mess
-        if self.camera:
-            state.update({
-                "camera_list": [tile.to_json() for tile in self.camera_list]
-            })
-        else:
-            state.update({
-                "camera_list": []
+                "camera_list": [{
+                    "x": position.x,
+                    "y": position.y,
+                    "tile": self.game.board[position.x][position.y].to_json()
+                } for position in self.camera_list]
             })
 
         # In case you are owner add player sensitive information to state
@@ -322,6 +318,7 @@ class PlayerClass:
     def convert_class(self, new_class):
         cls = new_class(self.profile, self.socket, self.game)
         cls.ready = self.ready
+        cls.name = self.name
         cls.position = self.position
         return cls
 
@@ -356,7 +353,8 @@ class PlayerClass:
         } for position in self.visible_tiles]
 
     def get_visible_players(self):
-        return [player for player in self.game.player_list if player.position in self.visible_tiles]
+        visible_tiles = self.visible_tiles + self.camera_list
+        return [player for player in self.game.player_list if player.position in visible_tiles]
 
     def generate_item(self):
         random_x = random.randint(0, len(self.game.board[0]) - 1)
@@ -381,7 +379,7 @@ class Demolisher(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
-        self.name = self.__class__.__name__
+        # self.name = self.__class__.__name__
         self.ability_cooldown = self.game.tick_rate * DEMOLISHER_COOLDOWN
 
     def ability(self):
@@ -417,7 +415,7 @@ class Demolisher(PlayerClass):
 class Spy(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
-        self.name = self.__class__.__name__
+        # self.name = self.__class__.__name__
 
         self.ability_cooldown = SPY_COOLDOWN
 
@@ -430,7 +428,7 @@ class Scout(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
-        self.name = self.__class__.__name__
+        # self.name = self.__class__.__name__
         self.ability_cooldown = SPY_COOLDOWN
 
     def ability(self):
@@ -445,7 +443,7 @@ class Scout(PlayerClass):
         if self.camera is not None:
             for x in range(self.camera.top_left_position.x, self.camera.bottom_right_position.x):
                 for y in range(self.camera.top_left_position.y, self.camera.bottom_right_position.y):
-                    self.camera_list.append(self.game.board[x][y])
+                    self.camera_list.append(Point(x, y))
 
         super().tick()
 
@@ -454,7 +452,7 @@ class MrMole(PlayerClass):
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
-        self.name = self.__class__.__name__
+        # self.name = self.__class__.__name__
         self.ability_cooldown = self.game.tick_rate * MRMOLE_COOLDOWN
 
         self.ladders = []

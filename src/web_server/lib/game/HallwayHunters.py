@@ -48,21 +48,21 @@ class HallwayHunters:
 
     def start(self):
         self.phase = Phases.STARTED
-        color_set = ["blue", "red", "black", "purple", "green"]
-        selected_colors = random.sample(color_set, len(self.player_list))
 
+        selected_colors = [player.name for player in self.player_list]
+
+        print(selected_colors)
         self.board, self.spawn_points = generate_board(self.size, selected_colors)
         for i, player in enumerate(self.player_list):
             spawn_point = self.spawn_points[i % len(self.spawn_points)]
             player.change_position(spawn_point)
-            player.name = selected_colors[i]
             player.start()
             sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
             # Connect chest to player
             chest = ChestTile(player)
             self.board[spawn_point.x][spawn_point.y + 1] = chest
-            chest.image = "chest_%s" % selected_colors[i]
+            chest.image = "chest_%s" % player.name
 
             sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
@@ -121,6 +121,10 @@ class HallwayHunters:
                 return
 
         player = Demolisher(profile, socket_id, self)
+        color_set = ["blue", "red", "black", "purple", "green"]
+
+        player.name = color_set[len(self.player_list)]
+        print(player.name)
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
