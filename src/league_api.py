@@ -180,7 +180,7 @@ class LeagueAPI(commands.Cog):
 
         out = "```\nActive bets:\n"
         for bet in bets:
-            out += "%s: %d" % (bet.type, bet.bet)
+            out += "%s: %d\n" % (bet.type, bet.bet)
         out += "```"
         await context.channel.send(out)
 

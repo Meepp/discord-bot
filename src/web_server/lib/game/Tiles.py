@@ -235,3 +235,14 @@ class LadderTile(Tile):
         self.movement_allowed = True
         self.other_ladder = None
         self.position = position
+
+
+class CameraTile(Tile):
+    def __init__(self, position: Point):
+        super().__init__()
+        self.image = "camera"
+        self.opaque = False
+        self.movement_allowed = True
+        self.position = position
+        self.top_left_position = Point(position.x - 2, position.y - 2)
+        self.bottom_right_position = Point(position.x + 3, position.y + 3)

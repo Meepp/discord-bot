@@ -72,7 +72,7 @@ class Player {
             this.item = null;
 
         for (let i = 0; i < data.camera_list.length; i++) {
-            let tile = game.tiles[data.camera_list[i].name];
+            let tile = game.tiles[data.camera_list[i].image];
             player.cameraTiles[i].setImage(tile)
         }
 
@@ -339,7 +339,8 @@ function HallwayHunters() {
                 name: "",
                 time: 0,
                 total_time: 0
-            }]
+            }],
+            camera_list: []
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
@@ -380,7 +381,6 @@ function HallwayHunters() {
             ...this.state,
             ...data
         };
-
         // This marks the tiles which are visible
         this.lookup = {};
         this.state.visible_tiles.forEach((obj) => {
@@ -674,6 +674,7 @@ function splitTileset(width, height) {
 
     game.tiles["door"] = context.getImageData(7 * S, 7 * S, S, S);
     game.tiles["ladder"] = context.getImageData(15 * S, 8 * S, S, S);
+    game.tiles["camera"] = context.getImageData(7 * S, 6 * S, S, S);
 
     game.tiles["UI_corner_bl"] = context.getImageData(19 * S, 11 * S, S, S);
     game.tiles["UI_edge_left"] = context.getImageData(20 * S, 11 * S, S, S);
