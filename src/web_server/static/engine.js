@@ -35,6 +35,7 @@ class SpriteTile extends Rectangle {
         this.image = "";
         this.setImage(image);
         this.renderable = false;
+        this.z = 0;
     }
 
     render(context) {
@@ -80,6 +81,8 @@ class CircularCooldown extends Circle {
         this.renderable = true;
         this.textObject = new DrawableText(x, y);
         this.textObject.centered = true;
+
+        this.z = 0;
     }
 
     render(context) {
@@ -109,6 +112,8 @@ class ColorTile extends Rectangle {
     constructor(color) {
         super(0, 0, 16, 16);
         this.color = color;
+
+        this.z = 0;
     }
 
     render(context) {
@@ -126,6 +131,8 @@ class DrawableText extends Point {
         this.color = "#F00";
         this.renderable = true;
         this.centered = false;
+
+        this.z = 0;
     }
 
     render(context) {
@@ -141,6 +148,49 @@ class DrawableText extends Point {
     }
 }
 
+class Button extends Rectangle {
+    constructor(x, y, width, height, canvas) {
+        super(x, y, width, height);
+        this.z = 0;
+        this.color = "#555";
+        this.hoverColor = "#777";
+        this.hovering = false;
+
+        this._onHoverCallbackSet = false;
+    }
+
+    setOnHover(canvas) {
+        if (!this._onHoverCallbackSet) {
+            this._onHoverCallbackSet = true;
+            canvas.addEventListener("mousemove", (evt) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+
+                const x = (evt.clientX - rect.left) * scaleX;
+                const y = (evt.clientY - rect.top) * scaleY;
+
+                this.hovering = (x > this.x && x < this.x + this.width && y > this.y && y < this.y + this.height);
+            });
+        }
+    }
+
+    setOnClick(canvas, callback) {
+        if (!this._onHoverCallbackSet) this.setOnHover(canvas);
+        canvas.addEventListener("click", (evt) => {
+            if (this.hovering) {
+                callback(evt);
+            }
+        });
+    }
+
+    render(context) {
+        context.fillStyle = this.hovering ? this.hoverColor : this.color;
+
+        context.fillRect(this.x, this.y, this.width, this.height);
+    }
+}
+
 
 class View {
     constructor(context) {
@@ -150,13 +200,12 @@ class View {
         this.height = 800;
         this.zoom = 1;
         this.context = context;
-        this.objects = [[], [], [], []];
+        this.objects = {};
         this.renderable = true;
 
         this.children = [];
         this.frametime = 0;
         this.fps = 0;
-
 
         this._lastInvokation = 0;
     }
@@ -166,6 +215,22 @@ class View {
             throw Error("Must give object instanceof class View.");
 
         this.children.push(child);
+    }
+
+    clearLayer(layer) {
+        let l = this.objects[layer];
+        if (l === undefined) return;
+        this.objects[layer] = undefined;
+    }
+
+    addObjects() {
+        Array.prototype.slice.call(arguments).forEach(object => {
+            let l = this.objects[object.z];
+            if (l === undefined) {
+                this.objects[object.z] = l = [];
+            }
+            l.push(object);
+        });
     }
 
     removeObject(object, layer) {
@@ -186,8 +251,8 @@ class View {
         const yOffset = -this.cameraCenter.y * this.zoom + hh;
         this.context.setTransform(this.zoom, 0, 0, this.zoom, xOffset, yOffset);
 
-        this.objects.forEach(l => {
-            l.forEach(obj => {
+        Object.entries(this.objects).forEach(([layer, objects]) => {
+            objects.forEach(obj => {
                 if (!obj.renderable) return;
 
                 obj.render(this.context);

@@ -41,11 +41,11 @@ class Player {
 
         const padding = 10;
         const radius = 30;
-        this.zCooldown = new CircularCooldown(padding + radius * 2, view.height - padding, radius);
+        this.zCooldown = new CircularCooldown(padding + radius * 2, gameView.height - padding, radius);
         this.zCooldown.textObject.text = "Z";
-        this.xCooldown = new CircularCooldown(padding + radius * 5, view.height - padding, radius);
+        this.xCooldown = new CircularCooldown(padding + radius * 5, gameView.height - padding, radius);
         this.xCooldown.textObject.text = "X";
-        this.cCooldown = new CircularCooldown(padding + radius * 8, view.height - padding, radius);
+        this.cCooldown = new CircularCooldown(padding + radius * 8, gameView.height - padding, radius);
         this.cCooldown.textObject.text = "C";
 
         this.item = null;
@@ -123,7 +123,7 @@ class Player {
         // Set player name
         this.name.text = data.username;
         // Sprite width / 2
-        this.name.x = this.x * 16 + 8 - (view.context.measureText(data.username).width / 4);
+        this.name.x = this.x * 16 + 8 - (gameView.context.measureText(data.username).width / 4);
         this.name.y = this.y * 16 - this.name.fontSize;
 
     }
@@ -162,20 +162,26 @@ class Player {
     }
 }
 
-const view = new View(context);
-const statsView = new View(context);
-const UIView = new View(context);
+const view = new View(context); // Main wrapper view
+const menuView = new View(context); // Main menu view
+const gameView = new View(context); // Game view
+gameView.renderable = false;
+gameView.zoom = 3;
+view.addChild(menuView);
+view.addChild(gameView);
+
+const statsView = new View(context); // Informative stats view (fps etc)
+const UIView = new View(context); // UI View in game
 
 // Only turn this on if you are the camera class
-const cameraView = new View(context);
+const cameraView = new View(context); // Camera view for scout class
 cameraView.renderable = false;
 cameraView.zoom = 2.5;
 
-view.addChild(UIView);
-view.addChild(statsView);
+gameView.addChild(UIView);
+gameView.addChild(statsView);
 UIView.addChild(cameraView);
 
-view.zoom = 3;
 const TILE_SIZE = 48;
 const STATS_INTERVAL = 1000 / 10;
 let socket = io("/hallway");
@@ -260,7 +266,7 @@ function initializeBoard(board_size) {
             sprite.x = x * 16;
             sprite.y = y * 16;
             list.push(sprite);
-            view.objects[0].push(sprite);
+            gameView.addObjects(sprite);
         }
         game.state.board.push(list);
     }
@@ -274,8 +280,8 @@ function updateBoardSprites(tiles) {
 }
 
 function updateRenderable(oldCenter, newCenter) {
-    const w = view.width / view.zoom;
-    const h = view.height / view.zoom;
+    const w = gameView.width / gameView.zoom;
+    const h = gameView.height / gameView.zoom;
     const coordScale = 16;
     const oldRenderbox = new Rectangle(oldCenter.x - w / 2 - coordScale, oldCenter.y - h / 2 - coordScale, w + 32, h + 32);
     const newRenderbox = new Rectangle(newCenter.x - w / 2 - coordScale, newCenter.y - h / 2 - coordScale, w + 32, h + 32);
@@ -300,7 +306,7 @@ function updateRenderable(oldCenter, newCenter) {
     height = Math.min(newRenderbox.y + newRenderbox.height, game.state.board_size);
 
     // TODO: Dont recompute the entire vision lines every new data update
-    view.objects[2] = [];
+    gameView.clearLayer(2);
     for (let x = newRenderbox.x; x < width; x++) {
         for (let y = newRenderbox.y; y < height; y++) {
             game.state.board[x][y].renderable = true;
@@ -309,8 +315,10 @@ function updateRenderable(oldCenter, newCenter) {
                 let tile = new ColorTile("rgba(0,0,0,0.2)");
                 tile.x = x * 16;
                 tile.y = y * 16;
+                tile.z = 2;
                 tile.renderable = true;
-                view.objects[2].push(tile);
+
+                gameView.addObjects(tile);
             }
         }
     }
@@ -334,8 +342,9 @@ function updateItems(tiles) {
             item.renderable = true;
             item.x = tile.x * 16;
             item.y = tile.y * 16;
+            item.z = 1;
             game.state.board[tile.x][tile.y].item = item;
-            view.objects[1].push(item);
+            gameView.addObjects(item);
         }
     });
 }
@@ -441,9 +450,9 @@ function HallwayHunters() {
         player.update(data.player_data);
 
         if (this.state.started)
-            updateRenderable(view.cameraCenter, newCameraCenter);
+            updateRenderable(gameView.cameraCenter, newCameraCenter);
 
-        view.cameraCenter = newCameraCenter;
+        gameView.cameraCenter = newCameraCenter;
 
         this.stats.stateTime.put(performance.now() - start);
     };
@@ -475,12 +484,12 @@ function gameLoop() {
     canvas.width = Math.round(canvas.clientWidth / 2) * 2;
     canvas.height = Math.round(canvas.clientHeight / 2) * 2;
 
-    if (canvas.width !== view.width || canvas.height !== view.height) {
-        view.width = canvas.width;
-        view.height = canvas.height;
+    if (canvas.width !== gameView.width || canvas.height !== gameView.height) {
+        gameView.width = canvas.width;
+        gameView.height = canvas.height;
 
         // Its just works
-        cameraView.cameraCenter.x = ((cameraView.width / 2) - view.width) / cameraView.zoom;
+        cameraView.cameraCenter.x = ((cameraView.width / 2) - gameView.width) / cameraView.zoom;
         cameraView.cameraCenter.y = (cameraView.height / 2) / cameraView.zoom;
     }
 
@@ -488,8 +497,8 @@ function gameLoop() {
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
 
-    game.stats.fps.put(view.fps);
-    game.stats.frameTime.put(view.frametime);
+    game.stats.fps.put(gameView.fps);
+    game.stats.frameTime.put(gameView.frametime);
 
     game.statsText.fps.text = round(game.stats.fps.get()) + " fps";
     game.statsText.stateTime.text = "State update time: " + round(game.stats.stateTime.get()) + " ms";
@@ -650,29 +659,33 @@ function initializeCamera() {
         tile.renderable = true;
         tile.x = -5 * 16;
         tile.y = 4 * 16;
-        cameraView.objects[3].push(tile);
+        tile.z = 3;
+        cameraView.addObjects(tile);
         for (let i = 0; i < camWidth - 1; i++) {
             // Render left border
             tile = new SpriteTile(game.tiles["UI_edge_left"]);
             tile.renderable = true;
             tile.x = -5 * 16;
             tile.y = i * 16;
-            cameraView.objects[3].push(tile);
+            tile.z = 3;
+            cameraView.addObjects(tile);
 
             // Render bottom border
             tile = new SpriteTile(game.tiles["UI_edge_bottom"]);
             tile.renderable = true;
             tile.x = (i - 4) * 16;
             tile.y = 4 * 16;
-            cameraView.objects[3].push(tile);
+            tile.z = 3;
+            cameraView.addObjects(tile);
         }
         tile = new SpriteTile(game.tiles["floor"]);
         tile.renderable = true;
         tile.x = -camWidth * 16;
         tile.y = 0;
+        tile.z = 0;
         tile.width = camWidth * 16;
         tile.height = camWidth * 16;
-        cameraView.objects[0].push(tile);
+        cameraView.addObjects(tile);
     } else {
         // Cleanup existing objects, its O(n^2)..
         player.cameraTiles.forEach(e => {
@@ -691,27 +704,58 @@ function initializeCamera() {
             tile.item = new SpriteTile(game.tiles["void"]);
             tile.item.x = tile.x;
             tile.item.y = tile.y;
-            cameraView.objects[0].push(tile);
-            cameraView.objects[0].push(tile.item);
+
+            cameraView.addObjects(tile);
+            cameraView.addObjects(tile.item);
             player.cameraTiles.push(tile);
         }
     }
 
 }
 
+
+function initializeMenu() {
+    loadMainContent("game-wrapper");
+
+    const buttonWidth = 200;
+    const buttonHeight = 50;
+    const button = new Button(400 - buttonWidth/2, 400 - buttonHeight/2, buttonWidth, buttonHeight);
+    button.setOnClick(canvas, () => {
+        socket.emit("start", {
+            room: ROOM_ID
+        });
+
+        menuView.renderable = false;
+        gameView.renderable = true;
+    });
+    button.renderable = true;
+
+    const text = new DrawableText(400, 400);
+    text.text = "Start";
+    text.fontSize = 25;
+    text.centered = true;
+    text.z = 1;
+    menuView.addObjects(button, text)
+}
+
+
 function postStartInitialize(data) {
     player = game.players[data.player_data.name];
 
     // Setup UI cooldowns
-    UIView.objects[0].push(player.zCooldown);
-    UIView.objects[0].push(player.xCooldown);
-    UIView.objects[0].push(player.cCooldown);
+    UIView.addObjects(player.zCooldown);
+    UIView.addObjects(player.xCooldown);
+    UIView.addObjects(player.cCooldown);
 
     // Setup camera
     initializeCamera();
 }
 
+let intervalID;
 function initialize() {
+    intervalID = setInterval(gameLoop, 1000 / 60);
+
+    initializeMenu();
     initializePlayers(game.players);
     // Store player objects in the cameraView.
     cameraView.players = {};
@@ -719,13 +763,16 @@ function initialize() {
     for (let key in game.players) {
         if (game.players.hasOwnProperty(key)) {
             game.players[key].renderable = true;
-            view.objects[3].push(game.players[key]);
-            cameraView.objects[2].push(cameraView.players[key])
+            game.players[key].z = 3;
+            gameView.addObjects(game.players[key]);
+
+            cameraView.players[key].z = 2;
+            cameraView.addObjects(cameraView.players[key])
         }
     }
 
     // Setup stats view
-    statsView.objects[0].push(
+    statsView.addObjects(
         game.statsText.frameTime,
         game.statsText.fps,
         game.statsText.ping,
@@ -733,7 +780,7 @@ function initialize() {
     );
 
 
-    cameraView.renderable = true;
+    // cameraView.renderable = true;
 
     /*
      * Register all socket.io functions to the game object.
@@ -795,23 +842,12 @@ function sendAction(action) {
 }
 
 let has_started = false;
-let intervalID;
 socket.on("start", () => {
     loadMainContent("game-wrapper");
     if (!has_started) {
         has_started = true;
-        intervalID = setInterval(gameLoop, 1000 / 60);
     }
 });
-
-function startRoom() {
-    if (!game.state.started) {
-        socket.emit("start", {
-            room: ROOM_ID
-        });
-    }
-}
-
 function toggleReady() {
     const cls = document.getElementById("class-selector").value;
     socket.emit("start", {
@@ -819,6 +855,7 @@ function toggleReady() {
         player_class: cls,
     });
 }
+
 socket.on("start", () => {
     // What to do on start for all players
 });
