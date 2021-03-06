@@ -4,6 +4,7 @@ context.webkitImageSmoothingEnabled = false;
 context.mozImageSmoothingEnabled = false;
 context.imageSmoothingEnabled = false;
 
+const FPS_INTERVAL = 1000/60;
 
 class RollingAverage {
     constructor(n) {
@@ -476,42 +477,55 @@ function handleInput() {
 }
 
 // Game rendering stuff
+let then = 0;
 function gameLoop() {
+    requestAnimationFrame(gameLoop)
     handleInput();
 
-    // Resizing the canvas should overwrite the width and height variables
-    // It has to be a multiple of 2 to remove artifacts around the tilesets
-    canvas.width = Math.round(canvas.clientWidth / 2) * 2;
-    canvas.height = Math.round(canvas.clientHeight / 2) * 2;
+    const now = performance.now();
+    const elapsed = now - then;
 
-    if (canvas.width !== gameView.width || canvas.height !== gameView.height) {
-        gameView.width = canvas.width;
-        gameView.height = canvas.height;
+    // if enough time has elapsed, draw the next frame
 
-        // Its just works
-        cameraView.cameraCenter.x = ((cameraView.width / 2) - gameView.width) / cameraView.zoom;
-        cameraView.cameraCenter.y = (cameraView.height / 2) / cameraView.zoom;
+    if (elapsed > FPS_INTERVAL) {
+        // Get ready for next frame by setting then=now, but also adjust for your
+        // specified fpsInterval not being a multiple of RAF's interval (16.7ms)
+        then = now - (elapsed % FPS_INTERVAL);
+
+        // Resizing the canvas should overwrite the width and height variables
+        // It has to be a multiple of 2 to remove artifacts around the tilesets
+        canvas.width = Math.round(canvas.clientWidth / 2) * 2;
+        canvas.height = Math.round(canvas.clientHeight / 2) * 2;
+
+        if (canvas.width !== gameView.width || canvas.height !== gameView.height) {
+            gameView.width = canvas.width;
+            gameView.height = canvas.height;
+
+            // Its just works
+            cameraView.cameraCenter.x = ((cameraView.width / 2) - canvas.width) / cameraView.zoom;
+            cameraView.cameraCenter.y = (cameraView.height / 2) / cameraView.zoom;
+        }
+
+        // Clear the canvas and fill with floor tile color.
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
+
+        game.stats.fps.put(gameView.fps);
+        game.stats.frameTime.put(gameView.frametime);
+
+        game.statsText.fps.text = round(game.stats.fps.get()) + " fps";
+        game.statsText.stateTime.text = "State update time: " + round(game.stats.stateTime.get()) + " ms";
+        game.statsText.ping.text = "Latency: " + round(game.stats.ping.get()) + " ms";
+        game.statsText.frameTime.text = "Frame time: " + round(game.stats.frameTime.get()) + " ms";
+
+        // Compute the offset for all tiles, to center rendering on the player.
+        try {
+            view.render();
+        } catch (e) {
+            console.log(e);
+        }
     }
 
-    // Clear the canvas and fill with floor tile color.
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(game.tiles["floor"], 0, 0, canvas.width, canvas.height);
-
-    game.stats.fps.put(gameView.fps);
-    game.stats.frameTime.put(gameView.frametime);
-
-    game.statsText.fps.text = round(game.stats.fps.get()) + " fps";
-    game.statsText.stateTime.text = "State update time: " + round(game.stats.stateTime.get()) + " ms";
-    game.statsText.ping.text = "Latency: " + round(game.stats.ping.get()) + " ms";
-    game.statsText.frameTime.text = "Frame time: " + round(game.stats.frameTime.get()) + " ms";
-
-    // Compute the offset for all tiles, to center rendering on the player.
-    try {
-        view.render();
-        requestAnimationFrame(gameLoop)
-    } catch (e) {
-        console.log(e);
-    }
 }
 
 
