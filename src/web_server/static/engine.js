@@ -125,7 +125,7 @@ class ColorTile extends Rectangle {
 class DrawableText extends Point {
     constructor(x, y) {
         super(x, y);
-        this.text = "test";
+        this.text = "";
         this.fontSize = 12;
         this.font = "Arial";
         this.color = "#F00";

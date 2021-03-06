@@ -36,6 +36,10 @@ class Player {
         this.name.color = "#fff";
         this.name.borderColor = "#777";
 
+        this.scoreText = new DrawableText(0,0)
+        this.scoreText.fontSize = 15
+        this.score = 0
+
         // Only useful when you are the scout
         this.cameraPosition = new Point(0, 0);
         this.cameraTiles = null;
@@ -72,6 +76,8 @@ class Player {
         this.y = data.position.y;
         this.moving = data.is_moving;
         this.direction = data.direction;
+
+        this.score = data.stored_items.length
 
         if (data.item !== null && data.item !== undefined)
             this.item = new SpriteTile(game.tiles[data.item.name]);
@@ -178,8 +184,12 @@ const cameraView = new View(context); // Camera view for scout class
 cameraView.renderable = false;
 cameraView.zoom = 2.5;
 
+const scoreView = new View(context); // view for scoreboard
+
+
 gameView.addChild(UIView);
 gameView.addChild(statsView);
+gameView.addChild(scoreView)
 UIView.addChild(cameraView);
 
 const TILE_SIZE = 48;
@@ -212,17 +222,17 @@ socket.on("join", (data) => {
 });
 let startTime;
 
-setInterval(function() {
+setInterval(function () {
     startTime = Date.now();
     socket.emit('ping');
 }, STATS_INTERVAL);
 
 
-socket.on('pong', function() {
+socket.on('pong', function () {
     game.stats.ping.put(Date.now() - startTime);
 });
 
-$('#messageform').submit(function(e) {
+$('#messageform').submit(function (e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
     let data = {
@@ -413,7 +423,7 @@ function HallwayHunters() {
 
     this.players = {};
 
-    this.setState = function(data) {
+    this.setState = function (data) {
         let start = performance.now();
         if (this.state.board.length === 0) {
             initializeBoard(data.board_size);
@@ -445,6 +455,11 @@ function HallwayHunters() {
             this.players[player.name].renderable = true;
             this.players[player.name].update(player);
         });
+
+
+        this.state.all_players.forEach(player => {
+            this.players[player.name].scoreText.text = player.username + " " + player.stored_items.length
+        })
 
         let newCameraCenter = new Point(data.player_data.position.x * 16, data.player_data.position.y * 16);
         player.update(data.player_data);
@@ -646,6 +661,7 @@ function initializePlayers(dictionary) {
         dictionary[colour] = player;
     })
 
+
 }
 
 
@@ -719,7 +735,7 @@ function initializeMenu() {
 
     const buttonWidth = 200;
     const buttonHeight = 50;
-    const button = new Button(400 - buttonWidth/2, 400 - buttonHeight/2, buttonWidth, buttonHeight);
+    const button = new Button(400 - buttonWidth / 2, 400 - buttonHeight / 2, buttonWidth, buttonHeight);
     button.setOnClick(canvas, () => {
         socket.emit("start", {
             room: ROOM_ID
@@ -745,6 +761,24 @@ function initializeMenu() {
 }
 
 
+function updateScoreboard() {
+    scoreView.clearLayer(0)
+    let sorted_score = []
+    Object.values(game.players).forEach(player => {
+        sorted_score.push([player, player.score])
+    })
+
+    sorted_score.sort(function(a, b) {
+        return a[1] - b[1];
+    });
+
+    sorted_score.map((player, i) => {
+        player[0].scoreText.x = canvas.width - 100
+        player[0].scoreText.y = canvas.height - i * player[0].scoreText.fontSize - 50
+        scoreView.addObjects(player[0].scoreText)
+    })
+}
+
 function postStartInitialize(data) {
     player = game.players[data.player_data.name];
 
@@ -753,11 +787,17 @@ function postStartInitialize(data) {
     UIView.addObjects(player.xCooldown);
     UIView.addObjects(player.cCooldown);
 
+
+    updateScoreboard()
+
+
+
     // Setup camera
     initializeCamera();
 }
 
 let intervalID;
+
 function initialize() {
     intervalID = requestAnimationFrame(gameLoop);
 
@@ -813,15 +853,17 @@ function initialize() {
             settings.innerHTML = `<div>   
             </div>`;
         } else {
-            data.all_players.forEach(player => {
-                list.append(`
-                    <div class="user-entry">
-                    <div class="user-entry-name">${player.username}</div>
-                    <div class="user-entry-name">${!player.dead ? "Alive" : "Dead"}</div>
-                    <div class="user-entry-ready">${player.stored_items.length}</div>
-                    </div>
-                `);
-            });
+            updateScoreboard()
+
+            // data.all_players.forEach(player => {
+            //     list.append(`
+            //         <div class="user-entry">
+            //         <div class="user-entry-name">${player.username}</div>
+            //         <div class="user-entry-name">${!player.dead ? "Alive" : "Dead"}</div>
+            //         <div class="user-entry-ready">${player.stored_items.length}</div>
+            //         </div>
+            //     `);
+            // });
         }
 
     });
@@ -854,6 +896,7 @@ socket.on("start", () => {
         has_started = true;
     }
 });
+
 function toggleReady() {
     const cls = document.getElementById("class-selector").value;
     socket.emit("start", {
