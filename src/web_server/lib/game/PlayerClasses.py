@@ -376,6 +376,8 @@ class PlayerClass:
 
 
 class Demolisher(PlayerClass):
+    info = """Demolisher can blow up walls with its active effect."""
+
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
@@ -413,6 +415,8 @@ class Demolisher(PlayerClass):
 
 
 class Spy(PlayerClass):
+    info = "Placeholder info."
+
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
         # self.name = self.__class__.__name__
@@ -425,6 +429,12 @@ class Spy(PlayerClass):
 
 
 class Scout(PlayerClass):
+    info = """The scout class can place cameras which will be shown in the right top corner of your screen.\\n\\
+The camera will keep a 5x5 area visible around its placement location.\\n\\
+Other players will be able to see the camera lying on the ground.\\n\\
+The cooldown of the scouts camera is %s seconds.\\n\\
+    """ % SPY_COOLDOWN
+
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
@@ -449,6 +459,8 @@ class Scout(PlayerClass):
 
 
 class MrMole(PlayerClass):
+    info = "Placeholder info."
+
     def __init__(self, profile, socket_id, game):
         super().__init__(profile, socket_id, game)
 
