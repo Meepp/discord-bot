@@ -33,7 +33,8 @@ class Player {
         this.name = new DrawableText(0, 0);
         // Default values
         this.name.fontSize = 6;
-        this.name.color = "#000";
+        this.name.color = "#fff";
+        this.name.borderColor = "#777";
 
         // Only useful when you are the scout
         this.cameraPosition = new Point(0, 0);
@@ -125,7 +126,6 @@ class Player {
         // Sprite width / 2
         this.name.x = this.x * 16 + 8 - (gameView.context.measureText(data.username).width / 4);
         this.name.y = this.y * 16 - this.name.fontSize;
-
     }
 
     setWalkingAnimation(direction, sprites) {
@@ -508,9 +508,9 @@ function gameLoop() {
     // Compute the offset for all tiles, to center rendering on the player.
     try {
         view.render();
+        requestAnimationFrame(gameLoop)
     } catch (e) {
         console.log(e);
-        clearInterval(intervalID);
     }
 }
 
@@ -735,7 +735,13 @@ function initializeMenu() {
     text.fontSize = 25;
     text.centered = true;
     text.z = 1;
-    menuView.addObjects(button, text)
+
+    const text2 = new DrawableText(400, 100);
+    text2.text = "Hallway Hunters";
+    text2.fontSize = 25;
+    text2.centered = true;
+    text.z = 2;
+    menuView.addObjects(text, button, text2)
 }
 
 
@@ -753,7 +759,7 @@ function postStartInitialize(data) {
 
 let intervalID;
 function initialize() {
-    intervalID = setInterval(gameLoop, 1000 / 60);
+    intervalID = requestAnimationFrame(gameLoop);
 
     initializeMenu();
     initializePlayers(game.players);

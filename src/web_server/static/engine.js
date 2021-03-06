@@ -129,6 +129,7 @@ class DrawableText extends Point {
         this.fontSize = 12;
         this.font = "Arial";
         this.color = "#F00";
+        this.borderColor = null;
         this.renderable = true;
         this.centered = false;
 
@@ -138,12 +139,20 @@ class DrawableText extends Point {
     render(context) {
         context.font = `${this.fontSize}px ${this.font}`;
         context.fillStyle = this.color;
+        context.strokeStyle = this.borderColor;
+        context.lineWidth = 0.2;
 
         if (this.centered === true) {
             let width = context.measureText(this.text).width;
             context.fillText(this.text, this.x - width / 2, this.y + this.fontSize * .33);
+            if (this.borderColor !== null)  {
+                context.strokeText(this.text, this.x - width / 2, this.y + this.fontSize * .33);
+            }
         } else {
             context.fillText(this.text, this.x, this.y + this.fontSize / 2);
+            if (this.borderColor !== null)  {
+                context.strokeText(this.text, this.x, this.y + this.fontSize / 2);
+            }
         }
     }
 }
@@ -251,7 +260,10 @@ class View {
         const yOffset = -this.cameraCenter.y * this.zoom + hh;
         this.context.setTransform(this.zoom, 0, 0, this.zoom, xOffset, yOffset);
 
-        Object.entries(this.objects).forEach(([layer, objects]) => {
+        const keys = Object.entries(this.objects);
+        keys.sort();
+        keys.forEach(([key]) => {
+            const objects = this.objects[key];
             objects.forEach(obj => {
                 if (!obj.renderable) return;
 
