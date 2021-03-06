@@ -29,22 +29,10 @@ Game
                 </div>
                 {% if session_user().owner_id == room['author_id'] %}
                 <div class="settings-column">
-                    <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
-                    <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
-                    <label class="custom-text" for="small-blind-value">Small blind:</label><br>
-                    <input class="custom-input" type="text" id="small-blind-value" name="Small blind" value="2"><br>
-                    <input class="custom-input custom-button" type="button" value="Submit" onclick="changeSettings()">
-
                     <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
                 </div>
 
                 {% else %}
-                Choose class
-                <select id="class-selector">
-                    {% for cls in classes %}
-                    <option value="{{ cls }}">{{ cls }}</option>
-                    {% endfor %}
-                </select>
                 <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
                 {% endif %}
             </header>
@@ -79,6 +67,9 @@ Game
 <script>
     const ROOM_ID = "{{ room.id }}";
     const USER_NAME = "{{ session_user().owner }}";
+    const PLAYER_CLASSES = [{% for cls in classes %}
+        ["{{ cls.__name__ }}", "{{ cls.info }}"],
+    {% endfor %}];
 </script>
 <script src="{{ url_for('static', filename='engine.js') }}"></script>
 <script src="{{ url_for('static', filename='hallway.js') }}"></script>

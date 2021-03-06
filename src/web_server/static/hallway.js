@@ -4,7 +4,7 @@ context.webkitImageSmoothingEnabled = false;
 context.mozImageSmoothingEnabled = false;
 context.imageSmoothingEnabled = false;
 
-const FPS_INTERVAL = 1000/60;
+const FPS_INTERVAL = 1000 / 60;
 
 class RollingAverage {
     constructor(n) {
@@ -478,8 +478,9 @@ function handleInput() {
 
 // Game rendering stuff
 let then = 0;
+
 function gameLoop() {
-    requestAnimationFrame(gameLoop)
+    requestAnimationFrame(gameLoop);
     handleInput();
 
     const now = performance.now();
@@ -733,7 +734,7 @@ function initializeMenu() {
 
     const buttonWidth = 200;
     const buttonHeight = 50;
-    const button = new Button(400 - buttonWidth/2, 400 - buttonHeight/2, buttonWidth, buttonHeight);
+    const button = new Button(400 - buttonWidth / 2, 600 - buttonHeight / 2, buttonWidth, buttonHeight);
     button.setOnClick(canvas, () => {
         socket.emit("start", {
             room: ROOM_ID
@@ -744,18 +745,58 @@ function initializeMenu() {
     });
     button.renderable = true;
 
-    const text = new DrawableText(400, 400);
-    text.text = "Start";
-    text.fontSize = 25;
-    text.centered = true;
-    text.z = 1;
+    const buttonText = new DrawableText(400, 600);
+    buttonText.text = "Start";
+    buttonText.fontSize = 25;
+    buttonText.centered = true;
+    buttonText.z = 1;
 
-    const text2 = new DrawableText(400, 100);
-    text2.text = "Hallway Hunters";
-    text2.fontSize = 25;
-    text2.centered = true;
-    text.z = 2;
-    menuView.addObjects(text, button, text2)
+    const title = new DrawableText(400, 100);
+    title.text = "Hallway Hunters";
+    title.fontSize = 25;
+    title.centered = true;
+
+    let classButtons = [];
+    PLAYER_CLASSES.map((tuple, i) => {
+        let cls = tuple[0];
+        let info = tuple[1];
+
+        let blockPadding = 20;
+        let blockSize = 80;
+        const offset = (PLAYER_CLASSES.length * (blockSize + blockPadding) - blockPadding) / 2 - (blockSize + blockPadding) * i;
+        const button = new Button(400 - offset, 200, blockSize, blockSize);
+        button.hoverColor = "#5f7791";
+        button.color = "#3c5978";
+        const text = new DrawableText(button.x + blockSize / 2, button.y + blockSize / 2);
+        text.color = "rgb(207,226,255)";
+        text.text = cls;
+        text.centered = true;
+
+        const infoText = new DrawableText(400, button.y + 100);
+        infoText.color = "#3c5978";
+        infoText.fontSize = 15;
+        infoText.text = info;
+        infoText.centered = true;
+        infoText.renderable = false;
+        button.infoText = infoText;
+
+        classButtons.push(button);
+        menuView.addObjects(button, text, infoText);
+    });
+
+    classButtons.forEach(clsButton => {
+        clsButton.setOnClick(canvas, () => {
+            classButtons.forEach(button => {
+                button.color = "#3c5978";
+                button.infoText.renderable = false;
+            });
+            clsButton.color = "#5f7791";
+            clsButton.infoText.renderable = true;
+        });
+    });
+
+
+    menuView.addObjects(buttonText, button, title)
 }
 
 
@@ -772,6 +813,7 @@ function postStartInitialize(data) {
 }
 
 let intervalID;
+
 function initialize() {
     intervalID = requestAnimationFrame(gameLoop);
 
@@ -868,6 +910,7 @@ socket.on("start", () => {
         has_started = true;
     }
 });
+
 function toggleReady() {
     const cls = document.getElementById("class-selector").value;
     socket.emit("start", {

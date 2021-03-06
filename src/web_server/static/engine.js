@@ -114,6 +114,7 @@ class ColorTile extends Rectangle {
         this.color = color;
 
         this.z = 0;
+        this.renderable = true;
     }
 
     render(context) {
@@ -142,28 +143,26 @@ class DrawableText extends Point {
         context.strokeStyle = this.borderColor;
         context.lineWidth = 0.2;
 
-        if (this.centered === true) {
-            let width = context.measureText(this.text).width;
-            context.fillText(this.text, this.x - width / 2, this.y + this.fontSize * .33);
-            if (this.borderColor !== null)  {
-                context.strokeText(this.text, this.x - width / 2, this.y + this.fontSize * .33);
+        this.text.split("\n").map((text, i) => {
+            let width = context.measureText(text).width;
+
+            let offset = this.centered ? width / 2 : 0;
+            context.fillText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
+            if (this.borderColor !== null) {
+                context.strokeText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
             }
-        } else {
-            context.fillText(this.text, this.x, this.y + this.fontSize / 2);
-            if (this.borderColor !== null)  {
-                context.strokeText(this.text, this.x, this.y + this.fontSize / 2);
-            }
-        }
+        });
     }
 }
 
 class Button extends Rectangle {
-    constructor(x, y, width, height, canvas) {
+    constructor(x, y, width, height) {
         super(x, y, width, height);
         this.z = 0;
         this.color = "#555";
         this.hoverColor = "#777";
         this.hovering = false;
+        this.renderable = true;
 
         this._onHoverCallbackSet = false;
     }

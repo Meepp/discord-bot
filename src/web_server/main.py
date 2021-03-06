@@ -36,8 +36,7 @@ def game(room_id):
     if room.type == "poker":
         return render_template('poker.html', room=room)
     elif room.type == "hallway":
-        classes = [cls.__name__ for cls in PlayerClass.__subclasses__()]
-        return render_template('hallway.html', room=room, classes=classes)
+        return render_template('hallway.html', room=room, classes=PlayerClass.__subclasses__())
 
 
 
