@@ -866,7 +866,6 @@ function initializeLoading() {
             const a1 = (this.tick % this.ticksPerRotation) / this.ticksPerRotation * phi;
             const a2 = (a1 + ((this.tick * this.chaseSpeed) % this.ticksPerRotation) / this.ticksPerRotation * phi) % (phi);
 
-            console.log(a1, a2);
             let sAngle, eAngle;
             if (this.chasing) {
                 sAngle = a1; eAngle = a2;

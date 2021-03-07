@@ -27,7 +27,7 @@ class HallwayHunters:
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
-        self.size = 183
+        self.size = 93
 
         self.spawn_points: List[Point] = []
         self.board: List[List[Tile]] = []

@@ -202,7 +202,7 @@ def remove_dead_ends(matrix):
             end = neighbour
 
 
-def upscale_3x(board):
+def upscale_nx(board, scale=3):
     size = len(board)
 
     upscaled_board = []
@@ -210,16 +210,16 @@ def upscale_3x(board):
         row = []
         for y in range(size):
             tile = board[x][y]
-            row.append(copy.deepcopy(tile))
-            row.append(copy.deepcopy(tile))
+            for _ in range(scale - 1):
+                row.append(copy.deepcopy(tile))
             row.append(tile)
-        upscaled_board.append(copy.deepcopy(row))
-        upscaled_board.append(copy.deepcopy(row))
+        for _ in range(scale - 1):
+            upscaled_board.append(copy.deepcopy(row))
         upscaled_board.append(row)
 
     # Fill in the correct wall tiles
-    for x in range(1, size * 3 - 2):
-        for y in range(1, size * 3 - 2):
+    for x in range(1, size * scale - 2):
+        for y in range(1, size * scale - 2):
             if isinstance(upscaled_board[x][y], UnknownTile):
                 # Add the correct tiles to the board.
                 down = upscaled_board[x][y + 1].movement_allowed
@@ -295,9 +295,10 @@ def generate_props(board):
 
 
 def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
-    if size % 3 != 0:
-        raise ValueError("Room size must be a multiple of 3.")
-    generator_size = size // 3
+    scale = 3
+    if size % scale != 0:
+        raise ValueError("Room size must be a multiple of %d.", scale)
+    generator_size = size // scale
     if generator_size % 2 == 0:
         raise ValueError("Room size cannot be an even number.")
 
@@ -308,7 +309,7 @@ def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
     connector_generator(base)
     remove_dead_ends(base)
 
-    board = upscale_3x(base)
+    board = upscale_nx(base, scale=scale)
     generate_props(board)
-    room_centers = [center * 3 for center in room_centers]
+    room_centers = [center * scale for center in room_centers]
     return board, room_centers
