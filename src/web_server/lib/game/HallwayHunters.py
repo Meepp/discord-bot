@@ -27,7 +27,7 @@ class HallwayHunters:
         self.room_id = room_id
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
-        self.size = 93
+        self.size = 183
 
         self.spawn_points: List[Point] = []
         self.board: List[List[Tile]] = []
@@ -47,6 +47,8 @@ class HallwayHunters:
         self.board_changes = []
 
     def start(self):
+        if self.phase == Phases.STARTED:
+            return
         self.phase = Phases.STARTED
 
         selected_colors = [player.name for player in self.player_list]
@@ -124,7 +126,6 @@ class HallwayHunters:
         color_set = ["blue", "red", "black", "purple", "green"]
 
         player.name = color_set[len(self.player_list)]
-        print(player.name)
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 

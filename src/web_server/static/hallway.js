@@ -37,9 +37,9 @@ class Player {
         this.name.color = "#fff";
         this.name.borderColor = "#777";
 
-        this.scoreText = new DrawableText(0,0)
-        this.scoreText.fontSize = 15
-        this.score = 0
+        this.scoreText = new DrawableText(0,0);
+        this.scoreText.fontSize = 15;
+        this.score = -1;
 
         // Only useful when you are the scout
         this.cameraPosition = new Point(0, 0);
@@ -78,7 +78,7 @@ class Player {
         this.moving = data.is_moving;
         this.direction = data.direction;
 
-        this.score = data.stored_items.length
+        this.score = data.stored_items.length;
 
         if (data.item !== null && data.item !== undefined)
             this.item = new SpriteTile(game.tiles[data.item.name]);
@@ -170,12 +170,18 @@ class Player {
 }
 
 const view = new View(context); // Main wrapper view
+const loadingView = new View(context);
 const menuView = new View(context); // Main menu view
 const gameView = new View(context); // Game view
 gameView.renderable = false;
 gameView.zoom = 3;
 view.addChild(menuView);
 view.addChild(gameView);
+view.addChild(loadingView);
+
+loadingView.renderable = true;
+menuView.renderable = false;
+
 
 const statsView = new View(context); // Informative stats view (fps etc)
 const UIView = new View(context); // UI View in game
@@ -186,37 +192,38 @@ cameraView.renderable = false;
 cameraView.zoom = 2.5;
 
 const scoreView = new View(context); // view for scoreboard
+const playerView = new View(context);
 
+menuView.addChild(playerView);
 
 gameView.addChild(UIView);
 gameView.addChild(statsView);
-gameView.addChild(scoreView)
+gameView.addChild(scoreView);
 UIView.addChild(cameraView);
 
 const TILE_SIZE = 48;
 const STATS_INTERVAL = 1000 / 10;
 let socket = io("/hallway");
-let tileSet;
 
 let game = new HallwayHunters();
 
-async function loadImages(src) {
+async function loadImages(src, callback) {
     return new Promise((resolve, reject) => {
-        tileSet = new Image();
-        tileSet.onload = () => {
-            splitTileset(tileSet.width, tileSet.height);
+        let image = new Image();
+        image.onload = () => {
+            callback(image);
             resolve();
         };
-        tileSet.onerror = reject;
-        tileSet.src = src;
+        image.onerror = reject;
+        image.src = src;
     });
 }
 
-
-loadImages("/static/images/tiles/dungeon_sheet.png").then(() => {
-        initialize();
-    }
-);
+setBackground = (image) => {menuView.background = image};
+loadImages("/static/images/tiles/dungeon_sheet.png", splitTileset).then(() =>
+loadImages("/static/images/tiles/background.png", setBackground).then(() => {
+    initialize();
+}));
 
 socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
@@ -459,8 +466,10 @@ function HallwayHunters() {
 
 
         this.state.all_players.forEach(player => {
-            this.players[player.name].scoreText.text = player.username + " " + player.stored_items.length
-        })
+            const p = this.players[player.name];
+            p.score = player.stored_items.length;
+            p.scoreText.text = player.username + " " + player.stored_items.length
+        });
 
         let newCameraCenter = new Point(data.player_data.position.x * 16, data.player_data.position.y * 16);
         player.update(data.player_data);
@@ -545,12 +554,12 @@ function gameLoop() {
 }
 
 
-function splitTileset(width, height) {
+function splitTileset(tileSet) {
     const scale = TILE_SIZE / 16;
     let canvas = document.createElement("canvas");
     canvas.className = "disable-anti-aliasing";
-    canvas.width = width * scale;
-    canvas.height = height * scale;
+    canvas.width = tileSet.width * scale;
+    canvas.height = tileSet.height * scale;
     let context = canvas.getContext("2d");
 
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -674,9 +683,7 @@ function initializePlayers(dictionary) {
             ]);
         });
         dictionary[colour] = player;
-    })
-
-
+    });
 }
 
 
@@ -746,30 +753,32 @@ function initializeCamera() {
 
 
 function initializeMenu() {
-    loadMainContent("game-wrapper");
+    const x = canvas.clientWidth / 2;
 
     const buttonWidth = 200;
     const buttonHeight = 50;
-    const button = new Button(400 - buttonWidth / 2, 600 - buttonHeight / 2, buttonWidth, buttonHeight);
+    const button = new Button(x - buttonWidth / 2, 600 - buttonHeight / 2, buttonWidth, buttonHeight);
+    button.hoverColor = "#5f7791";
+    button.color = "#3c5978";
     button.setOnClick(canvas, () => {
         socket.emit("start", {
             room: ROOM_ID
         });
-
-        menuView.renderable = false;
-        gameView.renderable = true;
     });
     button.renderable = true;
 
-    const buttonText = new DrawableText(400, 600);
+    const buttonText = new DrawableText(x, 600);
     buttonText.text = "Start";
     buttonText.fontSize = 25;
+    buttonText.color = "rgb(207,226,255)";
     buttonText.centered = true;
     buttonText.z = 1;
 
-    const title = new DrawableText(400, 100);
+    const title = new DrawableText(x, 100);
     title.text = "Hallway Hunters";
-    title.fontSize = 25;
+    title.fontSize = 45;
+    title.color = "rgb(207,226,255)";
+    title.borderColor = "#131c2c";
     title.centered = true;
 
     let classButtons = [];
@@ -780,7 +789,7 @@ function initializeMenu() {
         let blockPadding = 20;
         let blockSize = 80;
         const offset = (PLAYER_CLASSES.length * (blockSize + blockPadding) - blockPadding) / 2 - (blockSize + blockPadding) * i;
-        const button = new Button(400 - offset, 200, blockSize, blockSize);
+        const button = new Button(x - offset, 200, blockSize, blockSize);
         button.hoverColor = "#5f7791";
         button.color = "#3c5978";
         const text = new DrawableText(button.x + blockSize / 2, button.y + blockSize / 2);
@@ -788,9 +797,9 @@ function initializeMenu() {
         text.text = cls;
         text.centered = true;
 
-        const infoText = new DrawableText(400, button.y + 100);
-        infoText.color = "#3c5978";
-        infoText.fontSize = 15;
+        const infoText = new DrawableText(x, button.y + 100);
+        infoText.color = "rgb(207,226,255)";
+        infoText.fontSize = 18;
         infoText.text = info;
         infoText.centered = true;
         infoText.renderable = false;
@@ -811,26 +820,88 @@ function initializeMenu() {
         });
     });
 
+    // playerView.addObjects()
 
-    menuView.addObjects(buttonText, button, title)
+    let background = new SpriteTile(menuView.background);
+    background.width = menuView.background.width;
+    background.height = menuView.background.height;
+    background.renderable = true;
+    let overlay = new ColorTile("#55555555");
+    overlay.width = background.width;
+    overlay.height = background.height;
+    overlay.renderable = true;
+    background.z = overlay.z = -1;
+
+    menuView.addObjects(background, overlay, buttonText, button, title);
+}
+
+function initializeLoading() {
+    let background = new SpriteTile(menuView.background);
+    background.renderable = true;
+    background.width = menuView.background.width;
+    background.height = menuView.background.height;
+    let overlay = new ColorTile("#55555555");
+    overlay.renderable = true;
+    overlay.width = background.width;
+    overlay.height = background.height;
+    background.z = overlay.z = -1;
+
+    class CircleLoading extends Point {
+        constructor(x, y, radius) {
+            super(x, y);
+            this.renderable = true;
+            this.z = 2;
+            this.radius = radius;
+            this.tick = 0;
+            this.chasing = true;
+            this.ticksPerRotation = 180;
+            this.chaseSpeed = 2.4;
+        }
+        render(context) {
+            const phi = (2 * Math.PI);
+            this.tick++;
+
+            if (this.tick % (this.ticksPerRotation / this.chaseSpeed) === 1) this.chasing = !this.chasing;
+
+            const a1 = (this.tick % this.ticksPerRotation) / this.ticksPerRotation * phi;
+            const a2 = (a1 + ((this.tick * this.chaseSpeed) % this.ticksPerRotation) / this.ticksPerRotation * phi) % (phi);
+
+            console.log(a1, a2);
+            let sAngle, eAngle;
+            if (this.chasing) {
+                sAngle = a1; eAngle = a2;
+            } else {
+                sAngle = a2; eAngle = a1;
+            }
+            context.lineWidth = 15;
+            context.strokeStyle = this.mainColour;
+            context.beginPath();
+            context.arc(this.x, this.y, this.radius, sAngle, eAngle);
+            context.stroke();
+        }
+    }
+
+    const circleLoading = new CircleLoading(background.width/2,  background.height/2, 35);
+
+    loadingView.addObjects(background, overlay, circleLoading);
 }
 
 
 function updateScoreboard() {
-    scoreView.clearLayer(0)
-    let sorted_score = []
+    scoreView.clearLayer(0);
+    let sorted_score = [];
     Object.values(game.players).forEach(player => {
         sorted_score.push([player, player.score])
-    })
+    });
 
     sorted_score.sort(function(a, b) {
         return a[1] - b[1];
     });
 
     sorted_score.map((player, i) => {
-        player[0].scoreText.x = canvas.width - 100
-        player[0].scoreText.y = canvas.height - i * player[0].scoreText.fontSize - 50
-        scoreView.addObjects(player[0].scoreText)
+        player[0].scoreText.x = canvas.width - 100;
+        player[0].scoreText.y = canvas.height - i * player[0].scoreText.fontSize - 50;
+        scoreView.addObjects(player[0].scoreText);
     })
 }
 
@@ -842,7 +913,7 @@ function postStartInitialize(data) {
     UIView.addObjects(player.xCooldown);
     UIView.addObjects(player.cCooldown);
 
-    updateScoreboard()
+    updateScoreboard();
     // Setup camera
     initializeCamera();
 }
@@ -851,6 +922,7 @@ let intervalID;
 
 function initialize() {
     intervalID = requestAnimationFrame(gameLoop);
+    initializeLoading();
 
     initializeMenu();
     initializePlayers(game.players);
@@ -887,39 +959,22 @@ function initialize() {
             postStartInitialize(data);
         }
         game.setState(data);
-        let list = !game.state.started ? $(".user-list") : $(".player-list");
-        list.empty();
-        if (!game.state.started) {
-            // Lobby stuff
-            data.all_players.forEach(player => {
-                list.append(`
-                    <div class="user-entry">
-                    <div class="user-entry-name">${player.username}</div>
-                    <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
-                    </div>
-                `);
-            });
-
-            let settings = document.getElementById("room-settings");
-            settings.innerHTML = `<div>   
-            </div>`;
-        } else {
-            updateScoreboard()
+        if (game.state.started) {
+            updateScoreboard();
         }
 
     });
     socket.on("message", (data) => {
         console.log(data);
-        // game.fadeMessages.push({
-        //     message: data,
-        //     ticks: 120
-        // });
     });
 
     // Request game state on initialization.
     socket.emit("game_state", {
         "room": ROOM_ID
     });
+
+    loadingView.renderable = false;
+    menuView.renderable = true;
 }
 
 function sendAction(action) {
@@ -930,12 +985,14 @@ function sendAction(action) {
     socket.emit("action", data);
 }
 
-let has_started = false;
+socket.on("loading", () => {
+    menuView.renderable = false;
+    loadingView.renderable = true;
+});
+
 socket.on("start", () => {
-    loadMainContent("game-wrapper");
-    if (!has_started) {
-        has_started = true;
-    }
+    loadingView.renderable = false;
+    gameView.renderable = true;
 });
 
 function toggleReady() {
@@ -944,7 +1001,7 @@ function toggleReady() {
         room: ROOM_ID,
         player_class: cls,
     });
-}
+};
 
 socket.on("start", () => {
     // What to do on start for all players

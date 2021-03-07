@@ -10,34 +10,6 @@ Game
 
 {% block content %}
 <div class="main-wrapper">
-    <div id="lobby-wrapper" class="main-content">
-        <article class="post">
-            <header>
-                <div>
-                    <h1>Room: <u>{{ room.name }}</u></h1>
-                    <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
-                    <div class="about">Room leader: {{ room.author }}
-                        <div id="room-settings">
-
-                        </div>
-                    </div>
-                    <div>
-                        <h3>
-                            User list</h3>
-                        <div class="user-list"></div>
-                    </div>
-                </div>
-                {% if session_user().owner_id == room['author_id'] %}
-                <div class="settings-column">
-                    <div class="custom-input custom-button" onclick="startRoom()">Start Game</div>
-                </div>
-
-                {% else %}
-                <div class="custom-input custom-button" onclick="toggleReady()">Ready Up</div>
-                {% endif %}
-            </header>
-        </article>
-    </div>
     <div id="game-wrapper" class="main-content">
         <canvas id="canvas">
         </canvas>

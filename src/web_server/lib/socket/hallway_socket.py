@@ -91,6 +91,8 @@ def start_game(data):
     # Room owner is always true
     player.ready = True
 
+    sio.emit("loading", None, room=room_id, namespace="/hallway")
+
     if not game.game_loop_thread.is_alive():
         game.game_loop_thread.start()
     game.start()
