@@ -882,8 +882,10 @@ function initializeLoading() {
     }
 
     const circleLoading = new CircleLoading(background.width/2,  background.height/2, 35);
-
-    loadingView.addObjects(background, overlay, circleLoading);
+    loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100)
+    loadingView.infoText.color = "#ffffff"
+    loadingView.infoText.fontSize = 20
+    loadingView.addObjects(background, overlay, circleLoading, loadingView.infoText);
 }
 
 
@@ -985,7 +987,9 @@ function sendAction(action) {
     socket.emit("action", data);
 }
 
-socket.on("loading", () => {
+socket.on("loading", (data) => {
+    console.log(data)
+    loadingView.infoText.text = data
     menuView.renderable = false;
     loadingView.renderable = true;
 });
