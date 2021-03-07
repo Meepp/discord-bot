@@ -12,6 +12,7 @@ from src.web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
 from src.web_server.lib.game.Utils import Point
 from src.web_server.lib.game.generator import generate_board
 
+
 print(f"Imported {__name__}")
 
 
@@ -51,10 +52,6 @@ class HallwayHunters:
         self.phase = Phases.STARTED
 
         selected_colors = [player.name for player in self.player_list]
-
-        print(selected_colors)
-        sio.emit("loading", {"message": "Generating board"}, room=str(self.room_id), namespace="/hallway")
-        print(self.room_id)
         self.board, self.spawn_points = generate_board(self.size, selected_colors)
         for i, player in enumerate(self.player_list):
             spawn_point = self.spawn_points[i % len(self.spawn_points)]

@@ -885,6 +885,7 @@ function initializeLoading() {
     loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100)
     loadingView.infoText.color = "#ffffff"
     loadingView.infoText.fontSize = 20
+    loadingView.infoText.centered = true
     loadingView.addObjects(background, overlay, circleLoading, loadingView.infoText);
 }
 
