@@ -63,10 +63,14 @@ class HallwayHunters:
         player_pool = self.player_list[:]
         for i, player in enumerate(self.player_list):
             # Generate a target for each player
-            pp_selectable = [p for p in player_pool if p != player]
+            if len(self.player_list) > 1:
+                pp_selectable = [p for p in player_pool if p != player]
+            else: # FIXME: Temporary for testing purposes
+                pp_selectable = player_pool
             target = random.choice(pp_selectable)
             player_pool.remove(target)
             player.target = target
+            player.class_name = class_pool[i].__name__
 
             print("Player %s is %s" % (player.profile.discord_username, class_pool[i].__name__))
 
@@ -100,7 +104,7 @@ class HallwayHunters:
                 self.spent_time += diff
                 self.ticks += 1.
                 if self.ticks % self.tick_rate == 0:
-                    print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
+                    # print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
                     self.spent_time = 0.000001
                     self.ticks = 0
 

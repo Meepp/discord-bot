@@ -53,6 +53,7 @@ class PlayerClass:
         self.spawn_position = Point(1, 1)
         self.position = Point(1, 1)
         self.last_position = self.position
+        self.class_name = None
 
         self.dead = False
         self.can_move = True
@@ -318,6 +319,7 @@ class PlayerClass:
                 "killing": self.killing.to_json(owner=False) if self.killing else None,
                 "target": self.target.__class__.__name__ if self.target else None,
                 "stored_items": [item.to_json() for item in self.stored_items],
+                "class_name": self.class_name
             })
 
         return state
@@ -326,6 +328,7 @@ class PlayerClass:
         cls = new_class(self.profile, self.socket, self.game)
         cls.ready = self.ready
         cls.name = self.name
+        print(cls.name)
         cls.position = self.position
         return cls
 
