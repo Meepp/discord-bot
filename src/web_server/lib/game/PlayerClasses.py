@@ -47,6 +47,7 @@ class Passive(object):
 
 class PlayerClass:
     def __init__(self, profile: Profile, socket_id, game):
+        # TODO: Refactor rename   name -> color
         self.name = ""
         self.profile = profile
         self.spawn_position = Point(1, 1)
@@ -58,6 +59,8 @@ class PlayerClass:
 
         self.move_suggestion = None
         self.updated = True
+
+        self.target = None
 
         self.movement_cooldown = MOVEMENT_COOLDOWN  # Ticks
         self.movement_timer = 0
@@ -157,7 +160,10 @@ class PlayerClass:
         self.kill_timer = KILL_COOLDOWN
         self.can_move = True
 
-        # TODO: check if this is your target
+        if self.killing != self.target:
+            # TODO: Give some kind of de-buff maybe (balancing spam-killing)
+            raise InvalidAction("This was not your target.")
+
         self.killing.die()
 
         self.killing = None
@@ -310,6 +316,7 @@ class PlayerClass:
                 "sprint_timer": self.sprint_timer,
                 "passives": [passive.to_json() for passive in self.passives],
                 "killing": self.killing.to_json(owner=False) if self.killing else None,
+                "target": self.target.__class__.__name__ if self.target else None,
                 "stored_items": [item.to_json() for item in self.stored_items],
             })
 

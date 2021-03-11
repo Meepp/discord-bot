@@ -50,17 +50,28 @@ class HallwayHunters:
             return
         self.phase = Phases.STARTED
 
-        selected_colors = [player.name for player in self.player_list]
+        self.board, self.spawn_points = generate_board(self.size, self.room_id)
 
-        print(selected_colors)
-        sio.emit("loading", {"message": "Generating board"}, room=str(self.room_id), namespace="/hallway")
-        print(self.room_id)
-        self.board, self.spawn_points = generate_board(self.size, selected_colors)
+        class_pool = PlayerClass.__subclasses__()
+        random.shuffle(class_pool)
         for i, player in enumerate(self.player_list):
+            new_player = player.convert_class(class_pool[i])
+            self.set_player(player.profile, new_player)
+
+        # Copy player list for target selection to ensure no duplicate targets
+        player_pool = self.player_list[:]
+        for i, player in enumerate(self.player_list):
+            # Generate a target for each player
+            pp_selectable = [p for p in player_pool if p != player]
+            target = random.choice(pp_selectable)
+            player_pool.remove(target)
+            player.target = target
+
+            print("Player %s is %s" % (player.profile.discord_username, class_pool[i].__name__))
+
             spawn_point = self.spawn_points[i % len(self.spawn_points)]
             player.change_position(spawn_point)
             player.start()
-            sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
 
             # Connect chest to player
             chest = ChestTile(player)

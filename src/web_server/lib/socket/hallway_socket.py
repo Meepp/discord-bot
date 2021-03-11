@@ -75,14 +75,6 @@ def start_game(data):
     # All normal players toggle their ready state
     player.ready = not player.ready
 
-    # Update the player class if the user desired this
-    if player.name != selected_class:
-        cls = next((x for x in PlayerClass.__subclasses__() if x.__name__ == selected_class), None)
-        if cls:
-            player = player.convert_class(cls)
-            game.set_player(profile, player)
-            print("Updated player to:", player.name)
-
     # Only the owner may start the game
     if room.author_id != profile.discord_id:
         game.update_players()
@@ -91,10 +83,10 @@ def start_game(data):
     # Room owner is always true
     player.ready = True
 
-    sio.emit("loading", None, room=room_id, namespace="/hallway")
-
+    sio.emit("loading", "Generating game...", room=room_id, namespace="/hallway")
     if not game.game_loop_thread.is_alive():
         game.game_loop_thread.start()
+
     game.start()
 
     sio.emit("start", None, room=room_id, namespace="/hallway")

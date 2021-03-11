@@ -1,5 +1,6 @@
 import copy
 import random
+import time
 from typing import List, Tuple
 
 from src.web_server.lib.game.Items import RubbishItem, CollectorItem
@@ -294,7 +295,7 @@ def generate_props(board):
                     board[x][y].item = RubbishItem()
 
 
-def generate_board(size, colors) -> Tuple[List[List[Tile]], List[Point]]:
+def generate_board(size, room) -> Tuple[List[List[Tile]], List[Point]]:
     scale = 3
     if size % scale != 0:
         raise ValueError("Room size must be a multiple of %d.", scale)

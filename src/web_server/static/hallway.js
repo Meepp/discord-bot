@@ -55,6 +55,7 @@ class Player {
         this.cCooldown.textObject.text = "C";
 
         this.item = null;
+        this.target = new DrawableText(gameView.width / 2, 10);
 
         // Fallback
         this.sprite = new SpriteTile(image);
@@ -77,6 +78,8 @@ class Player {
         this.y = data.position.y;
         this.moving = data.is_moving;
         this.direction = data.direction;
+
+        this.target.text = data.target === undefined ? "" : data.target;
 
         this.score = data.stored_items.length;
 
@@ -861,7 +864,7 @@ function initializeLoading() {
             const phi = (2 * Math.PI);
             this.tick++;
 
-            if (this.tick % (this.ticksPerRotation / this.chaseSpeed) === 1) this.chasing = !this.chasing;
+            if (this.tick % (this.ticksPerRotation / this.chaseSpeed) === 0) this.chasing = !this.chasing;
 
             const a1 = (this.tick % this.ticksPerRotation) / this.ticksPerRotation * phi;
             const a2 = (a1 + ((this.tick * this.chaseSpeed) % this.ticksPerRotation) / this.ticksPerRotation * phi) % (phi);
@@ -881,9 +884,9 @@ function initializeLoading() {
     }
 
     const circleLoading = new CircleLoading(background.width/2,  background.height/2, 35);
-    loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100)
-    loadingView.infoText.color = "#ffffff"
-    loadingView.infoText.fontSize = 20
+    loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100);
+    loadingView.infoText.color = "#ffffff";
+    loadingView.infoText.fontSize = 20;
     loadingView.addObjects(background, overlay, circleLoading, loadingView.infoText);
 }
 
@@ -910,9 +913,12 @@ function postStartInitialize(data) {
     player = game.players[data.player_data.name];
 
     // Setup UI cooldowns
-    UIView.addObjects(player.zCooldown);
-    UIView.addObjects(player.xCooldown);
-    UIView.addObjects(player.cCooldown);
+    UIView.addObjects(
+        player.zCooldown,
+        player.xCooldown,
+        player.cCooldown,
+        player.target,
+    );
 
     updateScoreboard();
     // Setup camera
@@ -987,8 +993,8 @@ function sendAction(action) {
 }
 
 socket.on("loading", (data) => {
-    console.log(data)
-    loadingView.infoText.text = data
+    console.log(data);
+    loadingView.infoText.text = data;
     menuView.renderable = false;
     loadingView.renderable = true;
 });
