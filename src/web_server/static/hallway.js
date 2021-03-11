@@ -869,6 +869,7 @@ function initializeLoading() {
             const a1 = (this.tick % this.ticksPerRotation) / this.ticksPerRotation * phi;
             const a2 = (a1 + ((this.tick * this.chaseSpeed) % this.ticksPerRotation) / this.ticksPerRotation * phi) % (phi);
 
+            console.log(a1, a2);
             let sAngle, eAngle;
             if (this.chasing) {
                 sAngle = a1; eAngle = a2;
@@ -887,6 +888,7 @@ function initializeLoading() {
     loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100);
     loadingView.infoText.color = "#ffffff";
     loadingView.infoText.fontSize = 20;
+    loadingView.infoText.centered = true;
     loadingView.addObjects(background, overlay, circleLoading, loadingView.infoText);
 }
 

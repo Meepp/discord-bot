@@ -12,6 +12,7 @@ from src.web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
 from src.web_server.lib.game.Utils import Point
 from src.web_server.lib.game.generator import generate_board
 
+
 print(f"Imported {__name__}")
 
 
