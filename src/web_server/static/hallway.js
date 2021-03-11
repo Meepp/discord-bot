@@ -55,7 +55,12 @@ class Player {
         this.cCooldown.textObject.text = "C";
 
         this.item = null;
-        this.target = new DrawableText(gameView.width / 2, 10);
+
+        this.header = new DrawableText(view.width / 2, 10);
+        this.header.centered = true;
+        this.header.fontSize = 30;
+        this.header.color = "#fff";
+        this.header.borderColor = "#000";
 
         // Fallback
         this.sprite = new SpriteTile(image);
@@ -79,7 +84,9 @@ class Player {
         this.moving = data.is_moving;
         this.direction = data.direction;
 
-        this.target.text = data.target === undefined ? "" : data.target;
+        if (data.target !== undefined) {
+            this.header.text = `You are ${data.class_name}. Your target is ${data.target}.`;
+        }
 
         this.score = data.stored_items.length;
 
@@ -173,6 +180,8 @@ class Player {
 }
 
 const view = new View(context); // Main wrapper view
+view.width = canvas.width;
+view.height = canvas.height;
 const loadingView = new View(context);
 const menuView = new View(context); // Main menu view
 const gameView = new View(context); // Game view
@@ -379,6 +388,8 @@ function HallwayHunters() {
         player_data: {
             dead: false,
             name: "",
+            class_name: "",
+            target: "",
             position: {
                 x: 0,
                 y: 0
@@ -919,12 +930,15 @@ function postStartInitialize(data) {
         player.zCooldown,
         player.xCooldown,
         player.cCooldown,
-        player.target,
+        player.header,
     );
 
     updateScoreboard();
-    // Setup camera
-    initializeCamera();
+    if (data.player_data.class_name === "Scout") {
+        // Setup camera
+        initializeCamera();
+        cameraView.renderable = true;
+    }
 }
 
 let intervalID;
