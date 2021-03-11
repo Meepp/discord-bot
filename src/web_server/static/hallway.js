@@ -56,6 +56,7 @@ class Player {
 
         this.item = null;
 
+        // TODO: Dont initialize this for every player
         this.header = new DrawableText(view.width / 2, 10);
         this.header.centered = true;
         this.header.fontSize = 15;
@@ -84,11 +85,13 @@ class Player {
         this.moving = data.is_moving;
         this.direction = data.direction;
 
+        // If you are the owner, you know this.
         if (data.target !== undefined) {
+            this.score = data.stored_items.length;
             this.header.text = `You are ${data.class_name}. Your target is ${data.target}.`;
         }
 
-        this.score = data.stored_items.length;
+
 
         if (data.item !== null && data.item !== undefined)
             this.item = new SpriteTile(game.tiles[data.item.name]);
@@ -880,7 +883,6 @@ function initializeLoading() {
             const a1 = (this.tick % this.ticksPerRotation) / this.ticksPerRotation * phi;
             const a2 = (a1 + ((this.tick * this.chaseSpeed) % this.ticksPerRotation) / this.ticksPerRotation * phi) % (phi);
 
-            console.log(a1, a2);
             let sAngle, eAngle;
             if (this.chasing) {
                 sAngle = a1; eAngle = a2;
@@ -923,8 +925,6 @@ function updateScoreboard() {
 }
 
 function postStartInitialize(data) {
-    player = game.players[data.player_data.name];
-    console.log(data)
     // Setup UI cooldowns
     UIView.addObjects(
         player.zCooldown,
@@ -937,14 +937,13 @@ function postStartInitialize(data) {
     console.log("Current class:", data.player_data.class_name)
     if (data.player_data.class_name === "Scout") {
         // Setup camera
-
         initializeCamera();
         cameraView.renderable = true;
     }
 }
 
 let intervalID;
-
+let started = false;
 function initialize() {
     intervalID = requestAnimationFrame(gameLoop);
     initializeLoading();
@@ -980,10 +979,15 @@ function initialize() {
      * Register all socket.io functions to the game object.
      */
     socket.on("game_state", (data) => {
+        if (player === null) {
+            // Store pointer to correct player object
+            player = game.players[data.player_data.name];
+        }
         game.setState(data);
         if (game.state.started) {
-            if (player === null) {
+            if (!started) {
                 postStartInitialize(data);
+                started = true;
             }
             updateScoreboard();
         }
@@ -1011,7 +1015,6 @@ function sendAction(action) {
 }
 
 socket.on("loading", (data) => {
-    console.log(data);
     loadingView.infoText.text = data;
     menuView.renderable = false;
     loadingView.renderable = true;
