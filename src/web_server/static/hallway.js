@@ -58,7 +58,7 @@ class Player {
 
         this.header = new DrawableText(view.width / 2, 10);
         this.header.centered = true;
-        this.header.fontSize = 30;
+        this.header.fontSize = 15;
         this.header.color = "#fff";
         this.header.borderColor = "#000";
 
@@ -924,7 +924,7 @@ function updateScoreboard() {
 
 function postStartInitialize(data) {
     player = game.players[data.player_data.name];
-
+    console.log(data)
     // Setup UI cooldowns
     UIView.addObjects(
         player.zCooldown,
@@ -934,8 +934,10 @@ function postStartInitialize(data) {
     );
 
     updateScoreboard();
+    console.log("Current class:", data.player_data.class_name)
     if (data.player_data.class_name === "Scout") {
         // Setup camera
+
         initializeCamera();
         cameraView.renderable = true;
     }
@@ -978,11 +980,11 @@ function initialize() {
      * Register all socket.io functions to the game object.
      */
     socket.on("game_state", (data) => {
-        if (player === null) {
-            postStartInitialize(data);
-        }
         game.setState(data);
         if (game.state.started) {
+            if (player === null) {
+                postStartInitialize(data);
+            }
             updateScoreboard();
         }
 
