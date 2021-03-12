@@ -163,7 +163,12 @@ class PlayerClass:
 
         if self.killing != self.target:
             # TODO: Give some kind of de-buff maybe (balancing spam-killing)
-            raise InvalidAction("This was not your target.")
+            from web_server import sio
+            sio.emit("message", {
+                "username": "SYSTEM",
+                "message": "This was not your target.",
+            })
+            return
 
         self.killing.die()
 

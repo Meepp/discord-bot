@@ -29,6 +29,8 @@ class HallwayHunters:
         self.player_list: List[PlayerClass] = []
         self.size = 93
 
+        self.color_pool = ["blue", "red", "black", "purple", "green"]
+
         self.spawn_points: List[Point] = []
         self.board: List[List[Tile]] = []
         self.animations: Set[Tile] = set()
@@ -61,14 +63,10 @@ class HallwayHunters:
 
         # Copy player list for target selection to ensure no duplicate targets
         player_pool = self.player_list[:]
+        random.shuffle(player_pool)
         for i, player in enumerate(self.player_list):
             # Generate a target for each player
-            if len(self.player_list) > 1:
-                pp_selectable = [p for p in player_pool if p != player]
-            else: # FIXME: Temporary for testing purposes
-                pp_selectable = player_pool
-            target = random.choice(pp_selectable)
-            player_pool.remove(target)
+            target = player_pool[(player_pool.index(player) + 1) % len(player_pool)]
             player.target = target
             player.class_name = class_pool[i].__name__
 
@@ -140,7 +138,6 @@ class HallwayHunters:
                 return
 
         player = Demolisher(profile, socket_id, self)
-        color_set = ["blue", "red", "black", "purple", "green"]
 
         player.name = color_set[len(self.player_list)]
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
@@ -169,6 +166,9 @@ class HallwayHunters:
             })
 
         return data
+
+    def set_color(self, profile: Profile, color: str):
+        player = self.get_player(profile)
 
     def get_player(self, profile: Profile = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]

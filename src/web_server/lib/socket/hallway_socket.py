@@ -110,6 +110,17 @@ def suggest_move(data):
         sio.emit("message", str(e.message), room=player.socket, namespace="/hallway")
 
 
+@sio.on("changeColor", namespace="/hallway")
+def change_color(data):
+    room_id = int(data.get("room_id"))
+    color = data.get("color")
+    game = games[room_id]
+
+    profile = session_user()
+    game.set_color(profile, color)
+    game.update_players()
+
+
 @sio.on("action", namespace="/hallway")
 def suggest_action(data):
     room_id = int(data.get("room"))

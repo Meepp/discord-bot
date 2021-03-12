@@ -5,6 +5,7 @@ context.mozImageSmoothingEnabled = false;
 context.imageSmoothingEnabled = false;
 
 const FPS_INTERVAL = 1000 / 60;
+const COLORS = ["blue", "red", "green", "purple", "black"];
 
 class RollingAverage {
     constructor(n) {
@@ -37,7 +38,7 @@ class Player {
         this.name.color = "#fff";
         this.name.borderColor = "#777";
 
-        this.scoreText = new DrawableText(0,0);
+        this.scoreText = new DrawableText(0, 0);
         this.scoreText.fontSize = 15;
         this.score = -1;
 
@@ -86,66 +87,65 @@ class Player {
         this.direction = data.direction;
 
         // If you are the owner, you know this.
-        if (data.target !== undefined) {
+        if (data.target !== undefined && data.target !== null) {
+            if (data.item !== null && data.item !== undefined)
+                this.item = new SpriteTile(game.tiles[data.item.name]);
+            else
+                this.item = null;
+
+            this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
+            this.xCooldown.progress = data.sprint_timer / data.sprint_cooldown;
+            this.cCooldown.progress = data.ability_timer / data.ability_cooldown;
+
+            // Set player name
+            this.name.text = data.username;
+            // Sprite width / 2
+            this.name.x = this.x * 16 + 8 - (gameView.context.measureText(data.username).width / 4);
+            this.name.y = this.y * 16 - this.name.fontSize;
+
+
             this.score = data.stored_items.length;
             this.header.text = `You are ${data.class_name}. Your target is ${data.target}.`;
-        }
 
+            // Update the camera display if you receive camera updates (only relevant for scout class)
+            if (data.camera_list !== undefined && data.camera_list.length > 0) {
+                // Store this position to know where to render players relative to their own position
+                this.cameraPosition.x = data.camera_list[0].x;
+                this.cameraPosition.y = data.camera_list[0].y;
 
-
-        if (data.item !== null && data.item !== undefined)
-            this.item = new SpriteTile(game.tiles[data.item.name]);
-        else
-            this.item = null;
-
-        // Update the camera display if you receive camera updates (only relevant for scout class)
-        if (data.camera_list !== undefined && data.camera_list.length > 0) {
-            // Store this position to know where to render players relative to their own position
-            this.cameraPosition.x = data.camera_list[0].x;
-            this.cameraPosition.y = data.camera_list[0].y;
-
-            for (let i = 0; i < data.camera_list.length; i++) {
-                let tile = data.camera_list[i].tile;
-                let image = game.tiles[tile.image];
-                this.cameraTiles[i].setImage(image);
-                let item = this.cameraTiles[i].item;
-                // Update the item if
-                if (tile.item !== null) {
-                    let itemImage = game.tiles[tile.item.name];
-                    item.renderable = true;
-                    item.setImage(itemImage);
-                } else {
-                    item.renderable = false;
+                for (let i = 0; i < data.camera_list.length; i++) {
+                    let tile = data.camera_list[i].tile;
+                    let image = game.tiles[tile.image];
+                    this.cameraTiles[i].setImage(image);
+                    let item = this.cameraTiles[i].item;
+                    // Update the item if
+                    if (tile.item !== null) {
+                        let itemImage = game.tiles[tile.item.name];
+                        item.renderable = true;
+                        item.setImage(itemImage);
+                    } else {
+                        item.renderable = false;
+                    }
                 }
-            }
 
-            // Update players which are visible on camera
-            for (const [colour, player] of Object.entries(game.players)) {
-                let xDiff = player.x - this.cameraPosition.x;
-                let yDiff = player.y - this.cameraPosition.y;
-                if (xDiff >= 0 && xDiff < 5 && yDiff > -1 && yDiff <= 4) {
-                    cameraView.players[colour].update({
-                        position: new Point((xDiff - 5), yDiff),
-                        username: data.username,
-                        is_moving: data.is_moving,
-                        direction: data.direction,
-                    });
-                    cameraView.players[colour].renderable = true;
-                } else {
-                    cameraView.players[colour].renderable = false;
+                // Update players which are visible on camera
+                for (const [colour, player] of Object.entries(game.players)) {
+                    let xDiff = player.x - this.cameraPosition.x;
+                    let yDiff = player.y - this.cameraPosition.y;
+                    if (xDiff >= 0 && xDiff < 5 && yDiff > -1 && yDiff <= 4) {
+                        cameraView.players[colour].update({
+                            position: new Point((xDiff - 5), yDiff),
+                            username: data.username,
+                            is_moving: data.is_moving,
+                            direction: data.direction,
+                        });
+                        cameraView.players[colour].renderable = true;
+                    } else {
+                        cameraView.players[colour].renderable = false;
+                    }
                 }
             }
         }
-
-        this.zCooldown.progress = data.kill_timer / data.kill_cooldown;
-        this.xCooldown.progress = data.sprint_timer / data.sprint_cooldown;
-        this.cCooldown.progress = data.ability_timer / data.ability_cooldown;
-
-        // Set player name
-        this.name.text = data.username;
-        // Sprite width / 2
-        this.name.x = this.x * 16 + 8 - (gameView.context.measureText(data.username).width / 4);
-        this.name.y = this.y * 16 - this.name.fontSize;
     }
 
     setWalkingAnimation(direction, sprites) {
@@ -234,28 +234,30 @@ async function loadImages(src, callback) {
     });
 }
 
-setBackground = (image) => {menuView.background = image};
+setBackground = (image) => {
+    menuView.background = image
+};
 loadImages("/static/images/tiles/dungeon_sheet.png", splitTileset).then(() =>
-loadImages("/static/images/tiles/background.png", setBackground).then(() => {
-    initialize();
-}));
+    loadImages("/static/images/tiles/background.png", setBackground).then(() => {
+        initialize();
+    }));
 
 socket.on("join", (data) => {
     console.log(`${data} joined the room.`);
 });
 let startTime;
 
-setInterval(function () {
+setInterval(function() {
     startTime = Date.now();
     socket.emit('ping');
 }, STATS_INTERVAL);
 
 
-socket.on('pong', function () {
+socket.on('pong', function() {
     game.stats.ping.put(Date.now() - startTime);
 });
 
-$('#messageform').submit(function (e) {
+$('#messageform').submit(function(e) {
     e.preventDefault(); // prevents page reloading
     let m = $('#m');
     let data = {
@@ -448,7 +450,7 @@ function HallwayHunters() {
 
     this.players = {};
 
-    this.setState = function (data) {
+    this.setState = function(data) {
         let start = performance.now();
         if (this.state.board.length === 0) {
             initializeBoard(data.board_size);
@@ -522,7 +524,6 @@ let then = 0;
 
 function gameLoop() {
     requestAnimationFrame(gameLoop);
-    handleInput();
 
     const now = performance.now();
     const elapsed = now - then;
@@ -530,6 +531,8 @@ function gameLoop() {
     // if enough time has elapsed, draw the next frame
 
     if (elapsed > FPS_INTERVAL) {
+        handleInput();
+
         // Get ready for next frame by setting then=now, but also adjust for your
         // specified fpsInterval not being a multiple of RAF's interval (16.7ms)
         then = now - (elapsed % FPS_INTERVAL);
@@ -572,11 +575,10 @@ function gameLoop() {
 
 
 function splitTileset(tileSet) {
-    const scale = TILE_SIZE / 16;
     let canvas = document.createElement("canvas");
     canvas.className = "disable-anti-aliasing";
-    canvas.width = tileSet.width * scale;
-    canvas.height = tileSet.height * scale;
+    canvas.width = tileSet.width * 3;
+    canvas.height = tileSet.height * 3;
     let context = canvas.getContext("2d");
 
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -584,10 +586,10 @@ function splitTileset(tileSet) {
     context.mozImageSmoothingEnabled = false;
     context.imageSmoothingEnabled = false;
 
-    context.scale(scale, scale);
+    context.scale(3, 3);
     context.drawImage(tileSet, 0, 0);
 
-    const S = TILE_SIZE;
+    const S = 48;
 
     game.tiles["edge_b"] = context.getImageData(6 * S, S, S, S);
     game.tiles["edge_b_top"] = context.getImageData(6 * S, 0, S, S);
@@ -643,7 +645,7 @@ function splitTileset(tileSet) {
     game.tiles["UI_edge_left"] = context.getImageData(20 * S, 11 * S, S, S);
     game.tiles["UI_edge_bottom"] = context.getImageData(21 * S, 11 * S, S, S);
 
-    ["red", "blue", "green", "purple", "black"].map((color, row) => {
+    COLORS.map((color, row) => {
         for (let i = 0; i < 3; i++) {
             game.tiles[color + "_90_" + i] = context.getImageData(i * S, (11 + row) * S, S, S);
             game.tiles[color + "_270_" + i] = context.getImageData((i + 3) * S, (11 + row) * S, S, S);
@@ -659,7 +661,7 @@ function splitTileset(tileSet) {
         }
     });
 
-    ["blue", "red", "green", "purple", "black"].map((color, i) => {
+    COLORS.map((color, i) => {
         game.tiles["collector_" + color] = context.getImageData((19 + i) * S, 6 * S, S, S);
     });
 
@@ -684,8 +686,7 @@ function splitTileset(tileSet) {
  * This function should get called when the game has started, and we know how many player entities need to be rendered
  */
 function initializePlayers(dictionary) {
-    const colours = ["red", "blue", "green", "purple", "black"];
-    colours.forEach(colour => {
+    COLORS.forEach(colour => {
         let player = new Player(game.tiles[`${colour}_0_0`]);
         [0, 90, 180, 270].forEach(d => {
             player.setWalkingAnimation(d, [
@@ -705,6 +706,15 @@ function initializePlayers(dictionary) {
 
 
 let player = null;
+
+/*
+ *   a b c d
+ *
+ *
+ *   b
+ *   a c d
+ *   a
+ */
 
 function initializeCamera() {
     const camWidth = 5;
@@ -798,13 +808,13 @@ function initializeMenu() {
     title.borderColor = "#131c2c";
     title.centered = true;
 
+    let blockSize = 80;
     let classButtons = [];
     PLAYER_CLASSES.map((tuple, i) => {
         let cls = tuple[0];
         let info = tuple[1];
 
         let blockPadding = 20;
-        let blockSize = 80;
         const offset = (PLAYER_CLASSES.length * (blockSize + blockPadding) - blockPadding) / 2 - (blockSize + blockPadding) * i;
         const button = new Button(x - offset, 200, blockSize, blockSize);
         button.hoverColor = "#5f7791";
@@ -849,6 +859,28 @@ function initializeMenu() {
     overlay.renderable = true;
     background.z = overlay.z = -1;
 
+    menuView.colorButtons = {};
+    COLORS.map((color, i) => {
+        let button = new Button(50, 200 + i * 100, blockSize, blockSize);
+        button.hoverColor = "#5f7791";
+        button.color = "#3c5978";
+        button.text = new DrawableText(button.x + blockSize / 2, button.y + blockSize / 2);
+        button.text.color = color;
+        button.text.text = color;
+        button.text.fontSize = 15;
+        button.text.centered = true;
+
+        menuView.colorButtons[color] = button;
+        button.setOnClick(canvas, (_) => {
+            socket.emit("changeColor", {
+                room_id: ROOM_ID,
+                color: color,
+            });
+        });
+        menuView.addObjects(button, button.text);
+    });
+
+
     menuView.addObjects(background, overlay, buttonText, button, title);
 }
 
@@ -874,6 +906,7 @@ function initializeLoading() {
             this.ticksPerRotation = 180;
             this.chaseSpeed = 2.4;
         }
+
         render(context) {
             const phi = (2 * Math.PI);
             this.tick++;
@@ -885,9 +918,11 @@ function initializeLoading() {
 
             let sAngle, eAngle;
             if (this.chasing) {
-                sAngle = a1; eAngle = a2;
+                sAngle = a1;
+                eAngle = a2;
             } else {
-                sAngle = a2; eAngle = a1;
+                sAngle = a2;
+                eAngle = a1;
             }
             context.lineWidth = 15;
             context.strokeStyle = this.mainColour;
@@ -897,8 +932,8 @@ function initializeLoading() {
         }
     }
 
-    const circleLoading = new CircleLoading(background.width/2,  background.height/2, 35);
-    loadingView.infoText = new DrawableText(background.width/2, background.height/2 + 100);
+    const circleLoading = new CircleLoading(background.width / 2, background.height / 2, 35);
+    loadingView.infoText = new DrawableText(background.width / 2, background.height / 2 + 100);
     loadingView.infoText.color = "#ffffff";
     loadingView.infoText.fontSize = 20;
     loadingView.infoText.centered = true;
@@ -944,6 +979,7 @@ function postStartInitialize(data) {
 
 let intervalID;
 let started = false;
+
 function initialize() {
     intervalID = requestAnimationFrame(gameLoop);
     initializeLoading();
