@@ -25,12 +25,13 @@ class RollingAverage {
 
 
 class Player {
-    constructor(image) {
+    constructor(image, deadImage) {
         this.renderable = true;
         this.x = 0;
         this.y = 0;
         this.direction = 0;
         this.moving = false;
+        this.dead = false;
 
         this.name = new DrawableText(0, 0);
         // Default values
@@ -66,6 +67,7 @@ class Player {
 
         // Fallback
         this.sprite = new SpriteTile(image);
+        this.deadSprite = new SpriteTile(deadImage);
         this.walkAnimations = [
             null,
             null,
@@ -85,6 +87,7 @@ class Player {
         this.y = data.position.y;
         this.moving = data.is_moving;
         this.direction = data.direction;
+        this.dead = data.dead;
 
         // If you are the owner, you know this.
         if (data.target !== undefined && data.target !== null) {
@@ -159,7 +162,9 @@ class Player {
     render(context) {
         let sprite = null;
 
-        if (this.moving)
+        if (this.dead) {
+            sprite = this.deadSprite;
+        } else if (this.moving)
             sprite = this.walkAnimations[this.direction / 90];
         else
             sprite = this.idleAnimations[this.direction / 90];
@@ -508,15 +513,19 @@ function round(number) {
 }
 
 function handleInput() {
-    if (keyState["ArrowUp"]) {
-        sendMove({x: 0, y: -1});
-    } else if (keyState["ArrowDown"]) {
-        sendMove({x: 0, y: 1});
-    } else if (keyState["ArrowLeft"]) {
-        sendMove({x: -1, y: 0});
-    } else if (keyState["ArrowRight"]) {
-        sendMove({x: 1, y: 0});
-    }
+    const actions = [
+        ["ArrowUp", {x: 0, y: -1}],
+        ["ArrowDown", {x: 0, y: 1}],
+        ["ArrowLeft", {x: -1, y: 0}],
+        ["ArrowRight", {x: 1, y: 0}],
+    ];
+
+    actions.forEach(action => {
+        let key = action[0]; let move = action[1];
+        if (keyState[key]) {
+            sendMove(move);
+        }
+    });
 }
 
 // Game rendering stuff
@@ -687,7 +696,10 @@ function splitTileset(tileSet) {
  */
 function initializePlayers(dictionary) {
     COLORS.forEach(colour => {
-        let player = new Player(game.tiles[`${colour}_0_0`]);
+        let player = new Player(
+            game.tiles[`${colour}_0_0`],
+            game.tiles[`${colour}_dead`],
+        );
         [0, 90, 180, 270].forEach(d => {
             player.setWalkingAnimation(d, [
                 game.tiles[`${colour}_${d}_0`],
@@ -869,7 +881,9 @@ function initializeMenu() {
         button.text.text = color;
         button.text.fontSize = 15;
         button.text.centered = true;
-
+        button.playerText = new DrawableText(button.x + blockSize + 10, button.y + blockSize / 2);
+        button.playerText.fontSize = 20;
+        button.playerText.color = "#fff";
         menuView.colorButtons[color] = button;
         button.setOnClick(canvas, (_) => {
             socket.emit("changeColor", {
@@ -877,7 +891,7 @@ function initializeMenu() {
                 color: color,
             });
         });
-        menuView.addObjects(button, button.text);
+        menuView.addObjects(button, button.text, button.playerText);
     });
 
 
@@ -1019,8 +1033,16 @@ function initialize() {
             // Store pointer to correct player object
             player = game.players[data.player_data.name];
         }
-        game.setState(data);
-        if (game.state.started) {
+
+        if (!data.started) {
+            // Lobby information
+            COLORS.forEach(color => {menuView.colorButtons[color].playerText.text = ""});
+            data.all_players.forEach(player => {
+                menuView.colorButtons[player.name].playerText.text = player.username;
+            });
+        } else {
+            game.setState(data);
+
             if (!started) {
                 postStartInitialize(data);
                 started = true;

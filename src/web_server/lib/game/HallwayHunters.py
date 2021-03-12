@@ -139,7 +139,7 @@ class HallwayHunters:
 
         player = Demolisher(profile, socket_id, self)
 
-        player.name = color_set[len(self.player_list)]
+        player.name = self.color_pool.pop()
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
 
@@ -168,7 +168,14 @@ class HallwayHunters:
         return data
 
     def set_color(self, profile: Profile, color: str):
+        if color not in self.color_pool:
+            print("Color not available")
+            return   # TODO: Notify player this colour is taken.
+        self.color_pool.remove(color)
         player = self.get_player(profile)
+        self.color_pool.append(player.name)
+        print("Set player color to", color)
+        player.name = color
 
     def get_player(self, profile: Profile = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]
@@ -192,6 +199,7 @@ class HallwayHunters:
 
     def remove_player(self, profile: Profile):
         player = self.get_player(profile)
+        self.color_pool.append(player.name)
 
         if player in self.player_list:
             self.player_list.remove(player)

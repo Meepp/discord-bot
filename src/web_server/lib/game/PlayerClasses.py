@@ -126,6 +126,7 @@ class PlayerClass:
         self.passives = []
         self.dead = True
         self.can_move = False
+        self.drop_item()
         self.game.broadcast("%s died" % self.profile.discord_username)
 
     def kill(self):

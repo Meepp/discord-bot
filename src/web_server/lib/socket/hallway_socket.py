@@ -118,6 +118,7 @@ def change_color(data):
 
     profile = session_user()
     game.set_color(profile, color)
+
     game.update_players()
 
 
