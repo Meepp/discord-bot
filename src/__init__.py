@@ -8,6 +8,7 @@ from discord.ext import commands
 from commands.chat import Chat
 from commands.currency import Currency
 from commands.games import Games
+from commands.lolesports import Esports
 from commands.reputation import Reputation
 from database import create_all_models
 from database.repository import music_repository, trigger_repository
@@ -34,12 +35,14 @@ class Bot(commands.Bot):
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
         self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
+        self.lolesports = Esports(self)
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
 
         self.asyncio_thread.start()
         self.league_api.payout_games.start()
+        self.lolesports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
 
         print("Done initializing.")
@@ -87,7 +90,9 @@ bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
 bot.add_cog(Currency(bot))
 bot.add_cog(Games(bot))
+bot.add_cog(Esports(bot))
 bot.add_cog(bot.league_api)
+
 
 # Import models and create tables
 import src.database.models.models  # noqa
