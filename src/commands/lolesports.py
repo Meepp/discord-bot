@@ -4,7 +4,8 @@ from discord import Embed
 import score_api
 from database import db
 from database.models.models import Profile, LeagueGame
-from database.repository import game_repository
+from database.repository import game_repository, profile_repository
+from datetime import datetime
 
 
 class Esports(commands.Cog):
@@ -24,21 +25,31 @@ class Esports(commands.Cog):
         out += "```"
         return out
 
-    @staticmethod
-    def get_match(match_id):
+    def get_match(self, match_id):
         match = score_api.get_match_by_id(match_id)
+        bets = game_repository.get_games(int(match_id))
         embed = Embed(title=match.get("name"), url="https://realdrewdata.medium.com/",
                       description=("Winner: " + match.get("winner").get(
-                          "acronym")) if match.get("status") == "finished" else "Winner: Undecided",
+                          "acronym")) if match.get("status") == "finished"
+                      else f"Scheduled at: {self.convert_scheduled_at(match.get('scheduled_at'))}",
                       color=0xFF5733)
         embed.set_author(name=match.get("league").get("name") + " - " + match.get("tournament").get("name"),
                          icon_url=match.get("league").get('image_url'))
         embed.set_thumbnail(
             url='https://static.wikia.nocookie.net/leagueoflegends/images/5/53/Riot_Games_logo_icon.png/revision/latest/scale-to-width-down/124?cb=20190417213704')
+        embed.add_field(name="Official stream:", value=match.get("stream_url"), inline=False)
+        if len(bets) > 0:
+            bets_for_match = ""
+            for bet in bets:
+                user = self.bot.get_user(int(bet.owner_id))
+                bets_for_match += f"{user.name}: {bet.bet} on {bet.type}\n"
+            embed.add_field(name="Active Bets:", value=bets_for_match, inline=False)
+
         return embed
 
     def bet_match(self, context, session, match_id, bet_team, bet_amount, profile):
         match = score_api.get_match_by_id(match_id)
+        bet_team = bet_team.upper()
         if match is None:
             return "Cannot find the match you currently want to bet on"  # TODO
         if match.get("status", None) == "not_started":
@@ -46,13 +57,17 @@ class Esports(commands.Cog):
                 return f"You are betting more than you currently have! (Current balance: {profile.balance})"
             if bet_amount < 0:
                 return "You cannot bet a negative amount"
-            self.create_league_bet(context, session, match_id, bet_team, bet_amount, profile)
-            return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
+            match = score_api.get_match_by_id(match_id)
+            if bet_team in match.get("name"):
+                self.create_league_bet(context, session, match_id, bet_team, bet_amount, profile)
+                return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
+            else:
+                return f"You cannot bet on {bet_team} in the match {match.get('name')}."
         else:
-            return "You cannot bet on matched that have finished"
+            return "You cannot bet on matches that have finished"
 
     @commands.command()
-    async def esports(self, context: Context, subcommand: str, match_id: str = None, bet_team: str = None,
+    async def esports(self, context: Context, subcommand: str, arg_id: str = None, bet_team: str = None,
                       bet_amount: int = None):
 
         game_repository.remove_game(2)
@@ -63,10 +78,16 @@ class Esports(commands.Cog):
             await message.channel.send(self.ongoing_matches())
 
         if subcommand == "match":
-            await message.channel.send(embed=self.get_match(match_id))
+            await message.channel.send(embed=self.get_match(arg_id))
 
         if subcommand == "bet":
-            await message.channel.send(self.bet_match(context, session, match_id, bet_team, bet_amount, profile))
+            await message.channel.send(self.bet_match(context, session, arg_id, bet_team, bet_amount, profile))
+
+        if subcommand == "team":
+            await message.channel.send(embed=self.get_team(arg_id))
+
+        if subcommand == "upcoming":
+            await message.channel.send(embed=self.get_upcoming_matches())
 
     @staticmethod
     def create_league_bet(context, session, match_id, bet_team, bet_amount, profile):
@@ -79,7 +100,7 @@ class Esports(commands.Cog):
         session.add(game)
         session.commit()
 
-    @tasks.loop(seconds=20)
+    @tasks.loop(seconds=300)
     async def payout_league_bet(self):
         await self.bot.wait_until_ready()
 
@@ -111,3 +132,39 @@ class Esports(commands.Cog):
         session.commit()
 
         return information
+
+    @staticmethod
+    def get_team(arg_id):
+        if arg_id.isnumeric():
+            team = score_api.get_team_by_id(arg_id)
+        else:
+            team = score_api.get_team_by_acronym(arg_id)
+        embed = Embed(title=team.get("name"), color=0xFF5733)
+        embed.set_author(name=team.get("acronym") + " - " + team.get("location"))
+        embed.set_thumbnail(
+            url=team.get('image_url'))
+        player_list = ""
+        for player in team.get('players'):
+            player_list += player.get('first_name') + ", " + f"**{player.get('name')}**" + ", " + player.get(
+                "last_name") + f" ({player.get('role')})" "\n"
+        embed.add_field(name="Player Roster", value=player_list, inline=False)
+
+        return embed
+
+    def get_upcoming_matches(self):
+        matches = score_api.get_upcoming_matches()
+
+        match_list = ""
+        for match in matches:
+            scheduled_at = self.convert_scheduled_at(match.get("original_scheduled_at"))
+            match_list += scheduled_at + " " + str(match.get("id")) + " - " + match.get(
+                "name") + "\n"
+
+        embed = Embed(title="Upcoming matches", color=0xFF5733, description=match_list)
+
+        return embed
+
+    @staticmethod
+    def convert_scheduled_at(time):
+        scheduled_at = datetime.strptime(time, "%Y-%m-%dT%H:%M:%SZ")
+        return scheduled_at.strftime("%m/%d/%Y, %H:%M")
