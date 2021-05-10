@@ -13,6 +13,7 @@ from commands.reputation import Reputation
 from database import create_all_models
 from database.repository import music_repository, trigger_repository
 from league_api import LeagueAPI
+from score_api import PandaScoreAPI
 from musicplayer.musicplayer import MusicPlayer, Playlist
 from src.musicplayer.youtube_search import YoutubeAPI
 from src.settings import Settings
@@ -35,7 +36,9 @@ class Bot(commands.Bot):
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
         self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
-        self.lolesports = Esports(self)
+        self.panda_score_api = PandaScoreAPI(self.config["DEFAULT"]["PandaScoreAPIKey"])
+        self.lolesports = Esports(self, self.panda_score_api)
+
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
@@ -90,7 +93,7 @@ bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
 bot.add_cog(Currency(bot))
 bot.add_cog(Games(bot))
-bot.add_cog(Esports(bot))
+bot.add_cog(Esports(bot.lolesports, bot.panda_score_api))
 bot.add_cog(bot.league_api)
 
 
