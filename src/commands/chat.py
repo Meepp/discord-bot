@@ -1,7 +1,9 @@
+import re
 from random import randint
 from typing import List
 
 import discord
+import requests
 from discord import Message
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -116,6 +118,20 @@ class Chat(commands.Cog):
         await context.channel.send("%s rolled a %s." % (context.author.nick, value))
 
     @commands.command()
+    async def kortebroek(self, context: Context):
+        """
+        fetch http://www.kanikeenkortebroekaan.nl
+        :param context:
+        :return:
+        """
+        url = "https://www.kanikeenkortebroekaan.nl"
+        data = requests.get(url)
+        m = re.search('<img src="(.*)" alt="De verwachting voor vandaag is', str(data.content))
+        resp = m.group(1)
+
+        await context.channel.send(url + resp)
+
+    @commands.command()
     async def kill(self, context: Context):
         """
         Kills the bot, will make sure it terminates correctly.
@@ -139,4 +155,3 @@ class Chat(commands.Cog):
             await self.command_show_triggers(context)
         elif subcommand == "remove":
             await self.command_remove_trigger(context)
-

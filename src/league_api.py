@@ -100,7 +100,7 @@ class LeagueAPI(commands.Cog):
                        (rate[0] == "dragon" and team.get("firstDragon")) or \
                             (rate[0] == "kill" and self.check_kill(response, user)):
                         profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
-                        winnings = game.bet * rate[1]
+                        winnings = game.bet * rate[1] * 1.2
                         # Find rate from tuple
                         profile.balance += winnings
 

@@ -11,6 +11,6 @@ Flask-SQLAlchemy
 gevent~=20.12.1
 gevent-websocket
 python-socketio
-
+multipledispatch
 Werkzeug~=1.0.1
 requests~=2.25.1

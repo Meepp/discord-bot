@@ -1,20 +1,27 @@
 import requests
 from PIL import Image
 import discord
+
 API_URL = "https://api.pandascore.co/lol/"
 
 
 def get_match_image(opponents):
     image1 = Image.open(requests.get(opponents[0]["opponent"].get("image_url"), stream=True).raw)
     image2 = Image.open(requests.get(opponents[1]["opponent"].get("image_url"), stream=True).raw)
+    image1 = image1.resize((200, 200))
+    image2 = image2.resize((200, 200))
 
-    new_image = Image.new('RGB',(2*image1.size[0], image1.size[1]), (250,250,250))
-    new_image.paste(image1,(0,0))
-    new_image.paste(image2,(image1.size[0],0))
+    padding = 10
+
+    width, height = image1.size[0], image1.size[1]
+    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (0, 0, 0))
+    new_image.paste(image1, (padding, padding))
+    new_image.paste(image2, (width + padding * 3, padding))
     new_image.save('match_image.png', "PNG")
     file = discord.File("match_image.png", filename="match_image.png")
 
     return file
+
 
 class PandaScoreAPI:
     def __init__(self, key):
