@@ -37,15 +37,14 @@ class Bot(commands.Bot):
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
         self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
         self.panda_score_api = PandaScoreAPI(self.config["DEFAULT"]["PandaScoreAPIKey"])
-        self.lolesports = Esports(self, self.panda_score_api)
-
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
+        self.esports = Esports(self, self.panda_score_api)
 
         self.asyncio_thread.start()
         self.league_api.payout_games.start()
-        self.lolesports.payout_league_bet.start()
+        self.esports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
 
         print("Done initializing.")
@@ -93,7 +92,7 @@ bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
 bot.add_cog(Currency(bot))
 bot.add_cog(Games(bot))
-bot.add_cog(Esports(bot.lolesports, bot.panda_score_api))
+bot.add_cog(bot.esports)
 bot.add_cog(bot.league_api)
 
 
