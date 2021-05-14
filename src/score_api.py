@@ -33,6 +33,10 @@ class PandaScoreAPI:
     def get_match_by_id(self, match_id):
         raw_response = requests.get(
             f"{API_URL}matches?filter[id]=" + match_id + "&token=" + self.key)
+        if raw_response.status_code != 200:
+            return None
+        if len(raw_response.json()) == 0:
+            return None
         match = raw_response.json()[0]
         image_file = get_match_image(match.get("opponents"))
         match_info = {"opponents": match.get("opponents"), "name": match.get("name"),
@@ -54,12 +58,13 @@ class PandaScoreAPI:
     def get_team_by_id(self, team_id: str):
         raw_response = requests.get(
             f"{API_URL}teams?filter[id]=" + team_id + "&token=" + self.key)
-        return raw_response.json()[0]
+        return raw_response.json()
+
 
     def get_team_by_acronym(self, acronym):
         raw_response = requests.get(
             f"{API_URL}teams?search[acronym]=" + acronym + "&token=" + self.key)
-        return raw_response.json()[-1]
+        return raw_response.json()
 
     def get_upcoming_matches(self):
         raw_response = requests.get(
