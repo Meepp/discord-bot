@@ -155,28 +155,28 @@ class Esports(commands.Cog):
 
     def get_team(self, arg_id):
         if arg_id.isnumeric():
-            team = self.panda_score_api.get_team_by_id(arg_id)
-            if len(team) == 0:
+            teams = self.panda_score_api.get_team_by_id(arg_id)
+            if len(teams) == 0:
                 return f"Could not find a team with id {arg_id}"
         else:
-            team = self.panda_score_api.get_team_by_acronym(arg_id)
-            if len(team) == 0:
+            teams = self.panda_score_api.get_team_by_acronym(arg_id)
+            if len(teams) == 0:
                 return f"Could not find a team with acronym {arg_id}"
-            if len(team) > 1:
+            if len(teams) > 1:
                 list_of_teams = "```"
-                for t in team:
+                for t in teams:
                     list_of_teams += f"{t.get('id')}: {t.get('name')}\n"
                 list_of_teams += "```"
                 return "There are multiple teams with this acronym, which one did you mean? Type !esports <team_id>\n" + list_of_teams
-
-        embed = Embed(title=team.get("name"), color=0xFF5733)
-        embed.set_author(name=team.get("acronym") + " - " + team.get("location"))
+        team = teams[0]
+        embed = Embed(title=team.get("name", ""), color=0xFF5733)
+        embed.set_author(name=str(team.get("acronym")) + " - " + str(team.get("location")))
         embed.set_thumbnail(
             url=team.get('image_url'))
         player_list = ""
         for player in team.get('players'):
-            player_list += player.get('first_name') + ", " + f"**{player.get('name')}**" + ", " + player.get(
-                "last_name") + f" ({player.get('role')})" "\n"
+            player_list += str(player.get('first_name')) + ", " + f"**{player.get('name')}**" + ", " + str(player.get(
+                "last_name")) + f" ({player.get('role')})" "\n"
         embed.add_field(name="Player Roster", value=player_list, inline=False)
 
         return embed

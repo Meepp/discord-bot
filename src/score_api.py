@@ -67,11 +67,11 @@ class PandaScoreAPI:
             f"{API_URL}teams?filter[id]=" + team_id + "&token=" + self.key)
         return raw_response.json()
 
-
     def get_team_by_acronym(self, acronym):
         raw_response = requests.get(
             f"{API_URL}teams?search[acronym]=" + acronym + "&token=" + self.key)
-        return raw_response.json()
+
+        return list(filter(lambda x: len(x.get("players")) >= 5, raw_response.json()))
 
     def get_upcoming_matches(self):
         raw_response = requests.get(

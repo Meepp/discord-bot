@@ -29,8 +29,8 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-    # Dont trigger on yourself
-    if message.author == bot.user:
+    # Dont trigger on bots
+    if message.author.bot:
         return
 
     for trigger in bot.triggers[message.guild]:
