@@ -4,7 +4,7 @@ from discord import Embed
 from database import db
 from database.models.models import Profile, LeagueGame
 from database.repository import game_repository
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class Esports(commands.Cog):
@@ -26,6 +26,8 @@ class Esports(commands.Cog):
 
     def get_match(self, match_id):
         match = self.panda_score_api.get_match_by_id(match_id)
+        if match is None:
+            return f"No match found with match id: {match_id}", None
         bets = game_repository.get_games(int(match_id))
         embed = Embed(title=match.get("name"),
                       description=("Winner: " + match.get("winner").get(
@@ -48,22 +50,24 @@ class Esports(commands.Cog):
 
     def bet_match(self, context, session, match_id, bet_team, bet_amount, profile):
         match = self.panda_score_api.get_match_by_id(match_id)
-        bet_team = bet_team.upper()
         if match is None:
-            return "Cannot find the match you currently want to bet on"  # TODO
-        if match.get("status", None) == "not_started":
+            return f"No match found with match id: {match_id}"
+        if not isinstance(bet_amount, int):
+            return f"Please bet an integer amount between 1 and {profile.balance}"
+
+        if match.get("status") == "not_started":
             if profile.balance < bet_amount:
                 return f"You are betting more than you currently have! (Current balance: {profile.balance})"
             if bet_amount < 0:
                 return "You cannot bet a negative amount"
-            match = self.panda_score_api.get_match_by_id(match_id)
+            bet_team = bet_team.upper()
             if bet_team in match.get("name"):
                 self.create_league_bet(context, session, match_id, bet_team, bet_amount, profile)
                 return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
             else:
                 return f"You cannot bet on {bet_team} in the match {match.get('name')}."
         else:
-            return "You cannot bet on matches that have finished"
+            return "You cannot bet on matches that have finished or are currently ongoing"
 
     @commands.command()
     async def esports(self, context: Context, subcommand: str, arg_id: str = None, bet_team: str = None,
@@ -82,14 +86,21 @@ class Esports(commands.Cog):
             await message.channel.send(self.ongoing_matches())
 
         elif subcommand == "match":
-            embed, file = self.get_match(arg_id)
-            await message.channel.send(embed=embed, file=file)
+            match, file = self.get_match(arg_id)
+            if isinstance(match, str):
+                await message.channel.send(match)
+            else:
+                await message.channel.send(embed=match, file=file)
 
         elif subcommand == "bet":
             await message.channel.send(self.bet_match(context, session, arg_id, bet_team, bet_amount, profile))
 
         elif subcommand == "team":
-            await message.channel.send(embed=self.get_team(arg_id))
+            returned_team = self.get_team(arg_id)
+            if isinstance(returned_team, Embed):
+                await message.channel.send(embed=returned_team)
+            else:
+                await message.channel.send(returned_team)
 
         elif subcommand == "upcoming":
             await message.channel.send(embed=self.get_upcoming_matches())
@@ -128,6 +139,8 @@ class Esports(commands.Cog):
 
     def process_game_result(self, user, game: LeagueGame, session):
         match = self.panda_score_api.get_match_by_id(game.game_id)
+        if match is None:
+            return f"No match found with match id: {game.game_id}"
         profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
         if match.get('winner').get('acronym').upper() == game.type.upper():
             winnings = game.bet * self.BET_MODIFIER
@@ -143,8 +156,19 @@ class Esports(commands.Cog):
     def get_team(self, arg_id):
         if arg_id.isnumeric():
             team = self.panda_score_api.get_team_by_id(arg_id)
+            if len(team) == 0:
+                return f"Could not find a team with id {arg_id}"
         else:
             team = self.panda_score_api.get_team_by_acronym(arg_id)
+            if len(team) == 0:
+                return f"Could not find a team with acronym {arg_id}"
+            if len(team) > 1:
+                list_of_teams = "```"
+                for t in team:
+                    list_of_teams += f"{t.get('id')}: {t.get('name')}\n"
+                list_of_teams += "```"
+                return "There are multiple teams with this acronym, which one did you mean? Type !esports <team_id>\n" + list_of_teams
+
         embed = Embed(title=team.get("name"), color=0xFF5733)
         embed.set_author(name=team.get("acronym") + " - " + team.get("location"))
         embed.set_thumbnail(
@@ -173,4 +197,5 @@ class Esports(commands.Cog):
     @staticmethod
     def convert_scheduled_at(time):
         scheduled_at = datetime.strptime(time, "%Y-%m-%dT%H:%M:%SZ")
+        scheduled_at = scheduled_at.replace(tzinfo=timezone.utc).astimezone(tz=None)
         return scheduled_at.strftime("%m/%d/%Y, %H:%M")

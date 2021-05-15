@@ -4,6 +4,7 @@ import threading
 
 import discord
 from discord.ext import commands
+from discord.ext.commands import CommandNotFound, BadArgument
 
 from commands.chat import Chat
 from commands.currency import Currency
@@ -69,6 +70,25 @@ class Bot(commands.Bot):
         music_repository.remove_unused()
 
         await self.logout()
+
+    async def on_error(self, err, *args, **kwargs):
+        channel = args[0]
+        await channel.send("An error occured")
+        if err == "on_command_error":
+            await channel.send("Something went wrong.")
+        raise
+
+    async def on_command_error(self, ctx, exc):
+        # TODO implement proper logging system
+        print(exc)
+        if isinstance(exc, CommandNotFound):
+            await ctx.channel.send(exc)
+        elif isinstance(exc, BadArgument):
+            await ctx.channel.send(exc)
+        elif hasattr(exc, "original"):
+            raise exc.original
+        else:
+            raise exc
 
     @classmethod
     def register_command(cls, *args):
