@@ -6,6 +6,7 @@ media/music
 *.db
 kerstpuzzel/*
 config.conf
+dfconfig.conf
 test.py
 __pycache__/
 .idea/

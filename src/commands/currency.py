@@ -2,7 +2,7 @@ from discord import User, Forbidden, Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database import db
+from database import mongodb as db
 from database.models.models import Profile
 from database.repository import profile_repository
 

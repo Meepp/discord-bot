@@ -4,7 +4,7 @@ from typing import List
 from discord import Member
 from sqlalchemy import and_
 
-from database import db
+from database import mongodb as db
 from src.database.models.models import Song
 
 

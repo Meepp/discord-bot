@@ -2,7 +2,7 @@ from enum import Enum
 
 from discord import User
 
-from database import db
+from database import mongodb as db
 from database.models.models import Profile
 from database.repository import profile_repository
 from src.web_server import sio

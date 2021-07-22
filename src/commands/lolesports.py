@@ -1,7 +1,7 @@
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import Embed
-from database import db
+from database import mongodb as db
 from database.models.models import Profile, LeagueGame
 from database.repository import game_repository
 from datetime import datetime, timezone

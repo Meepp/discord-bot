@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from database import db
+from database import mongodb as db
 from database.models.models import RoomModel
 
 

@@ -3,7 +3,7 @@ from discord import User
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
-from database import db
+from database import mongodb as db
 from database.models.models import LeagueGame, Profile
 
 API_URL = "https://euw1.api.riotgames.com"

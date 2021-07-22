@@ -1,20 +1,23 @@
 from discord import Guild
 
-from database import db
+from database import mongodb as db
 from src.database.models.models import Trigger
-
 
 def get_triggers(guild: Guild):
     if guild is None:
         return None
 
+    # TODO
     session = db.session()
-    return session.query(Trigger) \
+    result = session.query(Trigger) \
         .filter(Trigger.guild_id == str(guild.id)) \
         .all()
+    print(result)
+    return result
 
 
 def get_trigger(guild: Guild, name: str):
+    #TODO
     session = db.session()
     return session.query(Trigger) \
         .filter(Trigger.guild_id == guild.id) \
@@ -23,6 +26,7 @@ def get_trigger(guild: Guild, name: str):
 
 
 def remove_trigger(guild: Guild, name: str):
+    #TODO
     session = db.session()
     trigger = get_trigger(guild, name)
     session.delete(trigger)
@@ -30,6 +34,7 @@ def remove_trigger(guild: Guild, name: str):
 
 
 def add_trigger(trigger: Trigger):
+    #TODO
     session = db.session()
 
     if len(trigger.trigger) < 3 or len(trigger.trigger) > 50:

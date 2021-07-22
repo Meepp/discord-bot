@@ -1,10 +1,9 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database import db
-from database.models.models import Report, Honor
+from database.models.models import Honor, Report
 from database.repository import honor_repository, report_repository
-from database.repository.profile_repository import get_profile, get_money
+from database.repository.profile_repository import get_profile, get_money, add_money
 
 
 class Reputation(commands.Cog):
@@ -26,14 +25,17 @@ class Reputation(commands.Cog):
         if subcommand == "show":
             out = "```"
             if len(message.mentions) > 0:
-                out += "Reported by:\n"
-                reports = report_repository.get_all_reports(message.guild, message.mentions[0])
-                for report_obj, n in reports:
-                    out += "%s %d\n" % (report_obj.reporting, n)
+                pass  # TODO
+                # out += "Reported by:\n"
+                # reports = report_repository.get_all_reports(message.mentions[0])
+                # print(reports)
+                # for report in reports:
+                #     out += "%s %d\n" % (report['_id'], report['count'])
             else:
-                reports = report_repository.get_reports(message.guild)
-                for report_obj, n in reports:
-                    out += "%s %d\n" % (report_obj.reportee, n)
+                reports = report_repository.get_reports()
+                for report in reports:
+                    print(report)
+                    out += "%s %d\n" % (report['_id'], report['count'])
             out += "```"
             await message.channel.send(out)
         elif subcommand == "time":
@@ -100,13 +102,7 @@ class Reputation(commands.Cog):
             time = honor_repository.honor_allowed(message.guild, honoring)
             if time is None:
                 honor = Honor(message.guild, honoree, honoring)
-                session = db.session()
-
                 # Add money to balance if honored
-                money = get_money(honoree)
-                money.balance += 100
-                session.commit()
-
                 honor_repository.add_honor(honor)
             else:
                 await message.channel.send("Wait %d minutes to honor again." % time)

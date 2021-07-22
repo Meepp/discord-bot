@@ -1,6 +1,6 @@
 from discord import User
 
-from database import db
+from database import mongodb as db
 from database.models.models import LeagueGame
 from multipledispatch import dispatch
 
