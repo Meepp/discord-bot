@@ -79,6 +79,16 @@ class Honor(Base):
 
         self.time = datetime.now()
 
+    def to_mongodb(self):
+        return {
+            "guild_id": self.guild_id,
+            "honoree": self.honoree,
+            "honoree_id": self.honoree_id,
+            "honoring": self.honoring,
+            "honoring_id": self.honoring_id,
+            "time": self.time
+        }
+
 
 class Song(Base):
     __tablename__ = 'song'

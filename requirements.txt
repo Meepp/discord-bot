@@ -1,5 +1,5 @@
 discord~=1.0.1
-pillow
+pillow~=8.0.1
 discord.py[voice]
 youtube_dl
 youtube-python
@@ -11,6 +11,7 @@ Flask-SQLAlchemy
 gevent~=20.12.1
 gevent-websocket
 python-socketio
-multipledispatch
+multipledispatch~=0.6.0
 Werkzeug~=1.0.1
 requests~=2.25.1
+pymongo~=3.12.0

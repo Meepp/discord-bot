@@ -75,11 +75,14 @@ class Reputation(commands.Cog):
         message = context.message
         if subcommand == "show":
             out = "```"
-            honors = honor_repository.get_honors(message.guild)
-            for honor, n in honors:
-                out += "%s %d\n" % (honor.honoree, n)
+            honors = honor_repository.get_honors()
+            if honors is None:
+                return
+            for honor in honors:
+                out += "%s %d\n" % (honor['_id'], honor['count'])
             out += "```"
             await message.channel.send(out)
+
         elif subcommand == "time":
             honoring = message.author
             time = honor_repository.honor_allowed(message.guild, honoring)
