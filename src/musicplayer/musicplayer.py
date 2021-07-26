@@ -1,6 +1,5 @@
 import asyncio
 import queue
-from datetime import datetime
 from random import shuffle
 
 import discord
@@ -10,7 +9,6 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from custom_emoji import CustomEmoji
-from database import mongodb as db
 from database.repository.music_repository import remove_from_owner
 from src.database.models.models import Song
 from src.database.repository import music_repository
@@ -67,9 +65,9 @@ class Playlist(commands.Cog):
                     "Invalid number or range, should be either a single number or a range in the form 'n:m'.")
                 return
 
-            music_repository.remove_by_id(message.mentions[0], lower=low, upper=upp)
+            deleted_song_string = music_repository.remove_by_id(message.mentions[0], lower=low, upper=upp)
 
-            await message.channel.send("Successfully deleted %d songs from the playlist." % (upp - low))
+            await message.channel.send(deleted_song_string)
         else:
             mention = message.mentions[0]
             page = 0
@@ -157,11 +155,11 @@ class MusicPlayer(commands.Cog):
 
             shuffle(songs)
             for song in songs:
-                await self.bot.music_player.add_queue(message, song.url)
+                await self.bot.music_player.add_queue(message, song['url'])
 
             await message.channel.send("Queueing " + str(len(songs)) + " songs.")
             await message.delete()
-        elif subcommand == "playlist":
+        elif subcommand == "playlist":  # TODO ask functionality
             if len(message.mentions) == 0:
                 await message.channel.send("No players playlist selected.")
                 await message.delete()
@@ -192,7 +190,7 @@ class MusicPlayer(commands.Cog):
                         await message.channel.send("Playlist id should be between %d and %d" % (0, len(songs)))
                     continue
 
-                await self.bot.music_player.add_queue(message, songs[num].url)
+                await self.bot.music_player.add_queue(message, songs[num]['url'])
 
             await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
             await message.delete()
@@ -212,8 +210,8 @@ class MusicPlayer(commands.Cog):
                 msg = "No songs found."
             else:
                 for song in songs:
-                    await self.bot.music_player.add_queue(message, song.url, 1)
-                msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0].title)
+                    await self.bot.music_player.add_queue(message, song['url'])
+                msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0]['title'])
             await message.channel.send(msg)
             await message.delete()
         else:
@@ -281,7 +279,7 @@ class MusicPlayer(commands.Cog):
     @commands.command()
     async def unpause(self, context: Context):
         voice = self.bot.get_voice_by_guild(context.message.guild)
-        if voice.is_connected() and voice.is_playing():
+        if voice.is_connected() and not voice.is_playing():
             voice.resume()
         else:
             await context.message.channel.send("There is no music playing currently.")
@@ -319,7 +317,7 @@ class MusicPlayer(commands.Cog):
         for i in range(page * page_size, min(size, (page + 1) * page_size)):
             _, url = self.bot.music_player.queue.queue[i]
             song = music_repository.get_song(url)
-            out += "%d: %s | %s\n" % (i, song.title, song.title)
+            out += "%d: %s | %s\n" % (i, song['title'], song['owner'])
         out += "```"
         await message.channel.send(out, delete_after=30)
 
@@ -384,15 +382,13 @@ class MusicPlayer(commands.Cog):
         # Only non streams may get added to a playlist.
         if not is_stream:
             # At this point you may add the song to the db because there are no errors.
-            session = db.session()
             song = music_repository.get_song(url)
 
             if song is None:
-                song = Song(message.author, title, url)
-                music_repository.add_music(song)
+                new_song = Song(message.author, title, url)
+                song = music_repository.add_music(new_song)  # TODO Check if working
 
-            song.latest_playtime = datetime.now()
-            session.commit()
+            music_repository.update_latest_playtime(song)
 
         audio_source = discord.FFmpegPCMAudio(source_url, **FFMPEG_OPTS)
         self.currently_playing = url

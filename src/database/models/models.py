@@ -3,26 +3,25 @@ from datetime import datetime
 from discord import Message, Member, Guild, User
 
 
-# class Trigger(Base):
-#     __tablename__ = 'triggers'
-#     __table_args__ = {'extend_existing': True}
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#
-#     guild_id = Column('guild_id', String)
-#     author = Column('creator', String)
-#     author_id = Column('creator_id', String)
-#
-#     trigger = Column('trigger', String)
-#     response = Column('response', String)
-#
-#     def __init__(self, message: Message):
-#         self.guild_id = message.guild.id
-#         self.author_id = message.author.id
-#         self.author = message.author.name
-#
-#     def __repr__(self):
-#         return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.author, self.guild_id)
+class Trigger:
+    def __init__(self, message: Message, trig, resp):
+        self.guild_id = str(message.guild.id) # String to make consistent with previous model scheme
+        self.creator_id = str(message.author.id)
+        self.creator = message.author.name
+        self.trigger = trig
+        self.response = resp
+
+    def to_mongodb(self):
+        return {
+            "guild_id": self.guild_id,
+            "creator_id": self.creator_id,
+            "creator": self.creator,
+            "trigger": self.trigger,
+            "response": self.response
+        }
+
+    def __repr__(self):
+        return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.author, self.guild_id)
 
 
 class Report:
@@ -71,29 +70,23 @@ class Honor:
         }
 
 
-# class Song(Base):
-#     __tablename__ = 'song'
-#     __table_args__ = {'extend_existing': True}
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#
-#     UniqueConstraint("owner_id", "url")
-#
-#     owner = Column('owner', String)
-#     owner_id = Column('owner_id', String)
-#
-#     title = Column('title', String)
-#     url = Column('url', String)
-#     file = Column('file', String)
-#
-#     latest_playtime = Column('latest_playtime', DateTime)
-#
-#     def __init__(self, owner: Member, title: str, url: str):
-#         self.owner = owner.name
-#         self.owner_id = owner.id
-#
-#         self.title = title
-#         self.url = url
-#         self.latest_playtime = datetime.now()
+class Song:
+    def __init__(self, owner: Member, title: str, url: str):
+        self.owner = owner.name
+        self.owner_id = owner.id
+
+        self.title = title
+        self.url = url
+        self.latest_playtime = datetime.now()
+
+    def to_mongodb(self):
+        return {
+            "owner": self.owner,
+            "owner_id": self.owner_id,
+            "title": self.title,
+            "url": self.url,
+            "latest_playtime": self.latest_playtime
+        }
 
 
 class Profile:

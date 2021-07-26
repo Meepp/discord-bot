@@ -6,17 +6,17 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound, BadArgument
 
-# from commands.chat import Chat
+from commands.chat import Chat
 # from commands.currency import Currency
 # from commands.games import Games
 # from commands.lolesports import Esports
 from commands.reputation import Reputation
 # from database import create_all_models
-# from database.repository import music_repository, trigger_repository
+from database.repository import music_repository, trigger_repository
 # from league_api import LeagueAPI
 # from score_api import PandaScoreAPI
-# from musicplayer.musicplayer import MusicPlayer, Playlist
-# from src.musicplayer.youtube_search import YoutubeAPI
+from musicplayer.musicplayer import MusicPlayer, Playlist
+from src.musicplayer.youtube_search import YoutubeAPI
 from src.settings import Settings
 
 
@@ -34,8 +34,8 @@ class Bot(commands.Bot):
 
         self.triggers = dict()
 
-        # self.music_player = MusicPlayer(self)
-        # self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
+        self.music_player = MusicPlayer(self)
+        self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
         # self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
         # self.panda_score_api = PandaScoreAPI(self.config["DEFAULT"]["PandaScoreAPIKey"])
 
@@ -56,8 +56,8 @@ class Bot(commands.Bot):
                 return voice
         return None
 
-    # def update_triggers(self, message):
-    #     self.triggers[message.guild] = trigger_repository.get_triggers(message.guild)
+    def update_triggers(self, message):
+        self.triggers[message.guild] = trigger_repository.get_triggers(message.guild)
 
     def set_config(self, name):
         self.config.read(name)
@@ -67,7 +67,7 @@ class Bot(commands.Bot):
         # Waiting for handler thread to finish.
         self.asyncio_thread.join()
 
-        # music_repository.remove_unused()
+        music_repository.remove_unused()
 
         await self.logout()
 
@@ -107,18 +107,13 @@ intents.members = True
 bot = Bot("config.conf", intents=intents)
 
 bot.add_cog(Reputation(bot))
-# bot.add_cog(bot.music_player)
-# bot.add_cog(Chat(bot))
-# bot.add_cog(Playlist(bot))
+bot.add_cog(bot.music_player)
+bot.add_cog(Chat(bot))
+bot.add_cog(Playlist(bot))
 # bot.add_cog(Currency(bot))
 # bot.add_cog(Games(bot))
 # bot.add_cog(bot.esports)
 # bot.add_cog(bot.league_api)
-
-
-# Import models and create tables
-# import src.database.models.models  # noqa
-# create_all_models()
 
 # Use event handlers for emotes etc.
 import src.event_handlers.messages  # noqa
