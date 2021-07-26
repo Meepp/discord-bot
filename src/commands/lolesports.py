@@ -107,7 +107,7 @@ class Esports(commands.Cog):
                 await message.channel.send(returned_team)
 
         elif subcommand == "upcoming":
-            await message.channel.send(embed=self.get_upcoming_matches())
+            await message.channel.send(embed=self.get_upcoming_matches(arg_id))
         else:
             await message.channel.send(f"Unknown command detected, please see !help esports for correct usage.")
 
@@ -185,8 +185,8 @@ class Esports(commands.Cog):
 
         return embed
 
-    def get_upcoming_matches(self):
-        matches = self.panda_score_api.get_upcoming_matches()
+    def get_upcoming_matches(self, league):
+        matches = self.panda_score_api.get_upcoming_matches(league)
 
         match_list = ""
         for match in matches:
