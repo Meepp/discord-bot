@@ -36,9 +36,13 @@ class Esports(commands.Cog):
                       color=0xFF5733)
         embed.set_author(name=match.get("league").get("name") + " - " + match.get("tournament").get("name"),
                          icon_url=match.get("league").get('image_url'))
-        embed.set_thumbnail(
-            url="attachment://match_image.png")
+        embed.set_thumbnail(url="attachment://match_image.png")
         embed.add_field(name="Official stream:", value=match.get("stream_url"), inline=False)
+
+        teams = match.get("opponents")
+        blue, red = teams[0].get("opponent").get("name"), teams[1].get("opponent").get("name")
+        rate, odds = self.bot.predictor.synchronized_compute_prediction(blue, red)
+        embed.add_field(name="Betting Return", value="%s: %.3f - %s: %.3f" % (blue, odds[0], red, odds[1]), inline=True)
         if len(bets) > 0:
             bets_for_match = ""
             for bet in bets:

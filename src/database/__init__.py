@@ -19,4 +19,4 @@ def create_all_models():
 
 # Create db
 Base = declarative_base()
-db = Database("database.db")
+db = Database("storage/database.db")

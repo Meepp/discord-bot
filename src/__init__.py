@@ -1,5 +1,6 @@
 import asyncio
 import configparser
+import os
 import threading
 
 import discord
@@ -14,6 +15,7 @@ from commands.reputation import Reputation
 from database import create_all_models
 from database.repository import music_repository, trigger_repository
 from league_api import LeagueAPI
+from predictor import Predictor
 from score_api import PandaScoreAPI
 from musicplayer.musicplayer import MusicPlayer, Playlist
 from src.musicplayer.youtube_search import YoutubeAPI
@@ -47,6 +49,8 @@ class Bot(commands.Bot):
         self.league_api.payout_games.start()
         self.esports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
+
+        self.predictor = Predictor()
 
         print("Done initializing.")
 

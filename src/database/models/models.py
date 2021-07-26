@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from discord import Message, Member, Guild, User
-from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint, ForeignKey
+from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint, ForeignKey, Boolean
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -105,6 +106,40 @@ class Song(Base):
         self.latest_playtime = datetime.now()
 
 
+class Playlist(Base):
+    __tablename__ = "playlist"
+    __table_args__ = {'extend_existing': True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    title = Column('title', String)
+
+    owner_id = Column('owner_id', String)
+
+    public = Column('public', Boolean, default=True)
+
+    def __init__(self, owner: Member, title: str):
+        self.owner_id = owner.id
+
+        self.title = title
+
+
+class PlaylistSong(Base):
+    __tablename__ = "playlist_song"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    playlist_id = Column('playlist_id', String, ForeignKey("playlist.id"))
+    playlist = relationship('src.database.models.models.Playlist')
+
+    song_id = Column('song_id', String, ForeignKey("song.id"))
+    song = relationship('src.database.models.models.Song')
+
+    def __init__(self, playlist: Playlist, song: Song):
+        self.playlist_id = playlist.id
+        self.song_id = song.id
+
+
 class Profile(Base):
     __tablename__ = 'profile'
     __table_args__ = {'extend_existing': True}
@@ -116,6 +151,8 @@ class Profile(Base):
     balance = Column('balance', Integer, default=0)
 
     league_user_id = Column('league_user_id', String)
+
+    active_playlist = Column("active_playlist", String, default=None)
 
     def __init__(self, owner: User):
         self.discord_username = owner.name

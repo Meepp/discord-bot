@@ -1,5 +1,6 @@
 import asyncio
 import queue
+import random
 from datetime import datetime
 from random import shuffle
 
@@ -11,8 +12,9 @@ from discord.ext.commands import Context
 
 from custom_emoji import CustomEmoji
 from database import db
+from database.repository import profile_repository
 from database.repository.music_repository import remove_from_owner
-from src.database.models.models import Song
+from src.database.models.models import Song, PlaylistSong
 from src.database.repository import music_repository
 
 FFMPEG_OPTS = {"options": "-vn -loglevel quiet -hide_banner -nostats",
@@ -35,12 +37,113 @@ class Playlist(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def playlist(self, context: Context):
-        """
-        !playlist (@user | delete @user <id>)
+    async def playlist(self, context: Context, subcommand: str, value: str = ""):
+        profile = profile_repository.get_profile(context.author)
 
-        !playlist @user: shows the playlist of the given user in order of addition (oldest first).
-        !playlist delete @user <id>: deletes a song from a players playlist.
+        if subcommand == "add":
+            # Check if there is a playlist active for this user.
+            if profile.active_playlist is None:
+                return await context.channel.send("No playlist selected yet. Select a playlist with !playlist select <name>.")
+            playlist = music_repository.get_playlist(context.author, profile.active_playlist)
+
+            # Add music from your current music list to this playlist
+            split_message = context.message.content.split(" ")
+
+            if value == "mymusic":
+                songs = music_repository.get_music(owner=context.author)
+                for s_number in split_message[3:]:
+                    # You can add ranges of songs, or individual songs.
+                    if ":" in s_number:
+                        r = s_number.split(":")
+                        numbers = range(int(r[0]), int(r[1]))
+                    else:
+                        numbers = [int(s_number)]
+
+                    # Add all songs to this playlist
+                    session = db.session()
+                    for number in numbers:
+                        try:
+                            song = songs[int(number)]
+                            ps = PlaylistSong(playlist, song)
+                            session.add(ps)
+                        except IndexError:
+                            await context.channel.send("Cannot add song number %d." % number)
+                    session.commit()
+            else:
+                return await context.channel.send("Currently only adding songs which are already added in your personal playlist is supported.")
+        elif subcommand == "delete":
+            if profile.active_playlist is None:
+                return await context.channel.send("No playlist selected yet. Select a playlist with !playlist select <name>.")
+
+            # Show all songs in the active playlist for this user
+            playlist = music_repository.get_playlist(context.author, profile.active_playlist)
+            songs = music_repository.get_playlist_songs(context.author, playlist)
+
+            # Check if the delete value is valid.
+            to_delete = int(value)
+            if to_delete > len(songs) or to_delete < 0:
+                return await context.channel.send("Select a valid playlist song id (%d < N < %d)." % (0, len(songs)))
+            song = songs[to_delete]
+            title = song.title
+
+            # Delete song from db
+            session = db.session()
+            session.delete(song)
+            session.commit()
+            await context.channel.send("Successfully deleted song %d (%s) from this playlist." % (to_delete, title))
+
+        elif subcommand == "show":
+            if profile.active_playlist is None:
+                return await context.channel.send("No playlist selected yet. Select a playlist with !playlist select <name>.")
+
+            # Show all songs in the active playlist for this user
+            playlist = music_repository.get_playlist(context.author, profile.active_playlist)
+            songs = music_repository.get_playlist_songs(context.author, playlist)
+            if len(songs) == 0:
+                return await context.channel.send("Playlist '%s' is empty." % profile.active_playlist)
+
+            def formatting(i, s: Song):
+                return "%d: %s" % (i, s.title)
+
+            from utils import create_table
+            # Try to convert page number
+            page = 0
+            try:
+                page = int(value)
+            except ValueError:
+                pass
+            table = create_table("Playlist " + profile.active_playlist, songs, formatting, page=page)
+            await context.channel.send(table)
+        elif subcommand == "select":
+            # Set a playlist as the active playlist for this user.
+            playlist = music_repository.get_playlist(context.author, value)
+            if not playlist:
+                return await context.channel.send("Cannot select this playlist.")
+            profile.active_playlist = value
+            session = db.session()
+            session.commit()
+            await context.channel.send("Selected playlist '%s'." % value)
+        elif subcommand == "play":
+            playlist = music_repository.get_playlist(context.author, profile.active_playlist)
+            if not playlist:
+                return await context.channel.send("Cannot select this playlist.")
+
+            songs = music_repository.get_playlist_songs(context.author, playlist)
+            shuffle(songs)
+            for song in songs:
+                await self.bot.music_player.add_queue(context.message, song.url)
+
+            await context.channel.send("Added %d songs from playlist '%s' to the queue." % (len(songs), profile.active_playlist))
+        else:
+            await context.channel.send("Unknown subcommand '%s'." % subcommand)
+
+    @commands.command()
+    async def mymusic(self, context: Context):
+        """
+        !mymusic (@user | delete @user <id>)
+
+        !mymusic @user: shows the music of the given user in order of addition (oldest first).
+        !mymusic delete @user <id>: deletes a song from a players music.
            Id can be a range (e.g. 0:10) which will delete all numbers in the range [0, 10)
         """
         message = context.message
@@ -80,7 +183,7 @@ class Playlist(commands.Cog):
                 except ValueError:
                     pass
 
-            out = music_repository.show_playlist(mention, page)
+            out = music_repository.show_mymusic(mention, page)
             await message.delete()
             message = await message.channel.send(out)
             self.bot.playlists[message.id] = (mention, page)
@@ -118,6 +221,7 @@ class MusicPlayer(commands.Cog):
         self.queue = queue.Queue()
         self.is_playing = False
         self.currently_playing = None  # Url of the song
+        self.ydl = youtube_dl.YoutubeDL({'noplaylist': True})
 
     @commands.command()
     async def join(self, context: Context):
@@ -212,13 +316,12 @@ class MusicPlayer(commands.Cog):
                 msg = "No songs found."
             else:
                 for song in songs:
-                    await self.bot.music_player.add_queue(message, song.url, 1)
+                    await self.bot.music_player.add_queue(message, song.url)
                 msg = "Added %d songs. (First up: %s)" % (len(songs), songs[0].title)
             await message.channel.send(msg)
             await message.delete()
         else:
-            url = subcommand
-            await self.bot.music_player.add_queue(message, url)
+            await self.bot.music_player.add_queue(message, subcommand)
             await message.delete()
 
     def skip_queue(self, num):
@@ -230,21 +333,29 @@ class MusicPlayer(commands.Cog):
 
         self.queue = temp
 
-    async def add_queue(self, message, url: str) -> str:
-        video_title = "Unknown"
+    def get_title(self, url):
+        result = self.ydl.extract_info(url, download=False)
+        return result["title"]
+
+    async def add_queue(self, message, url: str):
+        song = music_repository.get_song(url)
+
+        # Check if the song is in db, if not, add it to the db
+        if song is None:
+            session = db.session()
+
+            video_title = self.get_title(url)
+            song = Song(message.author, video_title, url)
+            session.add(song)
+            session.commit()
 
         self.queue.put((message, url))
 
         if not self.is_playing:
             try:
                 self.play()
-                print("Playing song.")
             except Exception as e:
                 print("Error while playing song.")
-                # coro = message.channel.send("Error:" + str(e))
-                # asyncio.run_coroutine_threadsafe(coro, bot.asyncio_loop).result()
-
-        return video_title
 
     def clear_and_stop(self, context: Context):
         self.queue = queue.Queue()
@@ -295,6 +406,16 @@ class MusicPlayer(commands.Cog):
         await context.voice_client.disconnect()
 
     @commands.command()
+    async def shuffle(self, context: Context):
+        current_queue = list(self.bot.music_player.queue.queue)
+        random.shuffle(current_queue)
+        new_queue = queue.Queue()
+        for entry in current_queue:
+            new_queue.put(entry)
+        self.bot.music_player.queue = new_queue
+        await context.message.delete()
+
+    @commands.command()
     async def queue(self, context: Context):
         """
         Show the queue of the first few upcoming songs.
@@ -319,9 +440,10 @@ class MusicPlayer(commands.Cog):
         for i in range(page * page_size, min(size, (page + 1) * page_size)):
             _, url = self.bot.music_player.queue.queue[i]
             song = music_repository.get_song(url)
-            out += "%d: %s | %s\n" % (i, song.title, song.title)
+            out += "%d: %s | %s\n" % (i, song.owner, song.title)
         out += "```"
         await message.channel.send(out, delete_after=30)
+        await context.message.delete()
 
     def done(self, error):
         if error is not None:
@@ -349,16 +471,15 @@ class MusicPlayer(commands.Cog):
             return
 
         # Extract the source location url from the youtube url.
-        ydl = youtube_dl.YoutubeDL({'noplaylist': True})
         try:
-            result = ydl.extract_info(url, download=False)
+            result = self.ydl.extract_info(url, download=False)
         except Exception as e:
-            # Retry after tenth a second
-            coro = asyncio.sleep(0.1)
+            # Retry after hundredth a second
+            coro = asyncio.sleep(0.01)
             asyncio.run_coroutine_threadsafe(coro, self.bot.asyncio_loop).result()
 
             try:
-                result = ydl.extract_info(url, download=False)
+                result = self.ydl.extract_info(url, download=False)
             except Exception as e:
                 return self.done("Could not fetch youtube url %s" % url)
 
