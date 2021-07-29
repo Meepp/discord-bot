@@ -1,6 +1,7 @@
 import requests
 from PIL import Image
 import discord
+from discord.ext.commands import BadArgument
 
 API_URL = "https://api.pandascore.co/lol/"
 
@@ -23,14 +24,22 @@ def get_match_image(opponents):
     return file
 
 
+
+
 class PandaScoreAPI:
     def __init__(self, key):
         self.key = key
 
+    def league_id_from_name(self, name):
+        json_response = requests.get(f"{API_URL}/leagues?filter[name]={name}&token=" + self.key).json()
+        for entry in json_response:
+            return entry.get("id")
+        return None
+
     def get_running_tournament_matches(self):
         matches = {}
         raw_response = requests.get(
-            f"{API_URL}tournaments/running?search[name]=group&token=" + self.key)
+            f"{API_URL}/tournaments/running?search[name]=group&token=" + self.key)
         if raw_response.status_code == 200:
             for group in raw_response.json():
                 for match in group.get("matches")[:10]: # Limit to first 10
@@ -39,7 +48,7 @@ class PandaScoreAPI:
 
     def get_match_by_id(self, match_id):
         raw_response = requests.get(
-            f"{API_URL}matches?filter[id]=" + match_id + "&token=" + self.key)
+            f"{API_URL}/matches?filter[id]=" + match_id + "&token=" + self.key)
         if raw_response.status_code != 200:
             return None
         if len(raw_response.json()) == 0:
@@ -58,22 +67,29 @@ class PandaScoreAPI:
 
     def is_game_finished(self, match_id: str):
         raw_response = requests.get(
-            f"{API_URL}matches?filter[id]=" + match_id + "&token=" + self.key)
+            f"{API_URL}/matches?filter[id]=" + match_id + "&token=" + self.key)
         match = raw_response.json()[0]
         return match.get("games")[0].get("status")
 
     def get_team_by_id(self, team_id: str):
         raw_response = requests.get(
-            f"{API_URL}teams?filter[id]=" + team_id + "&token=" + self.key)
+            f"{API_URL}/teams?filter[id]=" + team_id + "&token=" + self.key)
         return raw_response.json()
 
     def get_team_by_acronym(self, acronym):
         raw_response = requests.get(
-            f"{API_URL}teams?search[acronym]=" + acronym + "&token=" + self.key)
+            f"{API_URL}/teams?search[acronym]=" + acronym + "&token=" + self.key)
 
         return list(filter(lambda x: len(x.get("players")) >= 5, raw_response.json()))
 
-    def get_upcoming_matches(self):
-        raw_response = requests.get(
-            f"{API_URL}matches/upcoming?page[size]=5&page[number]=1" + "&token=" + self.key)
+    def get_upcoming_matches(self, league):
+        if league is None:
+            raw_response = requests.get(
+                f"{API_URL}/matches/upcoming?page[size]=5&page[number]=1" + "&token=" + self.key)
+        else:
+            league_id = self.league_id_from_name(league)
+            if league_id is None:
+                raise BadArgument("No leagues found with that name.")
+            raw_response = requests.get(
+                f"{API_URL}/matches/upcoming?filter[league_id]={league_id}&page[size]=5&page[number]=1" + "&token=" + self.key)
         return raw_response.json()

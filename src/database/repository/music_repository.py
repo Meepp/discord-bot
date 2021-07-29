@@ -4,7 +4,7 @@ from typing import List, Dict
 from discord import Member
 
 from database import mongodb as db
-from src.database.models.models import Song
+from src.database.models.models import Song, Playlist, PlaylistSong
 
 
 def add_music(song: Song):
@@ -56,7 +56,7 @@ def remove_by_id(user: Member, lower, upper):
     return out
 
 
-def show_playlist(mention, page=0, page_size=15):
+def show_mymusic(mention, page=0, page_size=15):
     songs = get_music(mention)
 
     n_pages = int(len(songs) / page_size) + 1
@@ -78,3 +78,24 @@ def query_song_title(query):
 def update_latest_playtime(song):
     collection = db['song']
     return collection.find_one_and_update({"url": song['url']}, {"$set": {'latest_playtime': datetime.now()}})
+
+def get_playlist(owner, name):
+    if name is None:
+        return None
+    session = db.session()
+    playlist = session.query(Playlist).filter(Playlist.title == name).one_or_none()
+    if not playlist:
+        print("Creating new playlist:", name)
+        playlist = Playlist(owner, name)
+        session.add(playlist)
+        session.commit()
+    return playlist
+
+
+def get_playlist_songs(owner, playlist: Playlist):
+    session = db.session()
+    songs = session.query(Song)\
+        .join(PlaylistSong)\
+        .filter(PlaylistSong.playlist_id == playlist.id)\
+        .all()
+    return songs

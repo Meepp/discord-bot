@@ -1,3 +1,5 @@
+torch
+numpy~=1.20.3
 discord~=1.0.1
 pillow~=8.0.1
 discord.py[voice]
@@ -15,3 +17,7 @@ multipledispatch~=0.6.0
 Werkzeug~=1.0.1
 requests~=2.25.1
 pymongo~=3.12.0
+selenium
+pandas==1.2.4
+sklearn
+joblib~=1.0.1

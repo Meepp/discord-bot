@@ -36,9 +36,13 @@ class Esports(commands.Cog):
                       color=0xFF5733)
         embed.set_author(name=match.get("league").get("name") + " - " + match.get("tournament").get("name"),
                          icon_url=match.get("league").get('image_url'))
-        embed.set_thumbnail(
-            url="attachment://match_image.png")
+        embed.set_thumbnail(url="attachment://match_image.png")
         embed.add_field(name="Official stream:", value=match.get("stream_url"), inline=False)
+
+        teams = match.get("opponents")
+        blue, red = teams[0].get("opponent").get("name"), teams[1].get("opponent").get("name")
+        rate, odds = self.bot.predictor.synchronized_compute_prediction(blue, red)
+        embed.add_field(name="Betting Return", value="%s: %.3f - %s: %.3f" % (blue, odds[0], red, odds[1]), inline=True)
         if len(bets) > 0:
             bets_for_match = ""
             for bet in bets:
@@ -102,7 +106,7 @@ class Esports(commands.Cog):
             else:
                 await message.channel.send(returned_team)
         elif subcommand == "upcoming":
-            await message.channel.send(embed=self.get_upcoming_matches())
+            await message.channel.send(embed=self.get_upcoming_matches(arg_id))
         else:
             await message.channel.send(f"Unknown command detected, please see !help esports for correct usage.")
 
@@ -177,8 +181,8 @@ class Esports(commands.Cog):
 
         return embed
 
-    def get_upcoming_matches(self):
-        matches = self.panda_score_api.get_upcoming_matches()
+    def get_upcoming_matches(self, league):
+        matches = self.panda_score_api.get_upcoming_matches(league)
 
         match_list = ""
         for match in matches:

@@ -61,7 +61,7 @@ async def on_reaction_add(reaction: Reaction, user: User):
         idx = int(reaction.message.id)
         mention, page = bot.playlists[idx]
         page = page - 1 if lc else page + 1
-        out = music_repository.show_playlist(mention, page)
+        out = music_repository.show_mymusic(mention, page)
         bot.playlists[idx] = (mention, page)
         await reaction.message.edit(content=out)
 

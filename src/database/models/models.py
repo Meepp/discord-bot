@@ -2,7 +2,6 @@ from datetime import datetime
 
 from discord import Message, Member, Guild, User
 
-
 class Trigger:
     def __init__(self, message: Message, trig, resp):
         self.guild_id = message.guild.id
@@ -88,12 +87,47 @@ class Song:
         }
 
 
-class Profile:
+class Playlist(Base):
+    __tablename__ = "playlist"
+    __table_args__ = {'extend_existing': True}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    title = Column('title', String)
+
+    owner_id = Column('owner_id', String)
+
+    public = Column('public', Boolean, default=True)
+
+    def __init__(self, owner: Member, title: str):
+        self.owner_id = owner.id
+
+        self.title = title
+
+
+class PlaylistSong(Base):
+    __tablename__ = "playlist_song"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    playlist_id = Column('playlist_id', String, ForeignKey("playlist.id"))
+    playlist = relationship('src.database.models.models.Playlist')
+
+    song_id = Column('song_id', String, ForeignKey("song.id"))
+    song = relationship('src.database.models.models.Song')
+
+    def __init__(self, playlist: Playlist, song: Song):
+        self.playlist_id = playlist.id
+        self.song_id = song.id
+
+
+class Profile(Base):
     def __init__(self, owner: User):
         self.discord_username = owner.name
         self.discord_id = owner.id
         self.league_user_id = None
         self.balance = 0
+        self.active_playlist = None
 
     def init_balance(self):
         from database.repository import honor_repository
