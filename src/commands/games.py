@@ -1,9 +1,12 @@
+from datetime import datetime
+
+import discord
 from discord import User, Message, Reaction
 from discord.ext import commands
 from discord.ext.commands import Context
 from custom_emoji import CustomEmoji
 from database import mongodb as db
-# from database.models.models import RoomModel # TODO
+from database.models.models import RoomModel
 from database.repository import room_repository, profile_repository
 
 
@@ -13,9 +16,10 @@ async def poker_message_check(reaction: Reaction, user: User):
     if room is None:
         return False
 
-    url = "http://84.107.225.27:5000/%d/game?id=%d" % (room.id, user.id)
+    url = "http://localhost:5000/%d/game?id=%d" % (room['message_id'], user.id)
 
-    await user.send("Follow the link below to join %s's %s game; \"%s\"\n%s" % (room.author, room.type, room.name, url))
+    await user.send(
+        "Follow the link below to join %s's %s game; \"%s\"\n%s" % (room['author'], room['type'], room['name'], url))
 
     return True
 
@@ -26,37 +30,28 @@ class Games(commands.Cog):
 
     @commands.command()
     async def poker(self, context: Context, title: str):
-        pass
-        # profile = profile_repository.get_profile(user=context.author)
-        #
-        # # Create new room
-        # room = RoomModel(title, profile, "poker")
-        #
-        # message = await context.channel.send('''```%s's Poker room\n%s\nClick Jimbo to join.```''' % (context.author.name, title))
-        # room.message_id = message.id
-        # message: Message
-        #
-        # session = db.session()
-        # session.add(room)
-        # session.commit()
-        #
-        # await message.add_reaction(CustomEmoji.jimbo)
+        await self.create_game_room(context, title, "poker")
 
     @commands.command()
     async def hallway(self, context: Context, title: str):
-        pass
-        # profile = profile_repository.get_profile(user=context.author)
-        #
-        # # Create new room
-        # room = RoomModel(title, profile, "hallway")
-        #
-        # message = await context.channel.send(
-        #     '''```%s's Hallway Hunters room\n%s\nClick Jimbo to join.```''' % (context.author.name, title))
-        # room.message_id = message.id
-        # message: Message
-        #
-        # session = db.session()
-        # session.add(room)
-        # session.commit()
-        #
-        # await message.add_reaction(CustomEmoji.jimbo)
+        await self.create_game_room(context, title, "hallway")
+
+    @staticmethod
+    async def create_game_room(context: Context, title, game_type):
+        profile = profile_repository.get_profile(user=context.author)
+        if game_type == "hallway":
+            game_in_message = "Hallway Hunters"
+        else:
+            game_in_message = "Poker"
+
+        embed = discord.Embed(title=f"{title}",
+                              description=f"{context.author.name}'s {game_in_message} room",
+                              color=discord.Colour.red() if game_type == "hallway" else discord.Colour.green())
+        embed.set_author(name=context.author.display_name, icon_url=context.author.avatar_url)
+        embed.add_field(name="How to join", value=f"Click {CustomEmoji.jimbo} to join.")
+        message = await context.channel.send(embed=embed)
+        # Create new room
+        room = RoomModel(title, profile, game_type, datetime.now(), message.id)
+        collection = db['gameRoom']
+        collection.insert(room.to_mongodb())
+        await message.add_reaction(CustomEmoji.jimbo)

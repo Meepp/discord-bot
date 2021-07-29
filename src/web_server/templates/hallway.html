@@ -20,7 +20,7 @@ Game
             <ul id="messages"></ul>
             <form id="messageform" method="post">
                 <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
-                <input id="roomid" type="hidden" value="{{ room.id }}"/>
+                <input id="roomid" type="hidden" value="{{ room.message_id }}"/>
                 <input id="username" type="hidden" value="{{ session_user().owner }}"/>
                 <button class="custom-input custom-button">Send</button>
             </form>
@@ -32,7 +32,7 @@ Game
 
 {% block script %}
 <script>
-    const ROOM_ID = "{{ room.id }}";
+    const ROOM_ID = "{{ room.message_id }}";
     const USER_NAME = "{{ session_user().owner }}";
     const PLAYER_CLASSES = [{% for cls in classes %}
         ["{{ cls.__name__ }}", "{{ cls.info }}"],

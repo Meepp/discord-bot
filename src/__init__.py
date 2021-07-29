@@ -8,7 +8,7 @@ from discord.ext.commands import CommandNotFound, BadArgument
 
 from commands.chat import Chat
 from commands.currency import Currency
-# from commands.games import Games
+from commands.games import Games
 from commands.lolesports import Esports
 from commands.reputation import Reputation
 from database.repository import music_repository, trigger_repository
@@ -110,7 +110,7 @@ bot.add_cog(bot.music_player)
 bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
 bot.add_cog(Currency(bot))
-# bot.add_cog(Games(bot))
+bot.add_cog(Games(bot))
 bot.add_cog(bot.esports)
 bot.add_cog(bot.league_api)
 

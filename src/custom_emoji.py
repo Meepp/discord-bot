@@ -1,5 +1,5 @@
 class CustomEmoji:
-    jimbo = ":Jimbo:432177172686569502"
+    jimbo = "<:Jimbo:432177172686569502>"
     arrow_left = "◀️"
     arrow_right = "▶️"
     dani = "<:dani:805154104740806706>"

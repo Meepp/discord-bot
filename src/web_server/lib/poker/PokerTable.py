@@ -1,9 +1,5 @@
 from enum import Enum
 
-from discord import User
-
-from database import mongodb as db
-from database.models.models import Profile
 from database.repository import profile_repository
 from src.web_server import sio
 from src.web_server.lib.poker import Evaluator
@@ -52,19 +48,6 @@ def deck_generator():
     return deck
 
 
-def synchronize_balance(players):
-    session = db.session()
-    for player in players:
-        profile = profile_repository.get_profile(user_id=player.profile.discord_id)
-        difference = player.profile.balance - player.initial_balance
-
-        profile.balance += difference
-        player.profile = profile
-
-        player.initial_balance = player.profile.balance
-    session.commit()
-
-
 class PokerTable:
     """
     Stores information about the web_server game being played
@@ -106,13 +89,13 @@ class PokerTable:
 
         # Get latest balance from server
         for player in self.player_list:
-            profile = profile_repository.get_profile(user_id=player.profile.discord_id)
+            profile = profile_repository.get_profile(user_id=player.profile['owner_id'])
             player.profile = profile
-            print("Updating %ss profile" % player.profile.discord_username)
+            print("Updating %ss profile" % player.profile['owner'])
 
         # Move all no balance players to spectator list
         for player in self.player_list[:]:
-            if player.profile.balance == 0:
+            if player.profile['balance'] == 0:
                 self.player_list.remove(player)
                 self.spectator_list.append(player)
             else:
@@ -191,7 +174,7 @@ class PokerTable:
 
         shared_pot = self.payout_pot(len(winning_players))
 
-        self.broadcast("%s won." % ",".join([player.profile.discord_username for player in winning_players]))
+        self.broadcast("%s won." % ",".join([player.profile['owner'] for player in winning_players]))
 
         # Payout the game
         for player in winning_players:
@@ -199,19 +182,16 @@ class PokerTable:
 
         self.phase = Phases.NOT_YET_STARTED
 
-        # Synchronize profiles with the database
-        synchronize_balance(self.player_list)
-
         self.update_players()
 
-    def get_player(self, profile: Profile=None, spectator=False, socket_id=None):
+    def get_player(self, profile: dict = None, spectator=False, socket_id=None):
         combined_list = self.player_list[:]
         if spectator:
             combined_list.extend(self.spectator_list)
 
         if profile is not None:
             for player in combined_list:
-                if player.profile.discord_id == profile.discord_id:
+                if player.profile['owner_id'] == profile['owner_id']:
                     return player
             return None
         elif socket_id is not None:
@@ -242,11 +222,11 @@ class PokerTable:
         if self.phase != Phases.NOT_YET_STARTED and len(self.player_list) == len(self.all_in_list):
             self.start_next_phase()
 
-    def round(self, profile: Profile, action: str, value: int = 0):
+    def round(self, profile: dict, action: str, value: int = 0):
         if self.phase == Phases.NOT_YET_STARTED or self.phase == Phases.POST_ROUND:
             return "The next round has not yet started."
 
-        if self.get_current_player().profile.id != profile.id:
+        if self.get_current_player().profile['owner_id'] != profile['owner_id']:
             return "It is not yet your turn."
 
         message = None
@@ -258,7 +238,7 @@ class PokerTable:
             self.first = False
             paid = player.pay(self.current_call_value)  # Current small blind
             if paid != 0:
-                self.broadcast("%s started the round with %d." % (player.profile.discord_username, self.current_call_value))
+                self.broadcast("%s started the round with %d." % (player.profile['owner'], self.current_call_value))
                 self.add_pot(paid)
                 self.current_call_value = self.settings.small_blind_value * 2  # In cents
             else:
@@ -282,7 +262,7 @@ class PokerTable:
                 self.add_pot(paid)
                 self.current_call_value += difference
                 self.caller_list = [player]
-                self.broadcast("%s raised by %d." % (player.profile.discord_username, difference))
+                self.broadcast("%s raised by %d." % (player.profile['owner'], difference))
             else:
                 return "Not enough currency to raise by %d." % value
 
@@ -323,9 +303,9 @@ class PokerTable:
         else:
             return None
 
-    def add_player(self, profile: Profile, socket_id):
+    def add_player(self, profile: dict, socket_id):
         for player in self.player_list + self.spectator_list:
-            if player.profile.id == profile.id:
+            if player.profile['owner_id'] == profile['owner_id']:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
                 return
@@ -357,20 +337,20 @@ class PokerTable:
 
     def export_state(self, player: Player):
         return {
-            "you": player.profile.discord_username,
-            "small_blind": self.get_small_blind().profile.discord_username,
+            "you": player.profile['owner'],
+            "small_blind": self.get_small_blind().profile['owner'],
             "current_call_value": self.current_call_value,
             "pot": self.pot,
             "phase": self.phase.name.capitalize(),
             "active_player_index": self.active_player_index,
-            "active_player": self.get_current_player().profile.discord_username,
+            "active_player": self.get_current_player().profile['owner'],
             "community_cards": [card.to_json() for card in self.community_cards],
-            "fold_list": [player.profile.discord_username for player in self.fold_list],
-            "caller_list": [player.profile.discord_username for player in self.caller_list],
-            "spectator_list": [player.profile.discord_username for player in self.spectator_list],
+            "fold_list": [player.profile['owner'] for player in self.fold_list],
+            "caller_list": [player.profile['owner'] for player in self.caller_list],
+            "spectator_list": [player.profile['owner'] for player in self.spectator_list],
             "hand": player.export_hand(),
             "players": self.export_player_game_data(),
-            "balance": player.profile.balance,
+            "balance": player.profile['balance'],
             "to_call": (self.current_call_value - player.current_call_value),
             "started": self.phase != Phases.NOT_YET_STARTED,
             "settings": self.settings.to_json(),
@@ -428,7 +408,7 @@ class PokerTable:
     def action_call(self, player: Player, value):
         self.pot += value
         self.caller_list.append(player)
-        self.broadcast("%s called %d." % (player.profile.discord_username, value))
+        self.broadcast("%s called %d." % (player.profile['owner'], value))
 
     def payout_pot(self, shares=1):
         payout_pot = int(self.pot / shares)
@@ -458,9 +438,9 @@ class PokerTable:
 
             data.append({
                 "active": self.get_current_player() == other,
-                "name": other.profile.discord_username,
+                "name": other.profile['owner'],
                 "state": state,
-                "balance": other.profile.balance,
+                "balance": other.profile['balance'],
                 "hand": hand,
                 "ready": other.ready,
             })
@@ -477,16 +457,16 @@ class PokerTable:
                 return False
         return True
 
-    def remove_player(self, profile: Profile):
+    def remove_player(self, profile: dict):
         player = self.get_player(profile, spectator=True)
-        synchronize_balance([player])
 
         lists = [self.player_list, self.spectator_list, self.all_in_list, self.fold_list, self.caller_list]
         # Cleanup player from all lists
-        for l in lists:
-            if player in l:
-                l.remove(player)
+        for element in lists:
+            if player in element:
+                element.remove(player)
 
     def set_player_balances(self):
         for player in self.player_list:
-            player.initial_balance = player.profile.balance = min(player.profile.balance, self.settings.max_buy_in)
+            player.initial_balance = player.profile['balance'] = min(player.profile['balance'],
+                                                                     self.settings.max_buy_in)

@@ -2,11 +2,10 @@ from typing import Optional
 
 from flask import session, g as flaskg
 
-from database.models.models import Profile
 from database.repository import profile_repository
 
 
-def session_user() -> Optional[Profile]:
+def session_user() -> Optional[dict]:
     """
     Return the current authenticated user.
     :return: the current authenticated user.
@@ -34,7 +33,7 @@ def session_is_authed():
     return session_user() is not None
 
 
-def session_user_set(user: Optional[Profile]):
+def session_user_set(user: Optional[dict]):
     """
     Set the current user associated with the session.
     If not None, session_is_authed() will return True and session_user() will return the user.
@@ -44,4 +43,4 @@ def session_user_set(user: Optional[Profile]):
     if user is None:
         del session['user_id']
     else:
-        session['user_id'] = user.discord_id
+        session['user_id'] = user['owner_id']

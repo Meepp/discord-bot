@@ -1,8 +1,7 @@
-import logging
 from typing import Dict
 
 from flask import request
-from flask_socketio import join_room, leave_room
+from flask_socketio import join_room
 
 from database.repository import room_repository
 from src.web_server import sio
@@ -23,11 +22,10 @@ def on_join(data):
         tables[room_id] = PokerTable(room_id)
 
     profile = session_user()
-
     table = tables[room_id]
     table.add_player(profile, request.sid)
 
-    sio.emit("join", profile.discord_username, json=True, room=room_id, namespace="/poker")
+    sio.emit("join", profile['owner'], json=True, room=room_id, namespace="/poker")
     table.update_players()
 
 
@@ -38,8 +36,8 @@ def disconnect():
         if player:
             table.remove_player(player.profile)
 
-            table.broadcast("%s left the table." % player.profile.discord_username)
-            sio.emit("leave", player.profile.discord_username, json=True, room=room_id, namespace="/poker")
+            table.broadcast("%s left the table." % player.profile['owner'])
+            sio.emit("leave", player.profile['owner'], json=True, room=room_id, namespace="/poker")
 
 
 @sio.on("chat message", namespace="/poker")
@@ -48,7 +46,7 @@ def message(data):
     text_message = data.get('message')
     if text_message != "":  # Stop empty messages
         profile = session_user()
-        data["username"] = profile.discord_username
+        data["username"] = profile['owner']
 
         sio.emit('chat message', data, room=room_id, include_self=True, namespace="/poker")
 
@@ -61,9 +59,9 @@ def change_settings(data):
     room = room_repository.get_room(room_id)
     table = tables[room_id]
     profile = session_user()
-    
+
     # Only the owner may change room settings
-    if room.author_id != profile.discord_id:
+    if room.author_id != profile['owner_id']:
         user = table.get_player(profile)
         return sio.emit("message", "You may not change the room settings.", room=user.socket, namespace="/poker")
 
@@ -84,7 +82,7 @@ def poker_start(data):
     player.ready = not player.ready
 
     # Only the owner may start the game
-    if room.author_id != profile.discord_id:
+    if room['author_id'] != profile['owner_id']:
         table.update_players()
         return
 
@@ -124,12 +122,12 @@ def action(data):
         sio.emit("message", response, room=player.socket, namespace="/poker")
 
     for table_player in table.player_list + table.spectator_list:
-        sio.emit("table_state", table.export_state(table_player), json=True, room=table_player.socket, namespace="/poker")
+        sio.emit("table_state", table.export_state(table_player), json=True, room=table_player.socket,
+                 namespace="/poker")
 
 
 @sio.on("table_state", namespace="/poker")
 def action(data):
-
     room_id = int(data.get("room"))
 
     table = tables.get(room_id, None)

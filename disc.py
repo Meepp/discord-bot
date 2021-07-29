@@ -2,11 +2,6 @@ from src import bot
 
 
 def main():
-    # Import database models
-    # from src.database import mongodb as db
-    # Setup database models
-    # Base.metadata.create_all(db.engine)
-
     bot.run(bot.token)
 
 

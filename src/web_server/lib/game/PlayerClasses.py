@@ -2,7 +2,6 @@ import copy
 import random
 from typing import Optional, List
 
-from database.models.models import Profile
 from src.web_server.lib.game.Items import RubbishItem, Item, CollectorItem
 from src.web_server.lib.game.Tiles import GroundTile, WallTile, LadderTile, ChestTile, CameraTile
 from src.web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
@@ -46,7 +45,7 @@ class Passive(object):
 
 
 class PlayerClass:
-    def __init__(self, profile: Profile, socket_id, game):
+    def __init__(self, profile: dict, socket_id, game):
         # TODO: Refactor rename   name -> color
         self.name = ""
         self.profile = profile
@@ -127,7 +126,7 @@ class PlayerClass:
         self.dead = True
         self.can_move = False
         self.drop_item()
-        self.game.broadcast("%s died" % self.profile.discord_username)
+        self.game.broadcast("%s died" % self.profile['owner'])
 
     def kill(self):
         if self.dead:
@@ -233,7 +232,9 @@ class PlayerClass:
         # Compute temporary position based on next move
         new_position = self.move_suggestion + self.position
         # Check move validity
-        if new_position.x > self.game.size - 1 or new_position.y > self.game.size - 1 or new_position.x < 0 or new_position.y < 0:
+        if new_position.x > self.game.size - 1 or \
+                new_position.y > self.game.size - 1 or \
+                new_position.x < 0 or new_position.y < 0:
             raise InvalidAction("You cannot move out of bounds.")
 
         tile = self.game.board[new_position.x][new_position.y]
@@ -291,7 +292,7 @@ class PlayerClass:
     def to_json(self, owner=True, reduced=False):
         state = {
             "name": self.name,
-            "username": self.profile.discord_username,
+            "username": self.profile['owner'],
             "dead": self.dead,
             "stored_items": [item.to_json() for item in self.stored_items],
             "ready": self.ready,
@@ -394,7 +395,7 @@ class PlayerClass:
 class Demolisher(PlayerClass):
     info = """Demolisher can blow up walls with its active effect."""
 
-    def __init__(self, profile, socket_id, game):
+    def __init__(self, profile: dict, socket_id, game):
         super().__init__(profile, socket_id, game)
 
         # self.name = self.__class__.__name__

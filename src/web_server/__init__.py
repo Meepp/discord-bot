@@ -1,8 +1,8 @@
 from flask import Flask
 from flask_socketio import SocketIO
 import logging
+from engineio.payload import Payload
 
-from src import create_all_models
 from src.web_server.lib.user_session import session_user
 
 global app
@@ -21,10 +21,10 @@ def create_app():
     app.jinja_env.globals.update(session_user=session_user)
 
     print("Created socketio")
+    Payload.max_decode_packets = 500
     sio = SocketIO(app, async_mode='gevent')
 
     import src.web_server.lib.socket
-
 
     logging.basicConfig(
         level=logging.DEBUG,
@@ -32,9 +32,6 @@ def create_app():
         datefmt='(%H:%M:%S)')
     # disable all loggers from different files
     logging.getLogger('geventwebsocket.server').setLevel(logging.ERROR)
-
-    # Import models and create tables
-    create_all_models()
 
     from src.web_server import main
     app.register_blueprint(main.bp)

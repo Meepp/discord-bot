@@ -15,7 +15,7 @@
                 <header>
                     <div>
                         <h1>Room: <u>{{ room.name }}</u></h1>
-                        <h1>Share this code: <u>{{ room.temp_password }}</u></h1>
+<!--                        <h1>Share this code: <u>{{ room.temp_password }}</u></h1>-->
                         <div class="about">Room leader: {{ room.author }}
                             <div id="room-settings">
 
@@ -27,7 +27,7 @@
                             <div class="user-list"></div>
                         </div>
                     </div>
-                    {% if session_user().discord_id == room['author_id'] %}
+                    {% if session_user().owner_id == room['author_id'] %}
                         <div class="settings-column">
                             <label class="custom-text" for="max-buy-in">Max buy-in:</label><br>
                             <input class="custom-input" type="text" id="max-buy-in" value="20000" name="Max buy-in"><br>
@@ -57,7 +57,7 @@
                     <span id="rs-bullet" class="rs-label">0</span>
                 </div>
                 <button class="custom-input custom-button" onclick="fold()">Fold</button>
-                {% if session_user().discord_id == room['author_id'] %}
+                {% if session_user().owner_id == room['author_id'] %}
                     <div class="custom-input custom-button" onclick="startRoom()">Begin Round</div>
                 {% endif %}
             </div>
@@ -75,8 +75,8 @@
                 <ul id="messages"></ul>
                 <form id="messageform" method="post">
                     <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
-                    <input id="roomid" type="hidden" value="{{ room.id }}"/>
-                    <input id="username" type="hidden" value="{{ session_user().discord_username }}"/>
+                    <input id="roomid" type="hidden" value="{{ room.message_id }}"/>
+                    <input id="username" type="hidden" value="{{ session_user().owner }}"/>
                     <button class="custom-input custom-button">Send</button>
                 </form>
             </div>
@@ -87,10 +87,10 @@
 
 {% block script %}
     <script>
-        const ROOM_ID = "{{ room.id }}";
-        const GAME_URL = "{{ url_for('poker.game', room_id=room.id) }}";
+        const ROOM_ID = "{{ room.message_id }}";
+        const GAME_URL = "{{ url_for('poker.game', room_id=room.message_id) }}";
         const USER_NAME = "{{ session_user().discord_username }}";
         console.log(USER_NAME);
     </script>
-    <script src="{{ url_for("static", filename="poker.js") }}"></script>
+    <script src="{{ url_for('static', filename='poker.js') }}"></script>
 {% endblock %}

@@ -25,6 +25,7 @@ $('#messageform').submit(function(e) {
         "room": $('#roomid').val(),
         "username": $('#username').val()
     };
+
     console.log(data)
     socket.emit('chat message', data);
     m.val('');
@@ -433,7 +434,7 @@ socket.on("message", (data) => {
 	let events = log.getElementsByTagName('div');
 	if (events.length > 100) {
 		events[0].remove();
-	};
+	}
     log.innerHTML += `
     <div class="event-log-entry">
         <div class="event-log-date">${new Date().toLocaleTimeString()}</div>
