@@ -1,11 +1,9 @@
-from datetime import datetime
 from typing import Dict
 
 from flask import request
 from flask_socketio import join_room
 
 from database.repository import room_repository
-from database.repository.room_repository import get_room
 from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
 from src.web_server.lib.game.Utils import Point
@@ -64,7 +62,6 @@ def get_state(data):
 @sio.on("start", namespace="/hallway")
 def start_game(data):
     room_id = int(data.get("room"))
-    selected_class = data.get("player_class")
     room = room_repository.get_room(room_id)
     profile = session_user()
 
