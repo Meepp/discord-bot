@@ -60,7 +60,8 @@ class Playlist(commands.Cog):
                 else:
                     low = int(args[2])
                     upp = low + 1
-            except ValueError as e:
+            except ValueError as e:  # TODO
+                print(e)
                 await message.channel.send(
                     "Invalid number or range, should be either a single number or a range in the form 'n:m'.")
                 return
@@ -98,16 +99,19 @@ class Playlist(commands.Cog):
         if len(args) > 0:
             try:
                 num = int(args[0])
-            except ValueError as e:
+            except ValueError as e:  # TODO
+                print(e)
                 await context.channel.send("%s is not a valid number. (but you know this)" % args[0])
                 return
 
-            _, url, _ = self.bot.music_player.queue.queue[num]
-            remove_from_owner(url, message.author.id)
+            _, url = self.bot.music_player.queue.queue[num]
+            deleted_song = remove_from_owner(url, message.author.id)
+
             self.bot.music_player.skip_queue(num)
         else:
-            remove_from_owner(self.bot.music_player.currently_playing, message.author.id)
-            await self.bot.music_player.skip(message.guild)
+            deleted_song = remove_from_owner(self.bot.music_player.currently_playing, message.author.id)
+            await self.bot.music_player.skip(context)
+        await context.channel.send(f":x: Deleted {deleted_song['title']}")
 
 
 class MusicPlayer(commands.Cog):
@@ -180,8 +184,8 @@ class MusicPlayer(commands.Cog):
                         nums.extend(n for n in range(max(low, 0), min(upp + 1, len(songs))))
                     else:
                         nums.append(int(arg))
-                except ValueError as e:
-                    pass
+                except ValueError as e:  # TODO
+                    print(e)
 
             err = False
             for num in nums:
@@ -237,7 +241,8 @@ class MusicPlayer(commands.Cog):
             try:
                 self.play()
                 print("Playing song.")
-            except Exception as e:
+            except Exception as e:  # TODO
+                print(e)
                 print("Error while playing song.")
                 # coro = message.channel.send("Error:" + str(e))
                 # asyncio.run_coroutine_threadsafe(coro, bot.asyncio_loop).result()
@@ -259,11 +264,13 @@ class MusicPlayer(commands.Cog):
         !clear: Clears the queue of all songs, does not kill the currently playing song.
         """
         self.queue = queue.Queue()
+        await context.message.channel.send(":eject: Queue has been cleared")
 
     @commands.command()
     async def skip(self, context: Context):
         if context.voice_client is not None:
             context.voice_client.stop()
+            await context.message.channel.send(":next_track: Next track", )
         else:
             await context.send("Cannot skip when not connected to voice.")
 
@@ -273,6 +280,7 @@ class MusicPlayer(commands.Cog):
 
         if voice.is_connected() and voice.is_playing():
             voice.pause()
+            await context.message.channel.send(":pause_button: Paused")
         else:
             await context.message.channel.send("There is no music playing currently.")
 
@@ -281,6 +289,7 @@ class MusicPlayer(commands.Cog):
         voice = self.bot.get_voice_by_guild(context.message.guild)
         if voice.is_connected() and not voice.is_playing():
             voice.resume()
+            await context.message.channel.send(":arrow_forward: Resumed")
         else:
             await context.message.channel.send("There is no music playing currently.")
 
@@ -304,12 +313,16 @@ class MusicPlayer(commands.Cog):
 
         size = self.bot.music_player.queue.qsize()
 
+        if size == 0:
+            await message.channel.send("There are currently no songs in the queue, you should add some!",
+                                       delete_after=30)
+            return
         page = 0
         if len(args) > 0:
             try:
                 page = int(args[0])
-            except ValueError as e:
-                pass
+            except ValueError as e:  # TODO
+                print(e)
 
         page_size = self.bot.settings.page_size
 
@@ -321,7 +334,7 @@ class MusicPlayer(commands.Cog):
         out += "```"
         await message.channel.send(out, delete_after=30)
 
-    def done(self, error):
+    def done(self, error=None):
         if error is not None:
             print(error)
 
@@ -358,7 +371,7 @@ class MusicPlayer(commands.Cog):
             try:
                 result = ydl.extract_info(url, download=False)
             except Exception as e:
-                return self.done("Could not fetch youtube url %s" % url)
+                return self.done(error="Could not fetch youtube url %s" % url)
 
         # Streams have duration set to 0.
         is_stream = result["duration"] == 0
@@ -387,13 +400,12 @@ class MusicPlayer(commands.Cog):
             if song is None:
                 new_song = Song(message.author, title, url)
                 song = music_repository.add_music(new_song)  # TODO Check if working
-
             music_repository.update_latest_playtime(song)
 
         audio_source = discord.FFmpegPCMAudio(source_url, **FFMPEG_OPTS)
         self.currently_playing = url
 
-        voice.play(audio_source, after=lambda error: self.done(error))
+        voice.play(audio_source, after=lambda error: self.done(error=error))
 
         coro = self.bot.change_presence(activity=discord.Game(name=title))
         asyncio.run_coroutine_threadsafe(coro, self.bot.asyncio_loop).result()

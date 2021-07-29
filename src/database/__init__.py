@@ -7,16 +7,16 @@ class MongoDB:
     def __init__(self, config):
         self.config = configparser.ConfigParser()
         self.set_config(config)
-        self.connection_string = f"mongodb+srv://{self.config['DEFAULT']['username']}:" \
-                                 f"{self.config['DEFAULT']['password']}@" \
-                                 f"cluster0.wvrda.mongodb.net/{self.config['DEFAULT']['database']}?" \
+        self.connection_string = f"mongodb+srv://{self.config['MONGODB']['username']}:" \
+                                 f"{self.config['MONGODB']['password']}@" \
+                                 f"cluster0.wvrda.mongodb.net/{self.config['MONGODB']['database']}?" \
                                  f"retryWrites=true&w=majority"
 
         self.client = MongoClient(self.connection_string, connect=False)
-        self.db = self.client["discord-bot"]
+        self.db = self.client["discord-bot2"]
 
     def set_config(self, name):
         self.config.read(name)
 
 
-mongodb = MongoDB(f"{os.path.dirname(os.path.realpath(__file__))}\dbconfig.conf").db
+mongodb = MongoDB(f"{os.path.dirname(os.path.realpath(__file__))}\..\..\config.conf").db

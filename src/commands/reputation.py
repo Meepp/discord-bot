@@ -3,7 +3,7 @@ from discord.ext.commands import Context
 
 from database.models.models import Honor, Report
 from database.repository import honor_repository, report_repository
-from database.repository.profile_repository import get_profile, get_money, add_money
+from database.repository.profile_repository import get_profile, get_money, update_money
 
 
 class Reputation(commands.Cog):
@@ -34,7 +34,6 @@ class Reputation(commands.Cog):
             else:
                 reports = report_repository.get_reports()
                 for report in reports:
-                    print(report)
                     out += "%s %d\n" % (report['_id'], report['count'])
             out += "```"
             await message.channel.send(out)
@@ -54,7 +53,7 @@ class Reputation(commands.Cog):
             reporting = message.author
 
             # Not allowed to report the bot.
-            if message.mentions[0] == "340197681311776768":
+            if message.mentions[0] == "340197681311776768" or message.mentions[0] == "772902827633934376":
                 await message.channel.send("I don't think so, bro.")
                 reportee = message.author
 
@@ -104,5 +103,7 @@ class Reputation(commands.Cog):
                 honor = Honor(message.guild, honoree, honoring)
                 # Add money to balance if honored
                 honor_repository.add_honor(honor)
+                if honoree.id == 772902827633934376 or honoree.id == 340197681311776768:
+                    await message.channel.send("Thank you for honoring the hard working bot!")
             else:
                 await message.channel.send("Wait %d minutes to honor again." % time)

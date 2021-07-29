@@ -33,7 +33,7 @@ class PandaScoreAPI:
             f"{API_URL}tournaments/running?search[name]=group&token=" + self.key)
         if raw_response.status_code == 200:
             for group in raw_response.json():
-                for match in group.get("matches"):
+                for match in group.get("matches")[:10]: # Limit to first 10
                     matches[match.get("id")] = (match.get("name"), match.get("status"), match.get("winner_id"))
         return matches
 

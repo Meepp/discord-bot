@@ -1,7 +1,6 @@
 from discord import User, Message, Reaction
 from discord.ext import commands
 from discord.ext.commands import Context
-
 from custom_emoji import CustomEmoji
 from database import mongodb as db
 # from database.models.models import RoomModel # TODO

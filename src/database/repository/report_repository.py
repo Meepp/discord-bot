@@ -12,7 +12,7 @@ def add_report(report: Report):
     collection = db['report']
     try:
         collection.insert_one(report.to_mongodb())
-        print("Added honor")
+        print("Added report")
     except Exception as e:
         print(e)
 

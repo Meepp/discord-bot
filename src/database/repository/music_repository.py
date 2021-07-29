@@ -10,7 +10,6 @@ from src.database.models.models import Song
 def add_music(song: Song):
     collection = db['song']
     collection.insert(song.to_mongodb())
-    print(":check_mark: Added song: ", song.to_mongodb())
     return get_song(song.url)
 
 
@@ -20,7 +19,7 @@ def get_music(owner: Member = None) -> List[Dict]:
     if not owner:
         return list(collection.find())
     else:
-        return list(collection.find({"owner_id": str(owner.id)}))
+        return list(collection.find({"owner_id": owner.id}))
 
 
 def get_song(url: str):
@@ -30,9 +29,8 @@ def get_song(url: str):
 
 def remove_from_owner(url: str, owner_id: int):
     collection = db['song']
-    song = collection.find_one_and_update({"owner_id": owner_id, "url": url},
-                                          {"$set": {"owner_id": -1, "owner": None}})
-    print(f"Removed owner with id {owner_id} from {url}")
+    song = collection.find_one_and_delete({"owner_id": owner_id, "url": url})
+    print(f"Removed {url} from {owner_id}")
     return song
 
 
@@ -64,7 +62,7 @@ def show_playlist(mention, page=0, page_size=15):
     n_pages = int(len(songs) / page_size) + 1
     page = (page + n_pages) % n_pages
 
-    out = "```\n%ss playlist (%d / %d):\n" % (mention.nick, page, n_pages)
+    out = "```\n%ss playlist (%d / %d):\n" % (mention.nick, (page + 1), n_pages)
     for i in range(page * page_size, min(len(songs), (page + 1) * page_size)):
         song = songs[i]
         out += "%d: %s | %s\n" % (i, song['title'], song['owner'])

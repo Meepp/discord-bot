@@ -46,7 +46,6 @@ def honor_allowed(guild, honoring):
         return None
 
 
-def get_honor_count(user: User):
+def get_honor_count_by_id(user_id):
     collection = db['honor']
-    return collection.find({"honoree_id": user.id}).count()
-
+    return collection.find({"honoree_id": user_id}).count()

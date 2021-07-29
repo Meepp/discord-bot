@@ -1,9 +1,9 @@
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
-from discord import Embed
+from discord import Embed, User
 from database import mongodb as db
-from database.models.models import Profile, LeagueGame
-from database.repository import game_repository
+from database.models.models import Profile, LeagueGame, EsportGame
+from database.repository import game_repository, profile_repository
 from datetime import datetime, timezone
 
 
@@ -28,7 +28,7 @@ class Esports(commands.Cog):
         match = self.panda_score_api.get_match_by_id(match_id)
         if match is None:
             return f"No match found with match id: {match_id}", None
-        bets = game_repository.get_games(int(match_id))
+        bets = game_repository.get_match_by_id(match_id)
         embed = Embed(title=match.get("name"),
                       description=("Winner: " + match.get("winner").get(
                           "acronym")) if match.get("status") == "finished"
@@ -42,27 +42,28 @@ class Esports(commands.Cog):
         if len(bets) > 0:
             bets_for_match = ""
             for bet in bets:
-                user = self.bot.get_user(int(bet.owner_id))
-                bets_for_match += f"{user.name}: {bet.bet} on {bet.type}\n"
+                user = self.bot.get_user(bet['owner_id'])
+                bets_for_match += f"{user.name}: {bet['amount']} on {bet['team']}\n"
             embed.add_field(name="Active Bets:", value=bets_for_match, inline=False)
 
         return embed, match.get("image_file")
 
-    def bet_match(self, context, session, match_id, bet_team, bet_amount, profile):
+    def bet_match(self, context, match_id, bet_team, bet_amount):
+        profile = profile_repository.get_profile(user_id=context.author.id)
         match = self.panda_score_api.get_match_by_id(match_id)
         if match is None:
             return f"No match found with match id: {match_id}"
         if not isinstance(bet_amount, int):
-            return f"Please bet an integer amount between 1 and {profile.balance}"
+            return f"Please bet an integer amount between 1 and {profile['balance']}"
 
         if match.get("status") == "not_started":
-            if profile.balance < bet_amount:
-                return f"You are betting more than you currently have! (Current balance: {profile.balance})"
+            if profile['balance'] < bet_amount:
+                return f"You are betting more than you currently have! (Current balance: {profile['balance']})"
             if bet_amount < 0:
                 return "You cannot bet a negative amount"
             bet_team = bet_team.upper()
             if bet_team in match.get("name"):
-                self.create_league_bet(context, session, match_id, bet_team, bet_amount, profile)
+                self.create_league_bet(context, match_id, bet_team, bet_amount, profile)
                 return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
             else:
                 return f"You cannot bet on {bet_team} in the match {match.get('name')}."
@@ -80,8 +81,7 @@ class Esports(commands.Cog):
         """
 
         message = context.message
-        session = db.session()
-        profile = session.query(Profile).filter(Profile.discord_id == context.author.id).one_or_none()
+
         if subcommand == "ongoing":
             await message.channel.send(self.ongoing_matches())
 
@@ -93,7 +93,7 @@ class Esports(commands.Cog):
                 await message.channel.send(embed=match, file=file)
 
         elif subcommand == "bet":
-            await message.channel.send(self.bet_match(context, session, arg_id, bet_team, bet_amount, profile))
+            await message.channel.send(self.bet_match(context, arg_id, bet_team, bet_amount))
 
         elif subcommand == "team":
             returned_team = self.get_team(arg_id)
@@ -101,55 +101,51 @@ class Esports(commands.Cog):
                 await message.channel.send(embed=returned_team)
             else:
                 await message.channel.send(returned_team)
-
         elif subcommand == "upcoming":
             await message.channel.send(embed=self.get_upcoming_matches())
         else:
             await message.channel.send(f"Unknown command detected, please see !help esports for correct usage.")
 
     @staticmethod
-    def create_league_bet(context, session, match_id, bet_team, bet_amount, profile):
-        game = LeagueGame(context.author)
-        game.game_id = match_id
-        game.bet = bet_amount
-        game.type = bet_team.upper()
-        game.channel_id = context.channel.id
-        profile.balance -= bet_amount
-        session.add(game)
-        session.commit()
+    def create_league_bet(context, match_id, bet_team, bet_amount, profile):
+        collection = db['esportGame']
+
+        #TODO insert odds for team
+        game = EsportGame(context.author, match_id, bet_amount, bet_team.upper(), context.channel.id)
+        profile_repository.update_money(profile, -bet_amount)
+        collection.insert(game.to_mongodb())
 
     @tasks.loop(seconds=300)
     async def payout_league_bet(self):
         await self.bot.wait_until_ready()
-
-        session = db.session()
-        games = session.query(LeagueGame).all()
+        collection = db['esportGame']
+        games = list(collection.find())
         try:
             for game in games:
-                user = self.bot.get_user(int(game.owner_id))
+                user = self.bot.get_user(game['owner_id'])
                 if user is None:
-                    print("User id %s not found." % game.owner_id)
+                    print("User id %s not found." % game['owner_id'])
                     continue
-                if self.panda_score_api.is_game_finished(game.game_id) == "finished":
-                    information = self.process_game_result(user, game, session)
+                if self.panda_score_api.is_game_finished(game['game_id']) == "finished":
+                    information = self.process_game_result(user, game)
                     if information is not None:
-                        await self.bot.get_channel(game.channel_id).send("`%s`" % information)
+                        await self.bot.get_channel(game['channel_id']).send("`%s`" % information)
         except Exception as e:
             print(e)
 
-    def process_game_result(self, user, game: LeagueGame, session):
-        match = self.panda_score_api.get_match_by_id(game.game_id)
+    def process_game_result(self, user: User, game: dict):
+        match = self.panda_score_api.get_match_by_id(game['game_id'])
         if match is None:
-            return f"No match found with match id: {game.game_id}"
-        profile = session.query(Profile).filter(Profile.discord_id == user.id).one_or_none()
-        if match.get('winner').get('acronym').upper() == game.type.upper():
-            winnings = game.bet * self.BET_MODIFIER
-            profile.balance += winnings
-            information = f"{profile.discord_username} won {winnings} on the bet {match.get('name')}"
+            return f"No match found with match id: {game['game_id']}"
+        profile = profile_repository.get_profile(user_id=user.id)
+        if match.get('winner').get('acronym').upper() == game['team'].upper():
+            winnings = round(game['amount'] * game['odds'], 2)
+            profile = profile_repository.update_money(profile, winnings)
+            information = f"{profile['owner']} won {winnings} on the bet {match.get('name')}"
         else:
-            information = f"{profile.discord_username} lost {game.bet} on the bet {match.get('name')}"
-        session.delete(game)
-        session.commit()
+            information = f"{profile['owner']} lost {game['amount']} on the bet {match.get('name')}"
+        collection = db['esportGame']
+        collection.find_one_and_delete({"_id": game['_id']})
 
         return information
 

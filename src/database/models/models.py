@@ -5,8 +5,8 @@ from discord import Message, Member, Guild, User
 
 class Trigger:
     def __init__(self, message: Message, trig, resp):
-        self.guild_id = str(message.guild.id) # String to make consistent with previous model scheme
-        self.creator_id = str(message.author.id)
+        self.guild_id = message.guild.id
+        self.creator_id = message.author.id
         self.creator = message.author.name
         self.trigger = trig
         self.response = resp
@@ -21,7 +21,7 @@ class Trigger:
         }
 
     def __repr__(self):
-        return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.author, self.guild_id)
+        return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.creator, self.guild_id)
 
 
 class Report:
@@ -74,7 +74,6 @@ class Song:
     def __init__(self, owner: Member, title: str, url: str):
         self.owner = owner.name
         self.owner_id = owner.id
-
         self.title = title
         self.url = url
         self.latest_playtime = datetime.now()
@@ -96,11 +95,11 @@ class Profile:
         self.league_user_id = None
         self.balance = 0
 
-    def init_balance(self, user):
+    def init_balance(self):
         from database.repository import honor_repository
 
         # Set initial balance to honor count
-        count = honor_repository.get_honor_count(user)
+        count = honor_repository.get_honor_count_by_id(self.discord_id)
         self.balance = count * 100
 
     def to_mongodb(self):
@@ -111,24 +110,45 @@ class Profile:
             "balance": self.balance,
         }
 
-# class LeagueGame(Base):
-#     __tablename__ = 'game'
-#     __table_args__ = {'extend_existing': True}
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#
-#     UniqueConstraint("owner_id", "type")
-#
-#     channel_id = Column("channel_id", Integer)
-#     owner_id = Column('owner_id', String)
-#
-#     game_id = Column('game_id', String)
-#     bet = Column('bet', Integer)
-#     team = Column('team', Integer)
-#     type = Column('type', String)
-#
-#     def __init__(self, owner: User):
-#         self.owner_id = owner.id
 
+class LeagueGame:
+    def __init__(self, owner: User, amount, type, channel_id):
+        self.owner_id = owner.id
+        self.amount = amount
+        self.type = type
+        self.channel_id = channel_id
+        self.game_id = None
+        self.team = None
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "amount": self.amount,
+            "type": self.type,
+            "channel_id": self.channel_id,
+            "game_id": self.game_id,
+            "team": self.team
+        }
+
+
+class EsportGame:
+    def __init__(self, owner: User, match_id, amount, team, channel_id):
+        self.owner_id = owner.id
+        self.game_id = match_id
+        self.amount = amount
+        self.team = team
+        self.odds = 1
+        self.channel_id = channel_id
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "game_id": self.game_id,
+            "amount": self.amount,
+            "team": self.team,
+            "odds": self.odds,
+            "channel_id": self.channel_id,
+        }
 
 # class RoomModel(Base):
 #     """

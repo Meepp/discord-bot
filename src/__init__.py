@@ -7,14 +7,13 @@ from discord.ext import commands
 from discord.ext.commands import CommandNotFound, BadArgument
 
 from commands.chat import Chat
-# from commands.currency import Currency
+from commands.currency import Currency
 # from commands.games import Games
-# from commands.lolesports import Esports
+from commands.lolesports import Esports
 from commands.reputation import Reputation
-# from database import create_all_models
 from database.repository import music_repository, trigger_repository
-# from league_api import LeagueAPI
-# from score_api import PandaScoreAPI
+from league_api import LeagueAPI
+from score_api import PandaScoreAPI
 from musicplayer.musicplayer import MusicPlayer, Playlist
 from src.musicplayer.youtube_search import YoutubeAPI
 from src.settings import Settings
@@ -36,16 +35,16 @@ class Bot(commands.Bot):
 
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
-        # self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
-        # self.panda_score_api = PandaScoreAPI(self.config["DEFAULT"]["PandaScoreAPIKey"])
+        self.league_api = LeagueAPI(self, self.config["DEFAULT"]["LeagueAPIKey"])
+        self.panda_score_api = PandaScoreAPI(self.config["DEFAULT"]["PandaScoreAPIKey"])
 
         self.asyncio_loop = asyncio.new_event_loop()
         self.asyncio_thread = threading.Thread(target=self.asyncio_loop.run_forever)
-        # self.esports = Esports(self, self.panda_score_api)
+        self.esports = Esports(self, self.panda_score_api)
 
         self.asyncio_thread.start()
-        # self.league_api.payout_games.start()
-        # self.esports.payout_league_bet.start()
+        self.league_api.payout_games.start()
+        self.esports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
 
         print("Done initializing.")
@@ -110,10 +109,10 @@ bot.add_cog(Reputation(bot))
 bot.add_cog(bot.music_player)
 bot.add_cog(Chat(bot))
 bot.add_cog(Playlist(bot))
-# bot.add_cog(Currency(bot))
+bot.add_cog(Currency(bot))
 # bot.add_cog(Games(bot))
-# bot.add_cog(bot.esports)
-# bot.add_cog(bot.league_api)
+bot.add_cog(bot.esports)
+bot.add_cog(bot.league_api)
 
 # Use event handlers for emotes etc.
 import src.event_handlers.messages  # noqa

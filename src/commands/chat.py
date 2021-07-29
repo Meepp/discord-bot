@@ -1,6 +1,5 @@
 import re
 from random import randint
-from typing import List
 
 import discord
 import requests
@@ -34,6 +33,7 @@ class Chat(commands.Cog):
             self.bot.update_triggers(message)
             await message.channel.send("Trigger for '%s' added." % trigger.trigger)
         except Exception as e:
+            print(e)
             await message.channel.send("Trigger failed to add")
 
     async def command_remove_trigger(self, context: Context):
@@ -41,16 +41,17 @@ class Chat(commands.Cog):
 
         trig = message.content.split(" ", 2)[2]
         try:
-            trigger_repository.remove_trigger(message.guild, trig) # TODO check if works
+            trigger_repository.remove_trigger(message.guild, trig)  # TODO check if works
             self.bot.update_triggers(message)
             await message.channel.send("Trigger '" + trig + "' removed")
         except Exception as e:
+            print(e)
             await message.channel.send("Failed to remove trigger. Doesn't exist?")
 
     async def command_show_triggers(self, context: Context):
         message = context.message
         if len(self.bot.triggers[message.guild]) == 0:
-            await message.channel.send("This channel has no triggers.")
+            await message.channel.send("This server has no triggers.")
             return
 
         out = "```"
@@ -90,7 +91,7 @@ class Chat(commands.Cog):
     async def roll(self, context: Context, message=None):
         """
         !roll <N>: generate a random number between 0-N (N=100 by default). Or use NdM for dnd-type rolls. (N max 1000)
-        :param args:
+        :param context:
         :param message:
         :return:
         """
@@ -111,6 +112,7 @@ class Chat(commands.Cog):
             try:
                 upper = int(message)
             except ValueError as e:
+                print(e)
                 upper = 100
             value = str(randint(0, upper))
         await context.channel.send("%s rolled a %s." % (context.author.nick, value))
