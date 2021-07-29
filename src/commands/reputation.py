@@ -33,8 +33,8 @@ class Reputation(commands.Cog):
                 #     out += "%s %d\n" % (report['_id'], report['count'])
             else:
                 reports = report_repository.get_reports()
-                for report in reports:
-                    out += "%s %d\n" % (report['_id'], report['count'])
+                for key,value in reports.items():
+                    out += "%s %d\n" % (key, value)
             out += "```"
             await message.channel.send(out)
         elif subcommand == "time":

@@ -5,6 +5,7 @@ from bson import SON
 from sqlalchemy import func
 
 from database import mongodb as db
+from database.repository import profile_repository
 from src.database.models.models import Report
 
 
@@ -37,10 +38,15 @@ def add_report(report: Report):
 def get_reports():
     collection = db['report']
     pipeline = [
-        {"$group": {"_id": "$reportee", "count": {"$sum": 1}}},
+        {"$group": {"_id": "$reportee_id", "count": {"$sum": 1}}},
         {"$sort": SON([("count", -1), ("_id", -1)])}
     ]
-    return list(collection.aggregate(pipeline))
+    report_list = {}
+    for element in list(collection.aggregate(pipeline)):
+        profile = profile_repository.get_profile(user_id=element["_id"])
+        if profile is not None:
+            report_list[profile['owner']] = element['count']
+    return report_list
 
 
 def get_last_reports(guild, reporting):

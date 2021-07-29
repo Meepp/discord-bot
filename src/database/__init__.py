@@ -13,7 +13,7 @@ class MongoDB:
                                  f"retryWrites=true&w=majority"
 
         self.client = MongoClient(self.connection_string, connect=False)
-        self.db = self.client["discord-bot2"]
+        self.db = self.client["discord-bot"]
 
     def set_config(self, name):
         self.config.read(name)
