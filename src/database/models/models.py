@@ -2,6 +2,7 @@ from datetime import datetime
 
 from discord import Message, Member, Guild, User
 
+
 class Trigger:
     def __init__(self, message: Message, trig, resp):
         self.guild_id = message.guild.id
@@ -87,41 +88,33 @@ class Song:
         }
 
 
-class Playlist(Base):
-    __tablename__ = "playlist"
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    title = Column('title', String)
-
-    owner_id = Column('owner_id', String)
-
-    public = Column('public', Boolean, default=True)
-
+class Playlist:
     def __init__(self, owner: Member, title: str):
         self.owner_id = owner.id
-
         self.title = title
+        self.public = True
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "title": self.title,
+            "public": self.public
+        }
 
 
-class PlaylistSong(Base):
-    __tablename__ = "playlist_song"
-    __table_args__ = {'extend_existing': True}
+class PlaylistSong:
+    def __init__(self, playlist: dict, song: dict):
+        self.playlist_id = playlist['_id']
+        self.song_id = song['_id']
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    playlist_id = Column('playlist_id', String, ForeignKey("playlist.id"))
-    playlist = relationship('src.database.models.models.Playlist')
-
-    song_id = Column('song_id', String, ForeignKey("song.id"))
-    song = relationship('src.database.models.models.Song')
-
-    def __init__(self, playlist: Playlist, song: Song):
-        self.playlist_id = playlist.id
-        self.song_id = song.id
+    def to_mongodb(self):
+        return {
+            "playlist_id": self.playlist_id,
+            "song_id": self.song_id
+        }
 
 
-class Profile(Base):
+class Profile:
     def __init__(self, owner: User):
         self.discord_username = owner.name
         self.discord_id = owner.id
@@ -166,12 +159,12 @@ class LeagueGame:
 
 
 class EsportGame:
-    def __init__(self, owner: User, match_id, amount, team, channel_id):
+    def __init__(self, owner: User, match_id, amount, team, odd, channel_id):
         self.owner_id = owner.id
         self.game_id = match_id
         self.amount = amount
         self.team = team
-        self.odds = 1
+        self.odd = odd
         self.channel_id = channel_id
 
     def to_mongodb(self):
@@ -180,7 +173,7 @@ class EsportGame:
             "game_id": self.game_id,
             "amount": self.amount,
             "team": self.team,
-            "odds": self.odds,
+            "odd": self.odd,
             "channel_id": self.channel_id,
         }
 

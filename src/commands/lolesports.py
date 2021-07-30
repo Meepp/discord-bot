@@ -31,7 +31,7 @@ class Esports(commands.Cog):
         bets = game_repository.get_match_by_id(match_id)
         embed = Embed(title=match.get("name"),
                       description=("Winner: " + match.get("winner").get(
-                          "acronym")) if match.get("status") == "finished"
+                          "acronym")) if (match.get("status") == "finished" and match.get("winner") is not None)
                       else f"Scheduled at: {self.convert_scheduled_at(match.get('scheduled_at'))}",
                       color=0xFF5733)
         embed.set_author(name=match.get("league").get("name") + " - " + match.get("tournament").get("name"),
@@ -39,9 +39,7 @@ class Esports(commands.Cog):
         embed.set_thumbnail(url="attachment://match_image.png")
         embed.add_field(name="Official stream:", value=match.get("stream_url"), inline=False)
 
-        teams = match.get("opponents")
-        blue, red = teams[0].get("opponent").get("name"), teams[1].get("opponent").get("name")
-        rate, odds = self.bot.predictor.synchronized_compute_prediction(blue, red)
+        blue, odds, red = self.get_odds(match)
         embed.add_field(name="Betting Return", value="%s: %.3f - %s: %.3f" % (blue, odds[0], red, odds[1]), inline=True)
         if len(bets) > 0:
             bets_for_match = ""
@@ -51,6 +49,14 @@ class Esports(commands.Cog):
             embed.add_field(name="Active Bets:", value=bets_for_match, inline=False)
 
         return embed, match.get("image_file")
+
+    def get_odds(self, match):
+        teams = match.get("opponents")
+        blue, red = teams[0].get("opponent").get("name"), teams[1].get("opponent").get("name")
+        odds = self.bot.predictor.synchronized_compute_prediction(blue, red)
+        if odds is None:
+            odds = (2, 2)  # Default odds in case teams are not found
+        return blue, odds, red
 
     def bet_match(self, context, match_id, bet_team, bet_amount):
         profile = profile_repository.get_profile(user_id=context.author.id)
@@ -67,7 +73,12 @@ class Esports(commands.Cog):
                 return "You cannot bet a negative amount"
             bet_team = bet_team.upper()
             if bet_team in match.get("name"):
-                self.create_league_bet(context, match_id, bet_team, bet_amount, profile)
+                blue, odds, red = self.get_odds(match)
+                if match.get("opponents")[0]['opponent'].get("acronym") == bet_team:
+                    odd = odds[0]
+                else:
+                    odd = odds[1]
+                self.create_league_bet(context, match_id, bet_team, bet_amount, odd, profile)
                 return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
             else:
                 return f"You cannot bet on {bet_team} in the match {match.get('name')}."
@@ -111,11 +122,11 @@ class Esports(commands.Cog):
             await message.channel.send(f"Unknown command detected, please see !help esports for correct usage.")
 
     @staticmethod
-    def create_league_bet(context, match_id, bet_team, bet_amount, profile):
+    def create_league_bet(context, match_id, bet_team, bet_amount, odd, profile):
         collection = db['esportGame']
 
-        #TODO insert odds for team
-        game = EsportGame(context.author, match_id, bet_amount, bet_team.upper(), context.channel.id)
+        # TODO insert odds for team
+        game = EsportGame(context.author, match_id, bet_amount, bet_team.upper(), odd, context.channel.id)
         profile_repository.update_money(profile, -bet_amount)
         collection.insert(game.to_mongodb())
 
@@ -186,7 +197,7 @@ class Esports(commands.Cog):
 
         match_list = ""
         for match in matches:
-            scheduled_at = self.convert_scheduled_at(match.get("original_scheduled_at"))
+            scheduled_at = self.convert_scheduled_at(match.get("scheduled_at"))
             match_list += scheduled_at + " " + str(match.get("id")) + " - " + match.get(
                 "name") + "\n"
 
@@ -198,4 +209,7 @@ class Esports(commands.Cog):
     def convert_scheduled_at(time):
         scheduled_at = datetime.strptime(time, "%Y-%m-%dT%H:%M:%SZ")
         scheduled_at = scheduled_at.replace(tzinfo=timezone.utc).astimezone(tz=None)
-        return scheduled_at.strftime("%m/%d/%Y, %H:%M")
+        if scheduled_at.day == datetime.today().day:
+            return f"Today at {scheduled_at.strftime('%H:%M')}"
+        else:
+            return scheduled_at.strftime("%d/%m/%Y, %H:%M")

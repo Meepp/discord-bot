@@ -26,6 +26,10 @@ def get_song(url: str):
     collection = db['song']
     return collection.find_one({"url": url})
 
+def get_song_by_id(_id):
+    collection = db['song']
+    return collection.find_one({"_id": _id})
+
 
 def remove_from_owner(url: str, owner_id: int):
     collection = db['song']
@@ -79,23 +83,20 @@ def update_latest_playtime(song):
     collection = db['song']
     return collection.find_one_and_update({"url": song['url']}, {"$set": {'latest_playtime': datetime.now()}})
 
+
 def get_playlist(owner, name):
     if name is None:
         return None
-    session = db.session()
-    playlist = session.query(Playlist).filter(Playlist.title == name).one_or_none()
+    collection = db['playlist']
+    playlist = collection.find_one({"title": name})
     if not playlist:
         print("Creating new playlist:", name)
-        playlist = Playlist(owner, name)
-        session.add(playlist)
-        session.commit()
+        playlist_id = collection.insert(Playlist(owner, name).to_mongodb())
+        playlist = collection.find_one({"_id": playlist_id})
     return playlist
 
 
-def get_playlist_songs(owner, playlist: Playlist):
-    session = db.session()
-    songs = session.query(Song)\
-        .join(PlaylistSong)\
-        .filter(PlaylistSong.playlist_id == playlist.id)\
-        .all()
+def get_playlist_songs(playlist: dict):
+    collection = db['playlistSong']
+    songs = list(collection.find({"playlist_id": playlist['_id']}))
     return songs

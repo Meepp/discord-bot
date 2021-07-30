@@ -29,3 +29,8 @@ def get_profile(user: User = None, user_id: int = None, username: str = None):
         return db['profile'].find_one({"owner_id": user_id})
     if username is not None:
         return db['profile'].find_one({"owner": username})
+
+
+def update_active_playlist(profile: dict, value):
+    return db['profile'].find_one_and_update(filter={"_id": profile['_id']}, update={"$set": {"active_playlist": value}},
+                                             upsert=True, return_document=ReturnDocument.AFTER)
