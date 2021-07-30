@@ -14,15 +14,13 @@ class Esports(commands.Cog):
         self.bot = bot
         self.panda_score_api = panda_score_api
 
-    def ongoing_matches(self):
-        out = "```"
-        out += "ID | Match | Status | Winner: \n"
-        matches = self.panda_score_api.get_running_tournament_matches()
-
-        for match_id, match in matches.items():
-            out += str(match_id) + "\t" + str(match[0]) + "\t" + str(match[1]) + "\t" + str(match[2]) + "\n"
-        out += "```"
-        return out
+    def ongoing_matches(self, league):
+        league = league.upper()
+        match_id = self.panda_score_api.get_ongoing_match(league)
+        if match_id is not None:
+            return self.get_match(match_id)
+        else:
+            return f"Currently there are no ongoing matches for {league}", None
 
     def get_match(self, match_id):
         match = self.panda_score_api.get_match_by_id(match_id)
@@ -98,7 +96,13 @@ class Esports(commands.Cog):
         message = context.message
 
         if subcommand == "ongoing":
-            await message.channel.send(self.ongoing_matches())
+            if arg_id is None:
+                return await message.channel.send("Please specify a league for which you want to know ongoing matches")
+            match, file = self.ongoing_matches(arg_id)
+            if isinstance(match, str):
+                await message.channel.send(match)
+            else:
+                await message.channel.send(embed=match, file=file)
 
         elif subcommand == "match":
             match, file = self.get_match(arg_id)

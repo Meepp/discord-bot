@@ -12,10 +12,10 @@ NAME_CHANGE_COST = 10
 
 def format_money(money: int):
     if money > 10000000:
-        return "%.1fm" % (money / 1000000.)
+        return "%.02fm" % (money / 1000000.)
     if money > 100000:
-        return "%.dk" % (money / 1000)
-    return money
+        return "%.02dk" % (money / 1000)
+    return "%.02f" % money
 
 
 class Currency(commands.Cog):

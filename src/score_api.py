@@ -24,8 +24,6 @@ def get_match_image(opponents):
     return file
 
 
-
-
 class PandaScoreAPI:
     def __init__(self, key):
         self.key = key
@@ -36,19 +34,21 @@ class PandaScoreAPI:
             return entry.get("id")
         return None
 
-    def get_running_tournament_matches(self):
-        matches = {}
+    def get_ongoing_match(self, league):
+        league_id = self.league_id_from_name(league)
+        if league_id is None:
+            raise BadArgument("No leagues found with that name.")
         raw_response = requests.get(
-            f"{API_URL}/tournaments/running?search[name]=group&token=" + self.key)
+            f"{API_URL}/matches/running?filter[league_id]={league_id}&token={self.key}")
         if raw_response.status_code == 200:
-            for group in raw_response.json():
-                for match in group.get("matches")[:10]: # Limit to first 10
-                    matches[match.get("id")] = (match.get("name"), match.get("status"), match.get("winner_id"))
-        return matches
+            if not raw_response.json():
+                return
+            ongoing_match = raw_response.json()[0]
+            return ongoing_match.get("id")
 
     def get_match_by_id(self, match_id):
         raw_response = requests.get(
-            f"{API_URL}/matches?filter[id]=" + match_id + "&token=" + self.key)
+            f"{API_URL}/matches?filter[id]={match_id}&token={self.key}")
         if raw_response.status_code != 200:
             return None
         if len(raw_response.json()) == 0:
