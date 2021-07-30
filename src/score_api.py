@@ -7,21 +7,28 @@ API_URL = "https://api.pandascore.co/lol/"
 
 
 def get_match_image(opponents):
-    image1 = Image.open(requests.get(opponents[0]["opponent"].get("image_url"), stream=True).raw)
-    image2 = Image.open(requests.get(opponents[1]["opponent"].get("image_url"), stream=True).raw)
-    image1 = image1.resize((200, 200))
-    image2 = image2.resize((200, 200))
+    image1 = convert_image(opponents[0]["opponent"].get("image_url"))
+
+    image2 = convert_image(opponents[1]["opponent"].get("image_url"))
 
     padding = 10
 
     width, height = image1.size[0], image1.size[1]
-    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (48, 52, 52))
+    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (47, 49, 54))
     new_image.paste(image1, (padding, padding))
     new_image.paste(image2, (width + padding * 3, padding))
     new_image.save('match_image.png', "PNG")
     file = discord.File("match_image.png", filename="match_image.png")
 
     return file
+
+
+def convert_image(image_url):
+    image1 = Image.open(requests.get(image_url, stream=True).raw)
+    image1 = image1.resize((200, 200))
+    bg_image1 = Image.new("RGB", image1.size, (47, 49, 54))
+    bg_image1.paste(image1, mask=image1.split()[3])  # 3 is the alpha channel
+    return bg_image1
 
 
 class PandaScoreAPI:
@@ -85,11 +92,12 @@ class PandaScoreAPI:
     def get_upcoming_matches(self, league):
         if league is None:
             raw_response = requests.get(
-                f"{API_URL}/matches/upcoming?page[size]=5&page[number]=1" + "&token=" + self.key)
+                f"{API_URL}/matches/upcoming?page[size]=5&page[number]=1&token={self.key}")
         else:
             league_id = self.league_id_from_name(league)
             if league_id is None:
                 raise BadArgument("No leagues found with that name.")
             raw_response = requests.get(
-                f"{API_URL}/matches/upcoming?filter[league_id]={league_id}&page[size]=5&page[number]=1" + "&token=" + self.key)
+                f"{API_URL}/matches/upcoming?"
+                f"filter[league_id]={league_id}&page[size]=5&page[number]=1&token={self.key}")
         return raw_response.json()
