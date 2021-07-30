@@ -2,7 +2,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from database.models.models import Honor, Report
-from database.repository import honor_repository, report_repository
+from database.repository import honor_repository, report_repository, profile_repository
 from database.repository.profile_repository import get_profile, get_money, update_money
 
 
@@ -61,6 +61,8 @@ class Reputation(commands.Cog):
             if time is None:
                 report_obj = Report(message.guild, reportee, reporting)
                 report_repository.add_report(report_obj)
+                profile = profile_repository.get_profile(user_id=reportee.id)
+                profile_repository.update_money(profile, -1)
             else:
                 await message.channel.send("Wait %d minutes to report again." % time)
 
@@ -103,6 +105,8 @@ class Reputation(commands.Cog):
                 honor = Honor(message.guild, honoree, honoring)
                 # Add money to balance if honored
                 honor_repository.add_honor(honor)
+                profile = profile_repository.get_profile(user_id=honoree.id)
+                profile_repository.update_money(profile, 100)
                 if honoree.id == 772902827633934376 or honoree.id == 340197681311776768:
                     await message.channel.send("Thank you for honoring the hard working bot!")
             else:

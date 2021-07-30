@@ -49,7 +49,7 @@ class Currency(commands.Cog):
         else:
             profile = profile_repository.get_money(user)
 
-        await context.channel.send("Current balance: %d" % format_money(profile['balance']))
+        await context.channel.send(f"Current balance: {format_money(profile['balance'])}")
 
     @commands.command()
     async def balancetop(self, context: Context):

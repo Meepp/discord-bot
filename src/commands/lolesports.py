@@ -1,8 +1,10 @@
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import Embed, User
+
+from custom_emoji import CustomEmoji
 from database import mongodb as db
-from database.models.models import Profile, LeagueGame, EsportGame
+from database.models.models import EsportGame
 from database.repository import game_repository, profile_repository
 from datetime import datetime, timezone
 
@@ -23,10 +25,11 @@ class Esports(commands.Cog):
             return f"Currently there are no ongoing matches for {league}", None
 
     def get_match(self, match_id):
+        match_id = int(match_id)
         match = self.panda_score_api.get_match_by_id(match_id)
         if match is None:
             return f"No match found with match id: {match_id}", None
-        bets = game_repository.get_match_by_id(match_id)
+
         embed = Embed(title=match.get("name"),
                       description=("Winner: " + match.get("winner").get(
                           "acronym")) if (match.get("status") == "finished" and match.get("winner") is not None)
@@ -37,8 +40,11 @@ class Esports(commands.Cog):
         embed.set_thumbnail(url="attachment://match_image.png")
         embed.add_field(name="Official stream:", value=match.get("stream_url"), inline=False)
 
+        embed.add_field(name="Match ID", value=str(match_id), inline=False)
+
         blue, odds, red = self.get_odds(match)
         embed.add_field(name="Betting Return", value="%s: %.3f - %s: %.3f" % (blue, odds[0], red, odds[1]), inline=True)
+        bets = game_repository.get_match_by_id(match_id)
         if len(bets) > 0:
             bets_for_match = ""
             for bet in bets:
@@ -57,6 +63,7 @@ class Esports(commands.Cog):
         return blue, odds, red
 
     def bet_match(self, context, match_id, bet_team, bet_amount):
+        match_id = int(match_id)
         profile = profile_repository.get_profile(user_id=context.author.id)
         match = self.panda_score_api.get_match_by_id(match_id)
         if match is None:
@@ -66,7 +73,8 @@ class Esports(commands.Cog):
 
         if match.get("status") == "not_started":
             if profile['balance'] < bet_amount:
-                return f"You are betting more than you currently have! (Current balance: {profile['balance']})"
+                return f"You are betting more than you currently have a.k.a you are poor {CustomEmoji.omegalul}! " \
+                       f"(Current balance: {profile['balance']})"
             if bet_amount < 0:
                 return "You cannot bet a negative amount"
             bet_team = bet_team.upper()
@@ -87,6 +95,7 @@ class Esports(commands.Cog):
     async def esports(self, context: Context, subcommand: str, arg_id: str = None, bet_team: str = None,
                       bet_amount: int = None):
         """
+        :param context:
         :param subcommand: Possible options: ongoing, match, bet, team, and upcoming
         :param arg_id: Possible options in case of match or bet: id of match. In case of team: acronym or team id.
         :param bet_team: Acronym of the team you wish to bet on
@@ -158,7 +167,7 @@ class Esports(commands.Cog):
             return f"No match found with match id: {game['game_id']}"
         profile = profile_repository.get_profile(user_id=user.id)
         if match.get('winner').get('acronym').upper() == game['team'].upper():
-            winnings = round(game['amount'] * game['odds'], 2)
+            winnings = round(game['amount'] * game['odd'], 2)
             profile = profile_repository.update_money(profile, winnings)
             information = f"{profile['owner']} won {winnings} on the bet {match.get('name')}"
         else:
@@ -167,6 +176,11 @@ class Esports(commands.Cog):
         collection.find_one_and_delete({"_id": game['_id']})
 
         return information
+
+    @staticmethod
+    def sortlaners(laner):
+        role_order = ["top", "jun", "mid", "adc", "sup"]
+        return role_order.index(laner.get('role'))
 
     def get_team(self, arg_id):
         if arg_id.isnumeric():
@@ -182,16 +196,19 @@ class Esports(commands.Cog):
                 for t in teams:
                     list_of_teams += f"{t.get('id')}: {t.get('name')}\n"
                 list_of_teams += "```"
-                return "There are multiple teams with this acronym, which one did you mean? Type !esports <team_id>\n" + list_of_teams
+                return "There are multiple teams with this acronym, which one did you mean? Type !esports <team_id>\n" \
+                       + list_of_teams
         team = teams[0]
-        embed = Embed(title=team.get("name", ""), color=0xFF5733)
-        embed.set_author(name=str(team.get("acronym")) + " - " + str(team.get("location")))
+        embed = Embed(title=f" {team.get('name', '')} - :flag_{team.get('location').lower()}:", color=0xFF5733)
+        embed.set_author(name=f"{team.get('acronym')}")
         embed.set_thumbnail(
             url=team.get('image_url'))
         player_list = ""
-        for player in team.get('players'):
-            player_list += str(player.get('first_name')) + ", " + f"**{player.get('name')}**" + ", " + str(player.get(
-                "last_name")) + f" ({player.get('role')})" "\n"
+
+        for player in sorted(team.get('players'), key=self.sortlaners):
+            player_list += f":flag_{player.get('nationality').lower()}: " + str(
+                player.get('first_name')) + ", " + f"**{player.get('name')}**" + ", " \
+                    + str(player.get("last_name")) + f" ({player.get('role').capitalize()})" + "\n"
         embed.add_field(name="Player Roster", value=player_list, inline=False)
 
         return embed

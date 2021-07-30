@@ -15,7 +15,7 @@ def get_match_image(opponents):
     padding = 10
 
     width, height = image1.size[0], image1.size[1]
-    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (0, 0, 0))
+    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (48, 52, 52))
     new_image.paste(image1, (padding, padding))
     new_image.paste(image2, (width + padding * 3, padding))
     new_image.save('match_image.png', "PNG")
@@ -29,7 +29,7 @@ class PandaScoreAPI:
         self.key = key
 
     def league_id_from_name(self, name):
-        json_response = requests.get(f"{API_URL}/leagues?filter[name]={name}&token=" + self.key).json()
+        json_response = requests.get(f"{API_URL}/leagues?filter[name]={name}&token={self.key}").json()
         for entry in json_response:
             return entry.get("id")
         return None
@@ -44,7 +44,7 @@ class PandaScoreAPI:
             if not raw_response.json():
                 return
             ongoing_match = raw_response.json()[0]
-            return ongoing_match.get("id")
+            return int(ongoing_match.get("id"))
 
     def get_match_by_id(self, match_id):
         raw_response = requests.get(
@@ -67,18 +67,18 @@ class PandaScoreAPI:
 
     def is_game_finished(self, match_id: str):
         raw_response = requests.get(
-            f"{API_URL}/matches?filter[id]=" + match_id + "&token=" + self.key)
+            f"{API_URL}/matches?filter[id]={match_id}&token={self.key}")
         match = raw_response.json()[0]
         return match.get("games")[0].get("status")
 
     def get_team_by_id(self, team_id: str):
         raw_response = requests.get(
-            f"{API_URL}/teams?filter[id]=" + team_id + "&token=" + self.key)
+            f"{API_URL}/teams?filter[id]={team_id}&token={self.key}")
         return raw_response.json()
 
     def get_team_by_acronym(self, acronym):
         raw_response = requests.get(
-            f"{API_URL}/teams?search[acronym]=" + acronym + "&token=" + self.key)
+            f"{API_URL}/teams?search[acronym]={acronym}&token={self.key}")
 
         return list(filter(lambda x: len(x.get("players")) >= 5, raw_response.json()))
 

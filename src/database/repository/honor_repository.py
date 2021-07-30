@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from bson import SON
-from discord import User
 
 from src.database.models.models import Honor
 from database import mongodb as db
