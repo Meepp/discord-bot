@@ -10,7 +10,7 @@
         {% if session_user() is not none %}
         <div class="styled-div-text">
             <div class="custom-text">User: </div>
-            <div class="custom-title">{{ session_user().discord_username }}</div>
+            <div class="custom-title">{{ session_user().owner }}</div>
         </div>
         {% endif %}
     </div>

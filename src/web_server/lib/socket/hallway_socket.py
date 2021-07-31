@@ -1,14 +1,11 @@
-from datetime import datetime
 from typing import Dict
 
 from flask import request
 from flask_socketio import join_room
 
 from database.repository import room_repository
-from database.repository.room_repository import get_room
 from src.web_server import session_user, sio
 from src.web_server.lib.game.HallwayHunters import HallwayHunters
-from src.web_server.lib.game.PlayerClasses import PlayerClass
 from src.web_server.lib.game.Utils import Point
 from src.web_server.lib.game.commands import handle_developer_command
 from src.web_server.lib.game.exceptions import InvalidAction, InvalidCommand
@@ -33,7 +30,7 @@ def on_join(data):
     game = games[room_id]
     game.add_player(profile, request.sid)
 
-    sio.emit("join", profile.discord_username, json=True, room=room_id, namespace="/hallway")
+    sio.emit("join", profile['owner'], json=True, room=room_id, namespace="/hallway")
     game.update_players()
 
 
@@ -44,8 +41,8 @@ def disconnect():
         if player:
             game.remove_player(player.profile)
 
-            game.broadcast("%s left the game." % player.profile.discord_username)
-            sio.emit("leave", player.profile.discord_username, json=True, room=room_id, namespace="/hallway")
+            game.broadcast("%s left the game." % player.profile['owner'])
+            sio.emit("leave", player.profile['owner'], json=True, room=room_id, namespace="/hallway")
 
 
 @sio.on("game_state", namespace="/hallway")
@@ -57,7 +54,7 @@ def get_state(data):
     profile = session_user()
     player = game.get_player(profile=profile)
     if player is None:
-        game.add_player(profile, request.sid)
+        player = game.add_player(profile, request.sid)
 
     sio.emit("game_state", game.export_board(player), room=player.socket, namespace="/hallway")
 
@@ -65,7 +62,6 @@ def get_state(data):
 @sio.on("start", namespace="/hallway")
 def start_game(data):
     room_id = int(data.get("room"))
-    selected_class = data.get("player_class")
     room = room_repository.get_room(room_id)
     profile = session_user()
 
@@ -76,7 +72,7 @@ def start_game(data):
     player.ready = not player.ready
 
     # Only the owner may start the game
-    if room.author_id != profile.discord_id:
+    if room['author_id'] != profile['owner_id']:
         game.update_players()
         return
 
@@ -153,7 +149,7 @@ def message(data):
     text_message = data.get('message')
     if text_message != "":  # Stop empty messages
         profile = session_user()
-        data["username"] = profile.discord_username
+        data["username"] = profile['owner']
         if text_message[0] == "/":
             data["profile"] = profile
             game = games[room_id]

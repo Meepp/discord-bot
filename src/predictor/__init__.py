@@ -18,7 +18,7 @@ PLAYER_COLUMNS = ["date", "player", "gameid", "kills", "deaths", "assists", "dpm
                   "damagetakenperminute", "wpm",
                   "vspm", "earned gpm", "cspm", "csat10", "goldat10", "killsat10", "deathsat10", "assistsat10",
                   "csat15", "goldat15", "killsat15", "deathsat15", "assistsat15"]
-PATH_TO_DOWNLOAD = os.path.join(os.curdir, "storage/data")
+PATH_TO_DOWNLOAD = os.path.join(os.path.dirname(os.path.realpath(__file__)), "storage\data")
 
 
 class CustomIndexer(BaseIndexer):
@@ -217,7 +217,7 @@ def fetch_data():
 
     # Setup a headless firefox client
     options = Options()
-    options.headless = True
+    options.headless = False
     driver = webdriver.Firefox(profile, options=options)
 
     # Fetch url
@@ -267,8 +267,6 @@ class Predictor:
     def synchronized_compute_prediction(self, blue, red):
         predict_data = prepare_predict_data(self.data, blue, red)
         if predict_data is not None:
-            # print(self.model.predict(predict_data))
             prob = (self.model.decision_function(predict_data)[0] + 1) / 2
             odds = (1 / prob, 1 / (1 - prob))
-            # print(prob, odds)
-            return prob, odds
+            return odds

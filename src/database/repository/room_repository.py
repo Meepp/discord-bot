@@ -1,20 +1,16 @@
-from typing import List, Optional
-
-from database import db
-from database.models.models import RoomModel
+from database import mongodb as db
 
 
-def get_rooms() -> List[RoomModel]:
-    session = db.session()
-
-    return session.query(RoomModel).all()
-
-
-def get_room(room_id: int) -> RoomModel:
-    session = db.session()
-    return session.query(RoomModel).filter(RoomModel.id == room_id).one_or_none()
+def get_rooms():
+    collection = db['gameRoom']
+    return list(collection.find())
 
 
-def find_room_by_message_id(message_id: int) -> Optional[RoomModel]:
-    session = db.session()
-    return session.query(RoomModel).filter(RoomModel.message_id == message_id).one_or_none()
+def get_room(room_id: int):
+    collection = db['gameRoom']
+    return collection.find_one({"message_id": room_id})
+
+
+def find_room_by_message_id(message_id: int):
+    collection = db['gameRoom']
+    return collection.find_one({"message_id": message_id})

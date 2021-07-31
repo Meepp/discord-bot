@@ -34,8 +34,8 @@ async def on_message(message):
         return
 
     for trigger in bot.triggers[message.guild]:
-        if trigger.trigger in message.content:
-            await message.channel.send(trigger.response)
+        if trigger['trigger'] in message.content:
+            await message.channel.send(trigger['response'])
 
 
 @bot.event

@@ -12,7 +12,6 @@ from commands.currency import Currency
 from commands.games import Games
 from commands.lolesports import Esports
 from commands.reputation import Reputation
-from database import create_all_models
 from database.repository import music_repository, trigger_repository
 from league_api import LeagueAPI
 from predictor import Predictor
@@ -118,11 +117,6 @@ bot.add_cog(Currency(bot))
 bot.add_cog(Games(bot))
 bot.add_cog(bot.esports)
 bot.add_cog(bot.league_api)
-
-
-# Import models and create tables
-import src.database.models.models  # noqa
-create_all_models()
 
 # Use event handlers for emotes etc.
 import src.event_handlers.messages  # noqa

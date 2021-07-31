@@ -1,10 +1,9 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database import db
-from database.models.models import Report, Honor
-from database.repository import honor_repository, report_repository
-from database.repository.profile_repository import get_profile, get_money
+from database.models.models import Honor, Report
+from database.repository import honor_repository, report_repository, profile_repository
+from database.repository.profile_repository import get_profile, get_money, update_money
 
 
 class Reputation(commands.Cog):
@@ -26,14 +25,16 @@ class Reputation(commands.Cog):
         if subcommand == "show":
             out = "```"
             if len(message.mentions) > 0:
-                out += "Reported by:\n"
-                reports = report_repository.get_all_reports(message.guild, message.mentions[0])
-                for report_obj, n in reports:
-                    out += "%s %d\n" % (report_obj.reporting, n)
+                pass  # TODO
+                # out += "Reported by:\n"
+                # reports = report_repository.get_all_reports(message.mentions[0])
+                # print(reports)
+                # for report in reports:
+                #     out += "%s %d\n" % (report['_id'], report['count'])
             else:
-                reports = report_repository.get_reports(message.guild)
-                for report_obj, n in reports:
-                    out += "%s %d\n" % (report_obj.reportee, n)
+                reports = report_repository.get_reports()
+                for key,value in reports.items():
+                    out += "%s %d\n" % (key, value)
             out += "```"
             await message.channel.send(out)
         elif subcommand == "time":
@@ -52,7 +53,7 @@ class Reputation(commands.Cog):
             reporting = message.author
 
             # Not allowed to report the bot.
-            if message.mentions[0] == "340197681311776768":
+            if message.mentions[0] == "340197681311776768" or message.mentions[0] == "772902827633934376":
                 await message.channel.send("I don't think so, bro.")
                 reportee = message.author
 
@@ -60,6 +61,8 @@ class Reputation(commands.Cog):
             if time is None:
                 report_obj = Report(message.guild, reportee, reporting)
                 report_repository.add_report(report_obj)
+                profile = profile_repository.get_profile(user_id=reportee.id)
+                profile_repository.update_money(profile, -1)
             else:
                 await message.channel.send("Wait %d minutes to report again." % time)
 
@@ -75,11 +78,14 @@ class Reputation(commands.Cog):
         message = context.message
         if subcommand == "show":
             out = "```"
-            honors = honor_repository.get_honors(message.guild)
-            for honor, n in honors:
-                out += "%s %d\n" % (honor.honoree, n)
+            honors = honor_repository.get_honors()
+            if honors is None:
+                return
+            for honor in honors:
+                out += "%s %d\n" % (honor['_id'], honor['count'])
             out += "```"
             await message.channel.send(out)
+
         elif subcommand == "time":
             honoring = message.author
             time = honor_repository.honor_allowed(message.guild, honoring)
@@ -97,13 +103,11 @@ class Reputation(commands.Cog):
             time = honor_repository.honor_allowed(message.guild, honoring)
             if time is None:
                 honor = Honor(message.guild, honoree, honoring)
-                session = db.session()
-
                 # Add money to balance if honored
-                money = get_money(honoree)
-                money.balance += 100
-                session.commit()
-
                 honor_repository.add_honor(honor)
+                profile = profile_repository.get_profile(user_id=honoree.id)
+                profile_repository.update_money(profile, 100)
+                if honoree.id == 772902827633934376 or honoree.id == 340197681311776768:
+                    await message.channel.send("Thank you for honoring the hard working bot!")
             else:
                 await message.channel.send("Wait %d minutes to honor again." % time)

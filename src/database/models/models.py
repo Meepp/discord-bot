@@ -1,48 +1,30 @@
 from datetime import datetime
 
 from discord import Message, Member, Guild, User
-from sqlalchemy import Integer, Column, String, DateTime, UniqueConstraint, ForeignKey, Boolean
-from sqlalchemy.orm import relationship
-
-from database import Base
 
 
-class Trigger(Base):
-    __tablename__ = 'triggers'
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    guild_id = Column('guild_id', String)
-    author = Column('creator', String)
-    author_id = Column('creator_id', String)
-
-    trigger = Column('trigger', String)
-    response = Column('response', String)
-
-    def __init__(self, message: Message):
+class Trigger:
+    def __init__(self, message: Message, trig, resp):
         self.guild_id = message.guild.id
-        self.author_id = message.author.id
-        self.author = message.author.name
+        self.creator_id = message.author.id
+        self.creator = message.author.name
+        self.trigger = trig
+        self.response = resp
+
+    def to_mongodb(self):
+        return {
+            "guild_id": self.guild_id,
+            "creator_id": self.creator_id,
+            "creator": self.creator,
+            "trigger": self.trigger,
+            "response": self.response
+        }
 
     def __repr__(self):
-        return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.author, self.guild_id)
+        return "%s -> %s by %s (%s)" % (self.trigger, self.response, self.creator, self.guild_id)
 
 
-class Report(Base):
-    __tablename__ = 'report'
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    guild_id = Column('guild_id', String)
-    reportee = Column('reportee', String)
-    reportee_id = Column('reportee_id', String)
-
-    reporting = Column('reporting', String)
-    reporting_id = Column('reporting_id', String)
-
-    time = Column('time', DateTime)
-
+class Report:
     def __init__(self, guild: Guild, reportee: Member, reporting: Member):
         self.guild_id = guild.id
 
@@ -54,21 +36,18 @@ class Report(Base):
 
         self.time = datetime.now()
 
+    def to_mongodb(self):
+        return {
+            "guild_id": self.guild_id,
+            "reportee": self.reportee,
+            "reportee_id": self.reportee_id,
+            "reporting": self.reporting,
+            "reporting_id": self.reporting_id,
+            "time": self.time
+        }
 
-class Honor(Base):
-    __tablename__ = 'honor'
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
 
-    guild_id = Column('guild_id', String)
-    honoree = Column('honoree', String)
-    honoree_id = Column('honoree_id', String)
-
-    honoring = Column('honoring', String)
-    honoring_id = Column('honoring_id', String)
-
-    time = Column('time', DateTime)
-
+class Honor:
     def __init__(self, guild: Guild, honoree: User, honoring: User):
         self.guild_id = guild.id
 
@@ -80,132 +59,144 @@ class Honor(Base):
 
         self.time = datetime.now()
 
+    def to_mongodb(self):
+        return {
+            "guild_id": self.guild_id,
+            "honoree": self.honoree,
+            "honoree_id": self.honoree_id,
+            "honoring": self.honoring,
+            "honoring_id": self.honoring_id,
+            "time": self.time
+        }
 
-class Song(Base):
-    __tablename__ = 'song'
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
 
-    UniqueConstraint("owner_id", "url")
-
-    owner = Column('owner', String)
-    owner_id = Column('owner_id', String)
-
-    title = Column('title', String)
-    url = Column('url', String)
-    file = Column('file', String)
-
-    latest_playtime = Column('latest_playtime', DateTime)
-
+class Song:
     def __init__(self, owner: Member, title: str, url: str):
         self.owner = owner.name
         self.owner_id = owner.id
-
         self.title = title
         self.url = url
         self.latest_playtime = datetime.now()
 
+    def to_mongodb(self):
+        return {
+            "owner": self.owner,
+            "owner_id": self.owner_id,
+            "title": self.title,
+            "url": self.url,
+            "latest_playtime": self.latest_playtime
+        }
 
-class Playlist(Base):
-    __tablename__ = "playlist"
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
 
-    title = Column('title', String)
-
-    owner_id = Column('owner_id', String)
-
-    public = Column('public', Boolean, default=True)
-
+class Playlist:
     def __init__(self, owner: Member, title: str):
         self.owner_id = owner.id
-
         self.title = title
+        self.public = True
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "title": self.title,
+            "public": self.public
+        }
 
 
-class PlaylistSong(Base):
-    __tablename__ = "playlist_song"
-    __table_args__ = {'extend_existing': True}
+class PlaylistSong:
+    def __init__(self, playlist: dict, song: dict):
+        self.playlist_id = playlist['_id']
+        self.song_id = song['_id']
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    playlist_id = Column('playlist_id', String, ForeignKey("playlist.id"))
-    playlist = relationship('src.database.models.models.Playlist')
-
-    song_id = Column('song_id', String, ForeignKey("song.id"))
-    song = relationship('src.database.models.models.Song')
-
-    def __init__(self, playlist: Playlist, song: Song):
-        self.playlist_id = playlist.id
-        self.song_id = song.id
+    def to_mongodb(self):
+        return {
+            "playlist_id": self.playlist_id,
+            "song_id": self.song_id
+        }
 
 
-class Profile(Base):
-    __tablename__ = 'profile'
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    discord_username = Column('owner', String)
-    discord_id = Column('owner_id', Integer, unique=True)
-
-    balance = Column('balance', Integer, default=0)
-
-    league_user_id = Column('league_user_id', String)
-
-    active_playlist = Column("active_playlist", String, default=None)
-
+class Profile:
     def __init__(self, owner: User):
         self.discord_username = owner.name
         self.discord_id = owner.id
+        self.league_user_id = None
+        self.balance = 0
+        self.active_playlist = None
 
-    def init_balance(self, session, user):
+    def init_balance(self):
         from database.repository import honor_repository
 
         # Set initial balance to honor count
-        count = honor_repository.get_honor_count(user)
+        count = honor_repository.get_honor_count_by_id(self.discord_id)
         self.balance = count * 100
-        session.commit()
+
+    def to_mongodb(self):
+        return {
+            "owner": self.discord_username,
+            "owner_id": self.discord_id,
+            "league_user_id": self.league_user_id,
+            "balance": self.balance,
+        }
 
 
-class LeagueGame(Base):
-    __tablename__ = 'game'
-    __table_args__ = {'extend_existing': True}
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    UniqueConstraint("owner_id", "type")
-
-    channel_id = Column("channel_id", Integer)
-    owner_id = Column('owner_id', String)
-
-    game_id = Column('game_id', String)
-    bet = Column('bet', Integer)
-    team = Column('team', Integer)
-    type = Column('type', String)
-
-    def __init__(self, owner: User):
+class LeagueGame:
+    def __init__(self, owner: User, amount, type, channel_id):
         self.owner_id = owner.id
+        self.amount = amount
+        self.type = type
+        self.channel_id = channel_id
+        self.game_id = None
+        self.team = None
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "amount": self.amount,
+            "type": self.type,
+            "channel_id": self.channel_id,
+            "game_id": self.game_id,
+            "team": self.team
+        }
 
 
-class RoomModel(Base):
+class EsportGame:
+    def __init__(self, owner: User, match_id, amount, team, odd, channel_id):
+        self.owner_id = owner.id
+        self.game_id = match_id
+        self.amount = amount
+        self.team = team
+        self.odd = odd
+        self.channel_id = channel_id
+
+    def to_mongodb(self):
+        return {
+            "owner_id": self.owner_id,
+            "game_id": self.game_id,
+            "amount": self.amount,
+            "team": self.team,
+            "odd": self.odd,
+            "channel_id": self.channel_id,
+        }
+
+
+class RoomModel:
     """
     Stores information about a room in which poker games are being played
     """
-    __tablename__ = "room"
-    __table_args__ = {'extend_existing': True}
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(), nullable=False)
-
-    author = Column(String())
-    author_id = Column(Integer(), nullable=False)
-
-    message_id = Column(Integer())
-
-    created = Column(DateTime(), nullable=False, default=datetime.now())
-    type = Column(String(), nullable=False)
-
-    def __init__(self, name: str, profile: Profile, room_type: str):
+    def __init__(self, name: str, profile: dict, room_type: str, created, message_id):
         self.name = name
-        self.author_id = profile.discord_id
-        self.author = profile.discord_username
+        self.author_id = profile['owner_id']
+        self.author = profile['owner']
         self.type = room_type
+        self.created = created
+        self.message_id = message_id
+
+    def to_mongodb(self):
+        return {
+            "name": self.name,
+            "author_id": self.author_id,
+            "author": self.author,
+            "type": self.type,
+            "created": self.created,
+            "message_id": self.message_id
+        }

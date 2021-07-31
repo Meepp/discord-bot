@@ -1,53 +1,59 @@
 from datetime import datetime
 
+import pymongo
+from bson import SON
 from sqlalchemy import func
 
-from database import db
+from database import mongodb as db
+from database.repository import profile_repository
 from src.database.models.models import Report
 
 
 def add_report(report: Report):
-    session = db.session()
-
+    collection = db['report']
     try:
-        session.add(report)
-        session.commit()
+        collection.insert_one(report.to_mongodb())
+        print("Added report")
     except Exception as e:
         print(e)
-        session.rollback()
 
 
-def get_all_reports(guild, reportee):
-    session = db.session()
+# def get_all_reports(reportee):
+#     collection = db['report']
+#     print(reportee.id)
+#     pipeline = [
+#         {"$group": {"$_id": "$reportee", "count": {"$sum": 1}}},
+#         {"match": {"$reportee_id": str(reportee.id)}},
+#         {"$sort": SON([("count", -1), ("_id", -1)])}
+#     ]
+#     return list(collection.aggregate(pipeline))
+    # return session.query(Report, func.count(Report.reporting_id)) \
+    #     .filter(Report.guild_id == guild.id) \
+    #     .filter(Report.reportee_id == reportee.id) \
+    #     .group_by(Report.reporting_id) \
+    #     .order_by(func.count(Report.reporting_id).desc()) \
+    #     .all()
 
-    return session.query(Report, func.count(Report.reporting_id)) \
-        .filter(Report.guild_id == guild.id) \
-        .filter(Report.reportee_id == reportee.id) \
-        .group_by(Report.reporting_id) \
-        .order_by(func.count(Report.reporting_id).desc()) \
-        .all()
 
-
-def get_reports(guild):
-    session = db.session()
-
-    sub = session.query(Report, func.count(Report.reportee_id)) \
-        .filter(Report.guild_id == guild.id) \
-        .group_by(Report.reportee_id) \
-        .order_by(func.count(Report.reportee_id).desc()) \
-        .all()
-
-    return sub
+def get_reports():
+    collection = db['report']
+    pipeline = [
+        {"$group": {"_id": "$reportee_id", "count": {"$sum": 1}}},
+        {"$sort": SON([("count", -1), ("_id", -1)])}
+    ]
+    report_list = {}
+    for element in list(collection.aggregate(pipeline)):
+        profile = profile_repository.get_profile(user_id=element["_id"])
+        if profile is not None:
+            report_list[profile['owner']] = element['count']
+    return report_list
 
 
 def get_last_reports(guild, reporting):
-    session = db.session()
+    collection = db['report']
 
-    return session.query(Report) \
-        .filter(Report.guild_id == guild.id) \
-        .filter(Report.reporting == reporting) \
-        .order_by(Report.time.desc()) \
-        .first()
+    return collection.find_one({"guild_id": guild.id, "reporting": reporting},
+                               sort=[('_id', pymongo.DESCENDING)])
 
 
 def report_allowed(guild, reporting):
@@ -56,7 +62,7 @@ def report_allowed(guild, reporting):
     if report is None:
         return None
 
-    diff = datetime.now() - report.time
+    diff = datetime.now() - report['time']
     if diff.total_seconds() // 60 < 30:
         return 30 - diff.seconds // 60
     else:

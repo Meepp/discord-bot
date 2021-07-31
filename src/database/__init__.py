@@ -1,22 +1,22 @@
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from pymongo import MongoClient
+import configparser
+import os
 
 
-class Database:
-    def __init__(self, name: str):
-        self.engine = sqlalchemy.create_engine('sqlite:///' + name, echo=False)
-        self.connection = self.engine.connect()
-        self._session_factory = sessionmaker(autocommit=False, autoflush=True, bind=self.engine)
-        self._session = scoped_session(self._session_factory)
+class MongoDB:
+    def __init__(self, config):
+        self.config = configparser.ConfigParser()
+        self.set_config(config)
+        self.connection_string = f"mongodb+srv://{self.config['MONGODB']['username']}:" \
+                                 f"{self.config['MONGODB']['password']}@" \
+                                 f"cluster0.wvrda.mongodb.net/{self.config['MONGODB']['database']}?" \
+                                 f"retryWrites=true&w=majority"
 
-    def session(self) -> scoped_session:
-        return self._session()
+        self.client = MongoClient(self.connection_string, connect=False)
+        self.db = self.client["discord-bot"]
 
+    def set_config(self, name):
+        self.config.read(name)
 
-def create_all_models():
-    Base.metadata.create_all(db.engine)
+mongodb = MongoDB(f"{os.path.dirname(os.path.realpath(__file__))}\..\..\config.conf").db
 
-# Create db
-Base = declarative_base()
-db = Database("storage/database.db")

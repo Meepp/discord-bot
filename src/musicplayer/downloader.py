@@ -8,7 +8,7 @@ import discord
 import requests
 import youtube_dl
 
-from src import bot, randint
+from random import randint
 from src.database.models.models import Song
 from src.database.repository import music_repository
 
@@ -70,7 +70,7 @@ class Downloader:
                 self.event.clear()
                 self.lock.acquire()
                 song = music_repository.get_song(url)
-                session = db.session()
+                # session = db.session()
 
                 # Extract the source location url from the youtube url.
                 ydl = youtube_dl.YoutubeDL()
@@ -81,7 +81,7 @@ class Downloader:
                 thr = threading.Thread(target=self.download_file, args=(source_url, buffer, file))
                 audio_source = discord.PCMAudio(buffer)
 
-                session.commit()
+                # session.commit()
 
                 self.lock.release()
                 self.event.set()

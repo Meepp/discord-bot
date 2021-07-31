@@ -5,9 +5,8 @@ from enum import Enum
 import random
 from typing import List, Optional, Set
 
-from database.models.models import Profile
 from src.web_server import sio
-from src.web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, Spy, Scout, MrMole
+from src.web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
 from src.web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
 from src.web_server.lib.game.Utils import Point
 from src.web_server.lib.game.generator import generate_board
@@ -70,7 +69,7 @@ class HallwayHunters:
             player.target = target
             player.class_name = class_pool[i].__name__
 
-            print("Player %s is %s" % (player.profile.discord_username, class_pool[i].__name__))
+            print("Player %s is %s" % (player.profile['owner'], class_pool[i].__name__))
 
             spawn_point = self.spawn_points[i % len(self.spawn_points)]
             player.change_position(spawn_point)
@@ -130,18 +129,19 @@ class HallwayHunters:
         # After having sent the update to all players, empty board changes list
         self.board_changes = []
 
-    def add_player(self, profile, socket_id):
+    def add_player(self, profile: dict, socket_id):
         for player in self.player_list:
-            if player.profile.id == profile.id:
+            if player.profile['owner_id'] == profile['owner_id']:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
-                return
+                return player
 
         player = Demolisher(profile, socket_id, self)
 
         player.name = self.color_pool.pop()
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
+        return player
 
     def update_players(self):
         for player in self.player_list:
@@ -167,7 +167,7 @@ class HallwayHunters:
 
         return data
 
-    def set_color(self, profile: Profile, color: str):
+    def set_color(self, profile: dict, color: str):
         if color not in self.color_pool:
             print("Color not available")
             return   # TODO: Notify player this colour is taken.
@@ -177,12 +177,12 @@ class HallwayHunters:
         print("Set player color to", color)
         player.name = color
 
-    def get_player(self, profile: Profile = None, socket_id=None) -> Optional[PlayerClass]:
+    def get_player(self, profile: dict = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]
 
         if profile is not None:
             for player in combined_list:
-                if player.profile.discord_id == profile.discord_id:
+                if player.profile['owner_id'] == profile['owner_id']:
                     return player
             return None
         elif socket_id is not None:
@@ -193,11 +193,11 @@ class HallwayHunters:
 
     def set_player(self, profile, new_player):
         for i, player in enumerate(self.player_list):
-            if player.profile.discord_id == profile.discord_id:
+            if player.profile['owner_id'] == profile['owner_id']:
                 self.player_list[i] = new_player
                 return
 
-    def remove_player(self, profile: Profile):
+    def remove_player(self, profile: dict):
         player = self.get_player(profile)
         self.color_pool.append(player.name)
 
