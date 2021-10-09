@@ -3,9 +3,9 @@ from discord.ext.commands import Context
 from discord import Embed, User
 
 from custom_emoji import CustomEmoji
-from database import mongodb as db
-from database.models.models import EsportGame
-from database.repository import game_repository, profile_repository
+from src.database import mongodb as db
+from src.database.models.models import EsportGame
+from src.database.repository import game_repository, profile_repository
 from datetime import datetime, timezone
 
 
@@ -69,7 +69,7 @@ class Esports(commands.Cog):
         if match is None:
             return f"No match found with match id: {match_id}"
         if not isinstance(bet_amount, int):
-            return f"Please bet an integer amount between 1 and {profile['balance']}"
+            return f"Please bet an amount between 1 and {round(profile['balance'], 2)}"
 
         if match.get("status") == "not_started":
             if profile['balance'] < bet_amount:
@@ -93,7 +93,7 @@ class Esports(commands.Cog):
 
     @commands.command()
     async def esports(self, context: Context, subcommand: str, arg_id: str = None, bet_team: str = None,
-                      bet_amount: int = None):
+                      bet_amount: float = None):
         """
         :param context:
         :param subcommand: Possible options: ongoing, match, bet, team, and upcoming

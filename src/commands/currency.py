@@ -3,8 +3,8 @@ from discord import User, Forbidden, Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database import mongodb as db
-from database.repository import profile_repository
+from src.database import mongodb as db
+from src.database.repository import profile_repository
 from custom_emoji import CustomEmoji
 
 NAME_CHANGE_COST = 10

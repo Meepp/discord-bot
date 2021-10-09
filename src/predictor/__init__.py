@@ -217,7 +217,7 @@ def fetch_data():
 
     # Setup a headless firefox client
     options = Options()
-    options.headless = False
+    options.headless = True
     driver = webdriver.Firefox(profile, options=options)
 
     # Fetch url

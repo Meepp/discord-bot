@@ -7,20 +7,31 @@ from random import shuffle
 import discord
 import youtube_dl
 from discord import Message
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
-from database import mongodb as db
+from src.database import mongodb as db
 
 from custom_emoji import CustomEmoji
-from database.repository import profile_repository
-from database.repository.music_repository import remove_from_owner
+from src.database.repository import profile_repository
+from src.database.repository.music_repository import remove_from_owner
 from src.database.models.models import Song, PlaylistSong
 from src.database.repository import music_repository
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 FFMPEG_OPTS = {"options": "-vn -loglevel quiet -hide_banner -nostats",
                "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 0 -nostdin"}
 
+client_id = '7387e3e128ba46caa345701f36489d8f'
+client_secret = '4c618187275245beb795f9312e1f0d58'
+
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
+                                               client_secret=client_secret,
+                                               redirect_uri="http://localhost:8080/",
+                                               scope="user-read-currently-playing"))
+
+spotify_messenger = None
 
 async def send_music_info(channel, result):
     out = "Currently playing: %s" % result["title"]
@@ -231,6 +242,21 @@ class MusicPlayer(commands.Cog):
         self.currently_playing = None  # Url of the song
         self.ydl = youtube_dl.YoutubeDL({'noplaylist': True})
 
+    @tasks.loop(seconds=5)
+    async def queue_spotify_song(self):
+        if self.bot.music_player.is_playing:
+            print(f"Currently playing {self.bot.music_player.currently_playing}")
+            return
+        print("Not currently playing")
+        results = sp.current_user_playing_track()
+        current_song = f"{results['item']['name']} - {results['item']['artists'][0]['name']}"
+
+        url = self.bot.youtube_api.search(current_song)
+        print("Checking for next song...")
+        if url != self.bot.music_player.currently_playing:
+            await self.bot.music_player.add_queue(spotify_messenger, url)
+            print(f"Added next song {current_song}")
+
     @commands.command()
     async def join(self, context: Context):
         """
@@ -308,6 +334,11 @@ class MusicPlayer(commands.Cog):
 
             await message.channel.send("Added %d songs" % len([num for num in nums if len(songs) > num >= 0]))
             await message.delete()
+
+        elif subcommand == "spotify":
+            global spotify_messenger
+            spotify_messenger = message
+            self.queue_spotify_song.start()
         elif subcommand == "search":
             # Split content and ignore command and subcommand
             args = message.content.split(" ")[2:]

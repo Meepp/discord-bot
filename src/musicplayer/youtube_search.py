@@ -14,6 +14,12 @@ class YoutubeAPI:
             "key": self.key
         }
 
-        result = requests.get("https://www.googleapis.com/youtube/v3/search", params=data)
-
-        return "https://www.youtube.com/watch?v=" + result.json()["items"][0]["id"]["videoId"]
+        try:
+            print("Request made to Youtube")
+            result = requests.get("https://www.googleapis.com/youtube/v3/search", params=data)
+            if result.status_code == 200:
+                return "https://www.youtube.com/watch?v=" + result.json()["items"][0]["id"]["videoId"]
+            else:
+                raise ValueError("Was unable to find song")
+        except ValueError as error:
+            print(error)

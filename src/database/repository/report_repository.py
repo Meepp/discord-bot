@@ -4,8 +4,8 @@ import pymongo
 from bson import SON
 from sqlalchemy import func
 
-from database import mongodb as db
-from database.repository import profile_repository
+from src.database import mongodb as db
+from src.database.repository import profile_repository
 from src.database.models.models import Report
 
 

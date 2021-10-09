@@ -1,9 +1,8 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database.models.models import Honor, Report
-from database.repository import honor_repository, report_repository, profile_repository
-from database.repository.profile_repository import get_profile, get_money, update_money
+from src.database.models.models import Honor, Report
+from src.database.repository import honor_repository, report_repository, profile_repository
 
 
 class Reputation(commands.Cog):

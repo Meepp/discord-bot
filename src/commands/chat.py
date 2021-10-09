@@ -1,4 +1,6 @@
+# noinspection PyPackageRequirements
 import re
+from datetime import datetime
 from random import randint
 
 import discord
@@ -7,9 +9,8 @@ from discord import Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from database.models.models import Trigger
-from database.repository import trigger_repository
-
+from src.database.models.models import Trigger
+from src.database.repository import trigger_repository, profile_repository
 
 class Chat(commands.Cog):
     def __init__(self, bot):
@@ -116,6 +117,17 @@ class Chat(commands.Cog):
                 upper = 100
             value = str(randint(0, upper))
         await context.channel.send("%s rolled a %s." % (context.author.nick, value))
+
+    @commands.command()
+    async def birthday(self, context: Context, message=None):
+        """
+        !birthday <dd-mm-yyyy>
+        """
+
+        birthday_date = datetime.strptime(message, '%d-%m-%Y')
+        user_id = context.author.id
+        profile = profile_repository.get_profile(user_id=user_id)
+        profile_repository.add_birthday(profile, birthday_date)
 
     @commands.command()
     async def kortebroek(self, context: Context):

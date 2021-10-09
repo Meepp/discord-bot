@@ -5,9 +5,9 @@ from discord import User, Message, Reaction
 from discord.ext import commands
 from discord.ext.commands import Context
 from custom_emoji import CustomEmoji
-from database import mongodb as db
-from database.models.models import RoomModel
-from database.repository import room_repository, profile_repository
+from src.database import mongodb as db
+from src.database.models.models import RoomModel
+from src.database.repository import room_repository, profile_repository
 
 
 async def poker_message_check(reaction: Reaction, user: User):

@@ -13,7 +13,12 @@ class MongoDB:
                                  f"retryWrites=true&w=majority"
 
         self.client = MongoClient(self.connection_string, connect=False)
-        self.db = self.client["discord-bot"]
+        if self.config['MONGODB']['Development'] == "True":
+            self.db = self.client["discord-bot2"]
+            print("Using development database")
+        else:
+            self.db = self.client['discord-bot']
+            print("Using production database")
 
     def set_config(self, name):
         self.config.read(name)
