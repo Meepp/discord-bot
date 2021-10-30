@@ -36,7 +36,7 @@ class PandaScoreAPI:
         self.key = key
 
     def league_id_from_name(self, name):
-        json_response = requests.get(f"{API_URL}/leagues?filter[name]={name}&token={self.key}").json()
+        json_response = requests.get(f"{API_URL}/leagues?search[name]={name}&token={self.key}").json()
         for entry in json_response:
             return entry.get("id")
         return None

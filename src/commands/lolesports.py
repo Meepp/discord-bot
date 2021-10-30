@@ -68,28 +68,28 @@ class Esports(commands.Cog):
         match = self.panda_score_api.get_match_by_id(match_id)
         if match is None:
             return f"No match found with match id: {match_id}"
-        if not isinstance(bet_amount, int):
+        if not isinstance(bet_amount, int) and not isinstance(bet_amount, float):
             return f"Please bet an amount between 1 and {round(profile['balance'], 2)}"
 
-        if match.get("status") == "not_started":
-            if profile['balance'] < bet_amount:
-                return f"You are betting more than you currently have a.k.a you are poor {CustomEmoji.omegalul}! " \
-                       f"(Current balance: {profile['balance']})"
-            if bet_amount < 0:
-                return "You cannot bet a negative amount"
-            bet_team = bet_team.upper()
-            if bet_team in match.get("name"):
-                blue, odds, red = self.get_odds(match)
-                if match.get("opponents")[0]['opponent'].get("acronym") == bet_team:
-                    odd = odds[0]
-                else:
-                    odd = odds[1]
-                self.create_league_bet(context, match_id, bet_team, bet_amount, odd, profile)
-                return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
+        # if match.get("status") == "not_started":
+        if profile['balance'] < bet_amount:
+            return f"You are betting more than you currently have a.k.a you are poor {CustomEmoji.omegalul}! " \
+                   f"(Current balance: {profile['balance']})"
+        if bet_amount < 0:
+            return "You cannot bet a negative amount"
+        bet_team = bet_team.upper()
+        if bet_team in match.get("name"):
+            blue, odds, red = self.get_odds(match)
+            if match.get("opponents")[0]['opponent'].get("acronym") == bet_team:
+                odd = odds[0]
             else:
-                return f"You cannot bet on {bet_team} in the match {match.get('name')}."
+                odd = odds[1]
+            self.create_league_bet(context, match_id, bet_team, bet_amount, odd, profile)
+            return f"Successfully created bet of {bet_amount} on {bet_team} to win in the match {match.get('name')}"
         else:
-            return "You cannot bet on matches that have finished or are currently ongoing"
+            return f"You cannot bet on {bet_team} in the match {match.get('name')}."
+        # else:
+        #     return "You cannot bet on matches that have finished or are currently ongoing"
 
     @commands.command()
     async def esports(self, context: Context, subcommand: str, arg_id: str = None, bet_team: str = None,

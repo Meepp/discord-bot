@@ -7,7 +7,9 @@ from src.database import mongodb as db
 from src.database.models.models import LeagueGame
 from src.database.repository import profile_repository
 
-API_URL = "https://euw1.api.riotgames.com"
+CONTINENT_URL = 'https://europe.'
+REGION_URL = 'https://euw1.'
+API_URL = "api.riotgames.com"
 
 CONDITIONS = [("dragon", 2), ("baron", 2), ("win", 2), ("herald", 2), ("tower", 2), ("inhibitor", 2), ("kill", 10)]
 
@@ -41,7 +43,7 @@ class LeagueAPI(commands.Cog):
 
     def get_account_id(self, username: str):
         endpoint = "/lol/summoner/v4/summoners/by-name/%s" % username
-        raw_response = requests.get(API_URL + endpoint, headers=self.headers)
+        raw_response = requests.get(REGION_URL + API_URL + endpoint, headers=self.headers)
 
         if raw_response.status_code == 200:
             return raw_response.json().get("id")
@@ -50,7 +52,7 @@ class LeagueAPI(commands.Cog):
 
     def set_active_game(self, user: User, summoner_id: str, game: LeagueGame):
         endpoint = "/lol/spectator/v4/active-games/by-summoner/%s" % summoner_id
-        raw_response = requests.get(API_URL + endpoint, headers=self.headers)
+        raw_response = requests.get(REGION_URL + API_URL + endpoint, headers=self.headers)
 
         if raw_response.status_code == 200:
             response = raw_response.json()
@@ -71,17 +73,20 @@ class LeagueAPI(commands.Cog):
             games = list(collection.find({"owner_id": user.id}))
             for game in games:
                 collection.find_one_and_update({"_id": game['_id']}, {"$set": {"game_id": game_id, "team": team}})
-        else:
-            return None
+        # elif raw_response.status_code == 403:
+        #     raise RuntimeError("Forbidden to access RIOT API. Consider updating the API key")
+        # elif raw_response.status_code == 404:
+        #     raise RuntimeError("No game found.")
+
 
     def process_game_result(self, user: User, game):
-        endpoint = "/lol/match/v4/matches/%s" % game['game_id']
-        raw_response = requests.get(API_URL + endpoint, headers=self.headers)
+        endpoint = "/lol/match/v5/matches/EUW1_%s" % game['game_id']
+        raw_response = requests.get(CONTINENT_URL + API_URL + endpoint, headers=self.headers)
 
         collection = db['leagueGame']
 
         if raw_response.status_code == 200:
-            response = raw_response.json()
+            response = raw_response.json()['info']
             teams = response.get("teams")
             information = None
 
@@ -89,7 +94,7 @@ class LeagueAPI(commands.Cog):
 
             for team in teams:
                 if team.get("teamId") == game['team']:
-                    if (rate[0] == "win" and team.get("win") == "Win") or \
+                    if (rate[0] == "win" and team.get("win")) or \
                             (rate[0] == "baron" and team.get("firstBaron")) or \
                             (rate[0] == "herald" and team.get("firstRiftHerald")) or \
                             (rate[0] == "tower" and team.get("firstTower")) or \
@@ -106,7 +111,7 @@ class LeagueAPI(commands.Cog):
                         information = "%s lost the bet on %s of %s." % (user.name, game['type'], game['amount'])
 
                     # Remove entry
-                    collection.find_one_and_delete({"_id": game['_id']})
+                    collection.find_one_and_update({"_id": game['_id']}, {"$set": {"payed_out": True}})
             return information
         else:
             return None
@@ -116,7 +121,7 @@ class LeagueAPI(commands.Cog):
         await self.bot.wait_until_ready()
 
         collection = db['leagueGame']
-        games = list(collection.find())
+        games = list(collection.find({"payed_out": {"$eq": False}}))
 
         try:
             for game in games:

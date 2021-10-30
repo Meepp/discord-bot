@@ -146,6 +146,7 @@ class LeagueGame:
         self.channel_id = channel_id
         self.game_id = None
         self.team = None
+        self.payed_out = False
 
     def to_mongodb(self):
         return {
@@ -154,7 +155,8 @@ class LeagueGame:
             "type": self.type,
             "channel_id": self.channel_id,
             "game_id": self.game_id,
-            "team": self.team
+            "team": self.team,
+            "payed_out": self.payed_out
         }
 
 
