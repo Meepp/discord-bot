@@ -7,20 +7,22 @@ API_URL = "https://api.pandascore.co/lol/"
 
 
 def get_match_image(opponents):
-    image1 = convert_image(opponents[0]["opponent"].get("image_url"))
+    try:
+        image1 = convert_image(opponents[0]["opponent"].get("image_url"))
+        image2 = convert_image(opponents[1]["opponent"].get("image_url"))
 
-    image2 = convert_image(opponents[1]["opponent"].get("image_url"))
+        padding = 10
+        width, height = image1.size[0], image1.size[1]
 
-    padding = 10
+        new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (47, 49, 54))
+        new_image.paste(image1, (padding, padding))
+        new_image.paste(image2, (width + padding * 3, padding))
+        new_image.save('match_image.png', "PNG")
 
-    width, height = image1.size[0], image1.size[1]
-    new_image = Image.new('RGB', (2 * (width + padding * 2), height + padding * 2), (47, 49, 54))
-    new_image.paste(image1, (padding, padding))
-    new_image.paste(image2, (width + padding * 3, padding))
-    new_image.save('match_image.png', "PNG")
-    file = discord.File("match_image.png", filename="match_image.png")
-
-    return file
+        file = discord.File("match_image.png", filename="match_image.png")
+        return file
+    except:
+        return None
 
 
 def convert_image(image_url):

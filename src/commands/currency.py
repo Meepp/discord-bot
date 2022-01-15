@@ -23,24 +23,29 @@ class Currency(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def pay(self, context: Context, user: User, amount: int):
-        author_money = profile_repository.get_money(context.author)
-        user_money = profile_repository.get_money(user)
+    async def pay(self, context: Context, user: User, amount: float):
+        author = profile_repository.get_money(context.author)
+        user = profile_repository.get_money(user)
 
-        if author_money == user_money:
+        if author == user:
             return await context.channel.send(f"Are you really trying to pay yourself? {CustomEmoji.dani}")
 
-        if amount < 1:
+        if amount == 0:
+            return await context.channel.send(f"{CustomEmoji.pepohmm}")
+
+        if amount < 0:
             return await context.channel.send(f"No stealing! {CustomEmoji.pepohmm}")
 
-        if author_money['balance'] < amount:
+        if author['balance'] < amount:
             return await context.channel.send(f"You don't have enough money. {CustomEmoji.omegalul}")
 
         # Update balance
-        profile_repository.update_money(user_money, amount)
-        profile_repository.update_money(author_money, -amount)
+        user = profile_repository.update_money(user, amount)
+        author = profile_repository.update_money(author, -amount)
 
-        await context.channel.send("Transferred money successfully. New balance: %d" % author_money['balance'])
+        await context.channel.send(f"Transferred money successfully."
+                                   f"\n\tNew balance for {author['owner']}: {author['balance']}"
+                                   f"\n\tNew balance for {user['owner']}: {user['balance']}")
 
     @commands.command()
     async def balance(self, context: Context, user: User = None):

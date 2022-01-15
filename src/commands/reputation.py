@@ -50,9 +50,8 @@ class Reputation(commands.Cog):
 
             reportee = message.guild.get_member(message.mentions[0].id)
             reporting = message.author
-
             # Not allowed to report the bot.
-            if message.mentions[0] == "340197681311776768" or message.mentions[0] == "772902827633934376":
+            if message.mentions[0].id == 340197681311776768 or message.mentions[0].id == 772902827633934376:
                 await message.channel.send("I don't think so, bro.")
                 reportee = message.author
 
@@ -62,6 +61,7 @@ class Reputation(commands.Cog):
                 report_repository.add_report(report_obj)
                 profile = profile_repository.get_profile(user_id=reportee.id)
                 profile_repository.update_money(profile, -1)
+                await message.channel.send(f"{profile['owner']} has been reported and lost 1.")
             else:
                 await message.channel.send("Wait %d minutes to report again." % time)
 
