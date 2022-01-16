@@ -110,6 +110,8 @@ def prepare_predict_data(all_data, blue_team="Fnatic", red_team="Rogue"):
             .mean()
             .tail(1)
     )
+    assert(len(red_team_data) > 0)
+    assert(len(blue_team_data) > 0)
     new_team_data = blue_team_data.append(red_team_data, ignore_index=True)
     new_team_data = concat_rows(new_team_data, 2)
 
@@ -118,7 +120,7 @@ def prepare_predict_data(all_data, blue_team="Fnatic", red_team="Rogue"):
     new_game_data = (
         pandas
             .concat([new_team_data, aggregation], axis=1)
-            .dropna()
+            .fillna(0)
     )
 
     new_game_data.drop(columns=["actual_result1"], inplace=True)
@@ -268,5 +270,11 @@ class Predictor:
         predict_data = prepare_predict_data(self.data, blue, red)
         if predict_data is not None:
             prob = (self.model.decision_function(predict_data)[0] + 1) / 2
+            
+            if not (0 < prob < 1):
+                # Backup if the probability is fucked
+                import random
+                random.seed(blue+red)
+                prob = random.random()
             odds = (1 / prob, 1 / (1 - prob))
             return odds

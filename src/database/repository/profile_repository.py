@@ -23,11 +23,8 @@ def add_birthday(user: dict, birthday):
 
 
 def update_money(user: dict, money_update):
-    if user['balance'] - abs(money_update) < 0:
-        return db['profile'].find_one_and_update(filter={"_id": user['_id']},
-                                                 update={"$set": {'balance': 0}},
-                                                 upsert=True, return_document=ReturnDocument.AFTER)
-    return db['profile'].find_one_and_update(filter={"_id": user['_id']}, update={"$inc": {'balance': money_update}},
+    new_balance = max(user['balance'] + money_update, 0)
+    return db['profile'].find_one_and_update(filter={"_id": user['_id']}, update={"$set": {'balance': new_balance}},
                                              upsert=True, return_document=ReturnDocument.AFTER)
 
 
