@@ -21,3 +21,4 @@ selenium
 pandas==1.2.4
 sklearn
 joblib~=1.0.1
+spotipy

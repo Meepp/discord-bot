@@ -8,6 +8,7 @@ import requests
 from discord import Message
 from discord.ext import commands
 from discord.ext.commands import Context
+from custom_emoji import CustomEmoji
 
 from src.database.models.models import Trigger
 from src.database.repository import trigger_repository, profile_repository
@@ -87,6 +88,14 @@ class Chat(commands.Cog):
         em = discord.Embed()
         em.set_image(url=url)
         await message.channel.send(embed=em)
+
+    @commands.command()
+    async def sustruck(self, context: Context):
+        text = f"""▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌█▄
+ {CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}          {CustomEmoji.monkaSTEER} █ ▄▄
+█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▌██████▌
+▀(@)▀▀▀▀▀▀▀▀▀(@)(@)▀▀▀▀▀(@)▀"""
+        await context.message.channel.send(text)
 
     @commands.command()
     async def roll(self, context: Context, message=None):
