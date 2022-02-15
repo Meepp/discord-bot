@@ -2,7 +2,7 @@ from typing import List
 
 from enum import Enum
 
-from numpy.random import random
+import random
 
 
 class WordlePhases(Enum):
@@ -15,7 +15,7 @@ class WordlePlayer:
     def __init__(self, profile: dict, socket, table):
         self.profile = profile
         self.socket = socket
-        self.table: WorldeTable = table
+        self.table: WordleTable = table
 
         self.correct_answers = 0
         self.number_of_guesses = 0
@@ -23,7 +23,7 @@ class WordlePlayer:
         self.ready = False
 
 
-class WorldeTable:
+class WordleTable:
     def __init__(self, room_id):
         self.room_id = room_id
 
@@ -32,7 +32,7 @@ class WorldeTable:
         self.current_word_index = 0
 
     def initialize_round(self):
-        self.filter_words('wordlist.txt')
+        self.filter_words('storage/wordlist.txt')
 
     def filter_words(self, filename, word_length=5):
         valid_letters = "qwertyuiopasdfghjklzxcvbnm"
@@ -55,15 +55,21 @@ class WorldeTable:
 
                 valid_words.append(line)
 
-        self.word_list = random.shuffle(valid_words)[:20]
+        random.shuffle(valid_words)
+        self.valid_words = valid_words
+        self.word_list = valid_words[:20]
 
     def word_list(self):
         pass
 
     def check_word(self, player: WordlePlayer, guessed_word: str):
+        if guessed_word not in self.valid_words:
+            print("Niet valsspelen, maar i kzie het nu door de vingers")
         correct_position = []
         correct_character = []
-        correct_word = self.word_list[self.current_word_index].split()
+        correct_word = [letter for letter in self.word_list[self.current_word_index]]
+        print(guessed_word, len(guessed_word))
+        print(correct_word, len(correct_word))
         for idx, char in enumerate(guessed_word):
             if char == correct_word[idx]:
                 correct_position.append(idx)
@@ -74,6 +80,6 @@ class WorldeTable:
                 correct_character.append(idx)
                 correct_word.remove(char)
 
-        print(f"{guessed_word=}, {correct_character=}, {correct_position}, {correct_word=}")
+        print(f"{guessed_word}, {correct_character}, {correct_position}, {correct_word}")
 
         return {'word': guessed_word, 'correct_position': correct_position, 'correct_character': correct_character}

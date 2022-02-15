@@ -88,15 +88,17 @@ class Wordle {
     }
 
     handleWord(data) {
-        data.correct_position.forEach((idx) => {
-            game.tiles[this.textPointer.y][idx].fillColor = "#b8890b";
-        });
         data.correct_character.forEach((idx) => {
-            game.tiles[this.textPointer.y][idx].fillColor = "#55ae1e";
+            game.tiles[game.textPointer.y][idx].fillColor = "#b8890b";
         });
-        data.word.split().map((letter, idx) => {
-            game.tiles[this.textPointer.y][idx].text = letter;
+        data.correct_position.forEach((idx) => {
+            game.tiles[game.textPointer.y][idx].fillColor = "#55ae1e";
+        });
+        data.word.split("").map((letter, idx) => {
+            game.tiles[game.textPointer.y][idx].text = letter;
         })
+        game.textPointer.y += 1;
+        game.textPointer.x = 0;
     }
 }
 
@@ -203,6 +205,8 @@ function initialize() {
     });
 
     socket.on("word", game.handleWord);
+
+    socket.emit("start", {"room": ROOM_ID})
 
     intervalID = requestAnimationFrame(gameLoop);
 }
