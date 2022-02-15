@@ -91,7 +91,7 @@ class Wordle {
         data.correct_position.forEach((idx) => {
             game.tiles[this.textPointer.y][idx].fillColor = "#b8890b";
         });
-        data.correct_letter.forEach((idx) => {
+        data.correct_character.forEach((idx) => {
             game.tiles[this.textPointer.y][idx].fillColor = "#55ae1e";
         });
         data.word.split().map((letter, idx) => {
