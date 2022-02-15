@@ -1,3 +1,28 @@
+/*
+ * Utility functions
+ */
+
+class RollingAverage {
+    constructor(n) {
+        this.values = [];
+        this.n = n;
+    }
+
+    put(value) {
+        this.values.unshift(value);
+        this.values = this.values.slice(0, this.n);
+    }
+
+    get() {
+        return this.values.reduce((a, b) => a + b, 0) / this.values.length;
+    }
+}
+
+function round(number) {
+    return Math.round(number * 100) / 100;
+}
+
+
 class DefaultListDict {
     constructor() {
         return new Proxy({}, {
@@ -6,7 +31,9 @@ class DefaultListDict {
     }
 }
 
-
+/*
+ * Renderable objects.
+ */
 class Point {
     constructor(x, y) {
         this.x = x;
@@ -199,7 +226,9 @@ class Button extends Rectangle {
     }
 }
 
-
+/*
+ * Main view logic + rendering.
+ */
 class View {
     constructor(context) {
         this.cameraCenter = new Point(400, 400);
