@@ -77,7 +77,7 @@ class Wordle {
                 tile.width = square_size;
                 tile.height = square_size;
                 tile.fontSize = square_size * .8;
-                tile.text = "g"
+                tile.text = ""
                 this.tiles[y][x] = tile;
             }
         }
@@ -85,6 +85,18 @@ class Wordle {
         for (let y = 0; y < MAX_GUESSES; y++) {
             game.gameView.addObjects(...game.tiles[y])
         }
+    }
+
+    handleWord(data) {
+        data.correct_position.forEach((idx) => {
+            game.tiles[this.textPointer.y][idx].fillColor = "#b8890b";
+        });
+        data.correct_letter.forEach((idx) => {
+            game.tiles[this.textPointer.y][idx].fillColor = "#55ae1e";
+        });
+        data.word.split().map((letter, idx) => {
+            game.tiles[this.textPointer.y][idx].text = letter;
+        })
     }
 }
 
@@ -189,6 +201,8 @@ function initialize() {
     socket.on('pong', function () {
         game.stats.ping.put(Date.now() - startTime);
     });
+
+    socket.on("word", game.handleWord);
 
     intervalID = requestAnimationFrame(gameLoop);
 }
