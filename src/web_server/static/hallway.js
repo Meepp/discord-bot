@@ -1091,10 +1091,7 @@ function sendMove(move) {
     socket.emit("move", data);
 }
 
-let keyState = {};
 document.addEventListener("keydown", (ev) => {
-    keyState[ev.key] = true;
-    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
     if (ev.key === "c" ||
         ev.key === "x" ||
         ev.key === "z" ||
@@ -1103,7 +1100,6 @@ document.addEventListener("keydown", (ev) => {
     }
 });
 document.addEventListener("keyup", (ev) => {
-    keyState[ev.key] = false;
     sendMove({x: 0, y: 0});
 });
 

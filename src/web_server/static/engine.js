@@ -1,6 +1,13 @@
 /*
  * Utility functions
  */
+let keyState = {};
+document.addEventListener("keydown", (ev) => {
+    keyState[ev.key] = true;
+});
+document.addEventListener("keyup", (ev) => {
+    keyState[ev.key] = false;
+});
 
 class RollingAverage {
     constructor(n) {

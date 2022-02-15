@@ -18,19 +18,20 @@ class ColorTextTile extends DrawableText {
     constructor(x, y, color) {
         super(color);
 
+        this.centered = true;
         this.x = x;
         this.y = y;
 
-        this.color = color;
+        this.fillColor = color;
 
         this.z = 0;
         this.renderable = true;
     }
 
     render(context) {
+        context.fillStyle = this.fillColor;
+        context.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
         super.render(context);
-        context.fillStyle = this.color;
-        context.fillRect(this.x, this.y, this.width, this.height);
     }
 }
 
@@ -54,6 +55,10 @@ class Wordle {
         stateTime: new DrawableText(5, 5 + 24),
         frameTime: new DrawableText(5, 5 + 36),
     };
+    textPointer = {
+        x: 0,
+        y: 0
+    }
 
     initialize() {
         this.gameView.addChild(this.statsView);
@@ -68,9 +73,11 @@ class Wordle {
         for (let y = 0; y < MAX_GUESSES; y++) {
             this.tiles[y] = new Array(WORD_LENGTH);
             for (let x = 0; x < WORD_LENGTH; x++) {
-                let tile = new ColorTextTile(x * (square_size + padding), y * (square_size + padding), "333");
+                let tile = new ColorTextTile(x * (square_size + padding), y * (square_size + padding), "#999");
                 tile.width = square_size;
                 tile.height = square_size;
+                tile.fontSize = square_size * .8;
+                tile.text = "g"
                 this.tiles[y][x] = tile;
             }
         }
@@ -83,6 +90,35 @@ class Wordle {
 
 function handleInput() {
     // Handle input
+    const validLetters = "qwertyuiopasdfghjklzxcvbnm";
+
+
+    let arr = validLetters.split("");
+    arr.forEach((letter) => {
+        if (keyState[letter] && game.textPointer.x < WORD_LENGTH) {
+            game.tiles[game.textPointer.y][game.textPointer.x].text = letter;
+            game.textPointer.x += 1;
+        }
+    });
+    if (keyState["Backspace"] && game.textPointer.x > 0) {
+        game.textPointer.x -= 1;
+        game.tiles[game.textPointer.y][game.textPointer.x].text = "";
+    }
+
+    if (keyState["Enter"] && game.textPointer.x === WORD_LENGTH) {
+        let word = "";
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            word += game.tiles[game.textPointer.y][i].text;
+        }
+        console.log("Sending", word);
+        socket.emit("word", {
+            word: word,
+            room: ROOM_ID
+        })
+    }
+
+    // I never want multiple inputs to happen unless a new down-press occurs.
+    keyState = {};
 }
 
 // Game rendering stuff
