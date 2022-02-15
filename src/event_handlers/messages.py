@@ -24,6 +24,10 @@ async def generate_help(channel):
 
 @bot.event
 async def on_message(message):
+    if message.guild is None: # Private message
+        channel = bot.get_channel(188638113982185472)
+        await channel.send(f"{message.content.replace('!message ', '')}")
+        return
     if message.guild not in bot.triggers:
         bot.update_triggers(message)
 

@@ -5,13 +5,15 @@ from random import randint
 
 import discord
 import requests
-from discord import Message
+from discord import Message, client
 from discord.ext import commands
 from discord.ext.commands import Context
 from custom_emoji import CustomEmoji
 
 from src.database.models.models import Trigger
 from src.database.repository import trigger_repository, profile_repository
+from src.custom_emoji import CustomEmoji
+
 
 class Chat(commands.Cog):
     def __init__(self, bot):
@@ -92,7 +94,7 @@ class Chat(commands.Cog):
     @commands.command()
     async def sustruck(self, context: Context):
         text = f"""▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌█▄
- {CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}          {CustomEmoji.monkaSTEER} █ ▄▄
+ {CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}{CustomEmoji.sussy}          {CustomEmoji.monkasteer} █ ▄▄
 █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▌██████▌
 ▀(@)▀▀▀▀▀▀▀▀▀(@)(@)▀▀▀▀▀(@)▀"""
         await context.message.channel.send(text)
@@ -162,6 +164,22 @@ class Chat(commands.Cog):
         await self.bot.kill()
 
     @commands.command()
+    async def rat(self, context: Context):
+        await context.message.delete()
+
+        await context.channel.send(f"Stay mad <@332089288839659520> {CustomEmoji.sussy}")
+
+    @commands.command()
+    async def emote(self, context: Context):
+        await context.message.delete()
+
+        emote: str = context.message.content.split()[-1]
+        custom_emote = CustomEmoji().lookup_emote(emote)
+        if not custom_emote:
+            return await context.channel.send(f"Unable to find emote")
+        await context.channel.send(f"{context.author.nick}: {custom_emote}")
+
+    @commands.command()
     async def trigger(self, context: Context, subcommand):
         """
         Trigger words make the bot say a predefined sentence.
@@ -176,3 +194,12 @@ class Chat(commands.Cog):
             await self.command_show_triggers(context)
         elif subcommand == "remove":
             await self.command_remove_trigger(context)
+
+    # @commands.command()
+    # @commands.dm_only()
+    # async def message(self, context: Context):
+    #     if context.channel.id == context.author.dm_channel.id:
+    #         channel = self.bot.get_channel(188638113982185472)
+    #         await channel.send(f"{context.message.content.replace('!message ', '')}")
+    #     else:
+    #         pass
