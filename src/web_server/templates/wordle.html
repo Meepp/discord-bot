@@ -22,6 +22,6 @@ Game
     const ROOM_ID = "{{ room.message_id }}";
     const USER_NAME = "{{ session_user().owner }}";
 </script>
-<script src="{{ url_for('static', filename='engine.js') }}"></script>
-<script src="{{ url_for('static', filename='wordle.js') }}"></script>
-{%     endblock %}
+<script type="module" src="{{ url_for('static', filename='engine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='wordle.js') }}"></script>
+{% endblock %}

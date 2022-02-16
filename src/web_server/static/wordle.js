@@ -1,3 +1,5 @@
+import {DrawableText, Button, keyState, round, RollingAverage, View} from "./engine.js";
+
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");
 context.webkitImageSmoothingEnabled = false;
@@ -38,7 +40,8 @@ class ColorTextTile extends DrawableText {
 class Wordle {
     tiles = new Array(MAX_GUESSES);
 
-    playerView = new View(context); // Player menu view
+    menuView = new View(context); // Player menu view
+    playerView = new View(context);
     gameView = new View(context); // Game view
 
     statsView = new View(context); // Informative stats view (fps etc)
@@ -59,17 +62,25 @@ class Wordle {
         x: 0,
         y: 0
     }
+    started = false;
+    correct = false;
 
     initialize() {
-        this.gameView.addChild(this.statsView);
-        this.gameView.zoom = 1;
-        this.gameView.renderable = true;
-
-        view.addChild(this.playerView);
-        view.addChild(this.gameView);
-
         let square_size = 48;
         let padding = 4;
+
+        // Reset guess on game initialization.
+        this.correct = false;
+
+        this.started = true;
+        this.gameView.addChild(this.statsView);
+        this.gameView.cameraCenter.x = square_size * WORD_LENGTH / 2;
+        this.gameView.cameraCenter.y = square_size * MAX_GUESSES / 2;
+        this.gameView.renderable = true;
+        this.menuView.addChild(this.playerView);
+        this.menuView.renderable = true;
+        this.playerView.renderable = true;
+
         for (let y = 0; y < MAX_GUESSES; y++) {
             this.tiles[y] = new Array(WORD_LENGTH);
             for (let x = 0; x < WORD_LENGTH; x++) {
@@ -85,9 +96,12 @@ class Wordle {
         for (let y = 0; y < MAX_GUESSES; y++) {
             game.gameView.addObjects(...game.tiles[y])
         }
+        this.textPointer = {x: 0, y: 0};
     }
 
     handleWord(data) {
+        if (!game.started) return;
+
         data.correct_character.forEach((idx) => {
             game.tiles[game.textPointer.y][idx].fillColor = "#b8890b";
         });
@@ -100,26 +114,52 @@ class Wordle {
         game.textPointer.y += 1;
         game.textPointer.x = 0;
     }
+
+    update_players(players) {
+        this.playerView.objects = {};
+        let height = 30;
+        let offset = 150;
+        players.map((player, i) => {
+            let playerText = new DrawableText(50, offset + height * i)
+            playerText.fontSize = height * 0.8;
+            playerText.color = player.guessed ? "#090" : "#099";
+            playerText.text = `${player.name}: ${player.points} points`;
+            this.playerView.addObjects(playerText);
+        });
+
+        console.log("Updated players: ", players);
+    }
 }
 
+let keyPressState = {};
+document.addEventListener("keydown", (ev) => {
+    keyPressState[ev.key] = true;
+});
+document.addEventListener("keyup", (ev) => {
+    keyPressState[ev.key] = false;
+});
+
 function handleInput() {
+    // Dont send input if we already guessed this word.
+    if (game.correct) return;
+
     // Handle input
     const validLetters = "qwertyuiopasdfghjklzxcvbnm";
 
 
     let arr = validLetters.split("");
     arr.forEach((letter) => {
-        if (keyState[letter] && game.textPointer.x < WORD_LENGTH) {
+        if (keyPressState[letter] && game.textPointer.x < WORD_LENGTH) {
             game.tiles[game.textPointer.y][game.textPointer.x].text = letter;
             game.textPointer.x += 1;
         }
     });
-    if (keyState["Backspace"] && game.textPointer.x > 0) {
+    if (keyPressState["Backspace"] && game.textPointer.x > 0) {
         game.textPointer.x -= 1;
         game.tiles[game.textPointer.y][game.textPointer.x].text = "";
     }
 
-    if (keyState["Enter"] && game.textPointer.x === WORD_LENGTH) {
+    if (keyPressState["Enter"] && game.textPointer.x === WORD_LENGTH) {
         let word = "";
         for (let i = 0; i < WORD_LENGTH; i++) {
             word += game.tiles[game.textPointer.y][i].text;
@@ -132,7 +172,7 @@ function handleInput() {
     }
 
     // I never want multiple inputs to happen unless a new down-press occurs.
-    keyState = {};
+    keyPressState = {};
 }
 
 // Game rendering stuff
@@ -183,6 +223,21 @@ function gameLoop() {
 }
 
 
+function makeMenu() {
+    const button = new Button(50, 50, 100, 50);
+    button.setOnClick(canvas, (e) => {
+        socket.emit("start", {
+            "room": ROOM_ID
+        });
+    })
+    const text = new DrawableText(50 + button.width / 2, 50 + button.height / 2);
+    text.centered = true;
+    text.fontSize = 15;
+    text.text = "Start";
+    game.menuView.addObjects(button, text);
+    game.menuView.renderable = true;
+}
+
 function initialize() {
     // Setup stats view
     game.statsView.addObjects(
@@ -192,7 +247,9 @@ function initialize() {
         game.statsText.stateTime
     );
 
-    game.initialize();
+    makeMenu(game.menuView);
+    view.addChild(game.menuView);
+    view.addChild(game.gameView);
 
     setInterval(function () {
         startTime = Date.now();
@@ -203,14 +260,22 @@ function initialize() {
     socket.on('pong', function () {
         game.stats.ping.put(Date.now() - startTime);
     });
+    socket.on("word", (data) => {
+        game.handleWord(data);
+    });
+    socket.on("start", () => {
+        game.initialize()
+    });
+    socket.on("players", (data) => {
+        game.update_players(data);
+    });
 
-    socket.on("word", game.handleWord);
-
-    socket.emit("start", {"room": ROOM_ID})
-
+    socket.emit("join", {room: ROOM_ID});
     intervalID = requestAnimationFrame(gameLoop);
 }
+
 let intervalID;
+let startTime;
 let game = new Wordle();
 let socket = io("/wordle");
 initialize();
