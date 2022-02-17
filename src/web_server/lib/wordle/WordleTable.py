@@ -1,5 +1,8 @@
 import copy
 import random
+import datetime
+import threading
+import time
 from enum import Enum
 from typing import List
 
@@ -35,7 +38,7 @@ def filter_words(filename, word_length=5):
 
 
 print("Initializing word lists.")
-filter_words("storage/wordlist.txt")
+filter_words("storage/en_words.txt")
 print("Done initializing word lists.")
 
 
@@ -64,13 +67,15 @@ class WordlePlayer:
         return {
             "name": self.profile["owner"],
             "n_correct": self.n_correct_answers,
-            "points": self.points,
+            "points": round(self.points, ndigits=1),
             "guessed": self.guessed_current,
         }
 
 
 class WordleTable:
     MAX_ROUNDS = 20
+    PLAYER_MULTIPLIER = 1.123
+    SPEED_MULTIPLIER = 2.413
 
     def __init__(self, room_id, author, word_length=5):
         self.config = {
@@ -90,6 +95,21 @@ class WordleTable:
         self.current_word_index = 0
         self.current_guess_index = 0
 
+        self.end_time = datetime.datetime.now()
+
+        self.timer_thread = threading.Thread(target=self.check_end)
+        self.timer_thread.start()
+
+        self.ongoing = False
+
+    def check_end(self):
+        while True:
+            time.sleep(1)
+            if not self.ongoing:
+                continue
+            if self.end_time < datetime.datetime.now():
+                self.ongoing = False
+
     def initialize_round(self):
         """
         Initializes the current round, does not do full reinitialization of the room.
@@ -99,7 +119,11 @@ class WordleTable:
         for player in self.player_list:
             player.guessed_current = False
 
+        self.ongoing = True
+
         self.broadcast_players()
+        self.end_time = datetime.datetime.now() + datetime.timedelta(seconds=60)
+        sio.emit("start", self.get_state(), **self.config)
 
     def handle_round_end(self):
         """
@@ -110,7 +134,12 @@ class WordleTable:
             return False
 
         self.initialize_round()
-        sio.emit("start", **self.config)
+
+    def get_state(self):
+        return {
+            "owner": self.author,
+            "end_time": self.end_time.isoformat()
+        }
 
     def n_players_left(self):
         n = 0
@@ -127,14 +156,23 @@ class WordleTable:
         return False
 
     def check_word(self, player: WordlePlayer, guessed_word: str):
+        # Cannot guess if game is not ongoing (time ran out)
+        if not self.ongoing:
+            return
+
+        # Cannot guess twice.
+        if player.guessed_current:
+            return
+
         if guessed_word not in self.valid_words:
             return
 
         current_word = self.word_list[self.current_word_index]
 
         if guessed_word == current_word:
-            nth_guess_points = len(self.player_list) - self.n_players_left()
-            player.guessed(nth_guess_points)
+            nth_guess_points = self.n_players_left() * self.PLAYER_MULTIPLIER
+            time_points = (self.end_time - datetime.datetime.now()).total_seconds() * self.SPEED_MULTIPLIER
+            player.guessed(nth_guess_points + time_points)
             self.broadcast_players()
             self.handle_round_end()
             return
@@ -169,6 +207,7 @@ class WordleTable:
         sio.emit("players", [player.to_json() for player in self.player_list], json=True, **self.config)
 
     def join(self, player: WordlePlayer):
+
         self.player_list.append(player)
 
     def get_player(self, profile):

@@ -64,8 +64,12 @@ class Wordle {
     }
     started = false;
     correct = false;
+    endTime = new Date();
+    clock = new DrawableText(0, 0);
 
-    initialize() {
+    initialize(data) {
+        this.endTime = new Date(data.end_time);
+
         let square_size = 48;
         let padding = 4;
 
@@ -77,6 +81,14 @@ class Wordle {
         this.gameView.cameraCenter.x = square_size * WORD_LENGTH / 2;
         this.gameView.cameraCenter.y = square_size * MAX_GUESSES / 2;
         this.gameView.renderable = true;
+
+        this.clock.x = square_size * WORD_LENGTH / 2;
+        this.clock.y = -square_size;
+        this.clock.centered = true;
+        this.clock.fontSize = square_size * .8;
+        this.clock.color = "black";
+        this.gameView.addObjects(this.clock);
+
         this.menuView.addChild(this.playerView);
         this.menuView.renderable = true;
         this.playerView.renderable = true;
@@ -102,6 +114,10 @@ class Wordle {
     handleWord(data) {
         if (!game.started) return;
 
+
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            game.tiles[game.textPointer.y][i].fillColor = "#5f5f5f";
+        }
         data.correct_character.forEach((idx) => {
             game.tiles[game.textPointer.y][idx].fillColor = "#b8890b";
         });
@@ -213,6 +229,8 @@ function gameLoop() {
         game.statsText.ping.text = "Latency: " + round(game.stats.ping.get()) + " ms";
         game.statsText.frameTime.text = "Frame time: " + round(game.stats.frameTime.get()) + " ms";
 
+        game.clock.text = (Math.max(0, game.endTime - Date.now())).toLocaleString();
+
         // Compute the offset for all tiles, to center rendering on the player.
         try {
             view.render();
@@ -263,8 +281,8 @@ function initialize() {
     socket.on("word", (data) => {
         game.handleWord(data);
     });
-    socket.on("start", () => {
-        game.initialize()
+    socket.on("start", (data) => {
+        game.initialize(data)
     });
     socket.on("players", (data) => {
         game.update_players(data);

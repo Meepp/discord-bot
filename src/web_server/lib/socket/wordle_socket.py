@@ -26,8 +26,10 @@ def on_join(data):
     if room_id not in tables:
         tables[room_id] = WordleTable(room_id, author=room["author_id"])
 
-    sio.emit("join", "message", json=True, room=room_id, namespace="/wordle")
+    if tables[room_id].get_player(session_user()):
+        return
 
+    sio.emit("join", "message", json=True, room=room_id, namespace="/wordle")
     # Initialize player and add to table, then inform other players
     player = WordlePlayer(session_user(), request.sid, tables[room_id])
     tables[room_id].join(player)
