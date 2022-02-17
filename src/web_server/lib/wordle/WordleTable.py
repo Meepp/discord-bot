@@ -38,7 +38,7 @@ def filter_words(filename, word_length=5):
 
 
 print("Initializing word lists.")
-filter_words("storage/en_words.txt")
+filter_words("storage/google-10000-english.txt")
 print("Done initializing word lists.")
 
 
@@ -87,13 +87,14 @@ class WordleTable:
 
         self.player_list: List[WordlePlayer] = []
         self.valid_words = WORD_LISTS[word_length]
-        self.word_list = random.sample(WORD_LISTS[word_length], self.MAX_ROUNDS)
+        self.current_word = ""
+
+        self.guessed_words = []
 
         # The game room host.
         self.author = author
 
-        self.current_word_index = 0
-        self.current_guess_index = 0
+        self.round = 0
 
         self.end_time = datetime.datetime.now()
 
@@ -110,16 +111,26 @@ class WordleTable:
             if self.end_time < datetime.datetime.now():
                 self.ongoing = False
 
+                response = {
+                    "player": None,
+                    "word": self.current_word, "correct_position": [],
+                    "correct_character": []
+                }
+                sio.emit("word", response, json=True, **self.config)
+
     def initialize_round(self):
         """
         Initializes the current round, does not do full reinitialization of the room.
         :return:
         """
-
         for player in self.player_list:
             player.guessed_current = False
 
+        self.round += 1
+
         self.ongoing = True
+        self.guessed_words = []
+        self.current_word = random.sample(self.valid_words, 1)[0]
 
         self.broadcast_players()
         self.end_time = datetime.datetime.now() + datetime.timedelta(seconds=60)
@@ -130,6 +141,15 @@ class WordleTable:
         Checks if the round can end, and will start a new round if this is the case.
         :return:
         """
+        if len(self.guessed_words) == 10:
+            response = {
+                "player": None,
+                "word": self.current_word, "correct_position": [],
+                "correct_character": []
+            }
+            sio.emit("word", response, json=True, **self.config)
+            self.ongoing = False
+
         if self.check_players_left():
             return False
 
@@ -160,6 +180,10 @@ class WordleTable:
         if not self.ongoing:
             return
 
+        # Cannot guess a word which was already guessed this round.
+        if guessed_word in self.guessed_words:
+            return
+
         # Cannot guess twice.
         if player.guessed_current:
             return
@@ -167,9 +191,7 @@ class WordleTable:
         if guessed_word not in self.valid_words:
             return
 
-        current_word = self.word_list[self.current_word_index]
-
-        if guessed_word == current_word:
+        if guessed_word == self.current_word:
             nth_guess_points = self.n_players_left() * self.PLAYER_MULTIPLIER
             time_points = (self.end_time - datetime.datetime.now()).total_seconds() * self.SPEED_MULTIPLIER
             player.guessed(nth_guess_points + time_points)
@@ -179,7 +201,7 @@ class WordleTable:
 
         correct_position = []
         correct_character = []
-        correct_word = [letter for letter in current_word]
+        correct_word = [letter for letter in self.current_word]
         for idx, char in enumerate(guessed_word):
             if char == correct_word[idx]:
                 correct_position.append(idx)
@@ -190,9 +212,7 @@ class WordleTable:
                 correct_character.append(idx)
                 correct_word.remove(char)
 
-        # If we send a response, the guess index goes up by one.
-        self.current_guess_index += 1
-
+        self.guessed_words.append(guessed_word)
         response = {
             "player": player.to_json(),
             "word": guessed_word, "correct_position": correct_position,

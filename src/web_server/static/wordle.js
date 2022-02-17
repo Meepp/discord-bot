@@ -1,4 +1,4 @@
-import {DrawableText, Button, keyState, round, RollingAverage, View} from "./engine.js";
+import {Button, DrawableText, RollingAverage, round, View} from "./engine.js";
 
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");
@@ -37,15 +37,25 @@ class ColorTextTile extends DrawableText {
     }
 }
 
+class Colors {
+    static UNGUESSED = "#999";
+    static GUESSED = "#5f5f5f";
+}
+
 class Wordle {
+    STATS_INTERVAL = 1000 / 10;
+    SQUARE_SIZE = 48;
+    PADDING = 4;
+
     tiles = new Array(MAX_GUESSES);
+    guessBar = new Array(WORD_LENGTH);
+    answerBar = new Array(WORD_LENGTH);
 
     menuView = new View(context); // Player menu view
     playerView = new View(context);
     gameView = new View(context); // Game view
 
     statsView = new View(context); // Informative stats view (fps etc)
-    STATS_INTERVAL = 1000 / 10;
     stats = {
         ping: new RollingAverage(5),
         stateTime: new RollingAverage(5),
@@ -58,34 +68,33 @@ class Wordle {
         stateTime: new DrawableText(5, 5 + 24),
         frameTime: new DrawableText(5, 5 + 36),
     };
-    textPointer = {
-        x: 0,
-        y: 0
-    }
+    displayPointerY = 0;
+    textPointerX = 0;
     started = false;
     correct = false;
     endTime = new Date();
     clock = new DrawableText(0, 0);
 
     initialize(data) {
+        console.log(data);
         this.endTime = new Date(data.end_time);
+        this.textPointerX = 0;
+        this.displayPointerY = 0;
 
-        let square_size = 48;
-        let padding = 4;
 
         // Reset guess on game initialization.
         this.correct = false;
 
         this.started = true;
         this.gameView.addChild(this.statsView);
-        this.gameView.cameraCenter.x = square_size * WORD_LENGTH / 2;
-        this.gameView.cameraCenter.y = square_size * MAX_GUESSES / 2;
+        this.gameView.cameraCenter.x = this.SQUARE_SIZE * WORD_LENGTH / 2;
+        this.gameView.cameraCenter.y = this.SQUARE_SIZE * MAX_GUESSES / 2;
         this.gameView.renderable = true;
 
-        this.clock.x = square_size * WORD_LENGTH / 2;
-        this.clock.y = -square_size;
+        this.clock.x = this.SQUARE_SIZE * WORD_LENGTH / 2;
+        this.clock.y = -this.SQUARE_SIZE;
         this.clock.centered = true;
-        this.clock.fontSize = square_size * .8;
+        this.clock.fontSize = this.SQUARE_SIZE * .8;
         this.clock.color = "black";
         this.gameView.addObjects(this.clock);
 
@@ -96,39 +105,102 @@ class Wordle {
         for (let y = 0; y < MAX_GUESSES; y++) {
             this.tiles[y] = new Array(WORD_LENGTH);
             for (let x = 0; x < WORD_LENGTH; x++) {
-                let tile = new ColorTextTile(x * (square_size + padding), y * (square_size + padding), "#999");
-                tile.width = square_size;
-                tile.height = square_size;
-                tile.fontSize = square_size * .8;
-                tile.text = ""
-                this.tiles[y][x] = tile;
+                this.tiles[y][x] = this.tileGenerator(x, y, "");
             }
         }
+
+        this.initializeBars();
+        this.initializeQwerty();
 
         for (let y = 0; y < MAX_GUESSES; y++) {
             game.gameView.addObjects(...game.tiles[y])
         }
-        this.textPointer = {x: 0, y: 0};
+    }
+
+    tileGenerator(x, y, text) {
+        let tile = new ColorTextTile(x * (this.SQUARE_SIZE + this.PADDING), y * (this.SQUARE_SIZE + this.PADDING), Colors.UNGUESSED);
+        tile.width = this.SQUARE_SIZE;
+        tile.height = this.SQUARE_SIZE;
+        tile.fontSize = this.SQUARE_SIZE * .8;
+        tile.text = text;
+        return tile;
+    }
+
+    initializeBars() {
+        /*
+        * Initialize guess bar in which to type, and the answer bar when the game is over.
+        */
+        for (let x = 0; x < WORD_LENGTH; x++) {
+            // Place input bar under board tiles
+            this.guessBar[x] = this.tileGenerator(x, MAX_GUESSES + 1, "");
+            this.answerBar[x] = this.tileGenerator(x, -2, "");
+        }
+
+        console.log(this.guessBar, this.answerBar);
+
+        this.gameView.addObjects(...this.guessBar);
+        this.gameView.addObjects(...this.answerBar);
+    }
+
+    initializeQwerty() {
+        /*
+         * Initialize qwerty keyboard layout.
+         */
+        let sqSize = 24;
+        let padding = 4;
+        function kbKeyGenerator(x, y, text) {
+            let tile = new ColorTextTile(x, y, Colors.UNGUESSED);
+            tile.width = sqSize;
+            tile.height = sqSize;
+            tile.color = "#4ee954"
+            tile.fontSize = sqSize * .8;
+            tile.text = text;
+            return tile;
+        }
+
+        const xOffset = 275;
+        const yOffset = 120;
+
+        this.qwerty = {};
+        const kbRows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+        const kbOffsets = [0, (sqSize + padding) * 0.5, (sqSize + padding) * 1.5]
+        kbRows.map((row, y) => {
+            row.split("").map((letter ,x) => {
+                let xo = xOffset + (sqSize + padding) * x + kbOffsets[y];
+                let yo = yOffset + (sqSize + padding) * y;
+                this.qwerty[letter] = kbKeyGenerator(xo, yo, letter);
+            });
+        });
+        let values = Object.values(this.qwerty);
+        console.log(values);
+        this.gameView.addObjects(...values);
     }
 
     handleWord(data) {
         if (!game.started) return;
 
+        if (data.player === null) {
+            data.word.split("").map((letter, idx) => {
+                game.answerBar[idx].text = letter;
+            });
+            return;
+        }
 
         for (let i = 0; i < WORD_LENGTH; i++) {
-            game.tiles[game.textPointer.y][i].fillColor = "#5f5f5f";
+            game.tiles[game.displayPointerY][i].fillColor = Colors.GUESSED;
         }
         data.correct_character.forEach((idx) => {
-            game.tiles[game.textPointer.y][idx].fillColor = "#b8890b";
+            game.tiles[game.displayPointerY][idx].fillColor = "#b8890b";
         });
         data.correct_position.forEach((idx) => {
-            game.tiles[game.textPointer.y][idx].fillColor = "#55ae1e";
+            game.tiles[game.displayPointerY][idx].fillColor = "#55ae1e";
         });
         data.word.split("").map((letter, idx) => {
-            game.tiles[game.textPointer.y][idx].text = letter;
+            game.tiles[game.displayPointerY][idx].text = letter;
+            game.qwerty[letter].fillColor = Colors.GUESSED;
         })
-        game.textPointer.y += 1;
-        game.textPointer.x = 0;
+
+        game.displayPointerY += 1;
     }
 
     update_players(players) {
@@ -165,26 +237,28 @@ function handleInput() {
 
     let arr = validLetters.split("");
     arr.forEach((letter) => {
-        if (keyPressState[letter] && game.textPointer.x < WORD_LENGTH) {
-            game.tiles[game.textPointer.y][game.textPointer.x].text = letter;
-            game.textPointer.x += 1;
+        if (keyPressState[letter] && game.textPointerX < WORD_LENGTH) {
+            game.guessBar[game.textPointerX].text = letter;
+            game.textPointerX += 1;
         }
     });
-    if (keyPressState["Backspace"] && game.textPointer.x > 0) {
-        game.textPointer.x -= 1;
-        game.tiles[game.textPointer.y][game.textPointer.x].text = "";
+    if (keyPressState["Backspace"] && game.textPointerX > 0) {
+        game.textPointerX -= 1;
+        game.guessBar[game.textPointerX].text = "";
     }
 
-    if (keyPressState["Enter"] && game.textPointer.x === WORD_LENGTH) {
+    if (keyPressState["Enter"] && game.textPointerX === WORD_LENGTH) {
         let word = "";
         for (let i = 0; i < WORD_LENGTH; i++) {
-            word += game.tiles[game.textPointer.y][i].text;
+            word += game.guessBar[i].text;
+            game.guessBar[i].text = "";
         }
         console.log("Sending", word);
         socket.emit("word", {
             word: word,
             room: ROOM_ID
         })
+        game.textPointerX = 0;
     }
 
     // I never want multiple inputs to happen unless a new down-press occurs.

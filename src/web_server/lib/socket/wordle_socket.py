@@ -1,3 +1,6 @@
+import logging
+from functools import wraps
+from time import time
 from typing import Dict
 
 import socketio
@@ -11,12 +14,42 @@ from web_server.lib.wordle.WordleTable import WordlePhases, WordleTable, WordleP
 tables: Dict[int, WordleTable] = {}
 
 
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        logger = logging.getLogger("timing")
+        logger.info(f"{f.__name__}: {te - ts}")
+        return result
+    return wrap
+
+
 @sio.on("ping", namespace="/wordle")
 def on_ping():
     sio.emit("pong", room=request.sid, namespace="/wordle")
 
 
+@sio.on("start", namespace="/wordle")
+@timing
+def on_start(data):
+    room_id = int(data.get("room"))
+
+    profile = session_user()
+
+    room = room_repository.get_room(room_id)
+
+    table = tables[room_id]
+
+    if room['author_id'] != profile['owner_id']:
+        return
+
+    table.initialize_round()
+
+
 @sio.on("join", namespace="/wordle")
+@timing
 def on_join(data):
     room_id = int(data.get("room"))
     join_room(room_id)
@@ -36,24 +69,8 @@ def on_join(data):
     tables[room_id].broadcast_players()
 
 
-@sio.on("start", namespace="/wordle")
-def on_start(data):
-    room_id = int(data.get("room"))
-
-    profile = session_user()
-
-    room = room_repository.get_room(room_id)
-
-    table = tables[room_id]
-
-    if room['author_id'] != profile['owner_id']:
-        return
-
-    table.initialize_round()
-    sio.emit("start", None, room=room_id, namespace="/wordle")
-
-
 @sio.on("word", namespace="/wordle")
+@timing
 def on_word(data):
     room_id = int(data.get("room"))
     guessed_word = data.get("word")
