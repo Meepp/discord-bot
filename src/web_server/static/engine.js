@@ -165,6 +165,7 @@ export class DrawableText extends Point {
         context.lineWidth = 0.2;
 
         this.text.split("\n").map((text, i) => {
+            // TODO: Ensure textwidth cannot exceed bounding box.
             let width = context.measureText(text).width;
 
             let offset = this.centered ? width / 2 : 0;

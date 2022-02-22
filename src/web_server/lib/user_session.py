@@ -11,12 +11,12 @@ def session_user() -> Optional[dict]:
     :return: the current authenticated user.
     :return: None if no user is logged in.
     """
-    user_id = session['user_id'] if 'user_id' in session else None
-    if user_id is not None:
+    username = session['username'] if 'username' in session else None
+    if username is not None:
         if not hasattr(flaskg, 'session_user'):
-            flaskg.session_user = profile_repository.get_profile(user_id=user_id)
+            flaskg.session_user = username
             if flaskg.session_user is None:
-                del session['user_id']
+                del session['username']
 
         return flaskg.session_user
     return None
@@ -27,20 +27,20 @@ def session_is_authed():
     Checks if the session is authorized.
     :return:
     """
-    if 'user_id' not in session:
+    if 'username' not in session:
         return False
 
     return session_user() is not None
 
 
-def session_user_set(user: Optional[dict]):
+def session_user_set(username: str):
     """
     Set the current user associated with the session.
     If not None, session_is_authed() will return True and session_user() will return the user.
     If None, session_is_authed() will return False and session_user() will raise a ValueError.
     :param user: The user or None.
     """
-    if user is None:
-        del session['user_id']
+    if username is None:
+        del session['username']
     else:
-        session['user_id'] = user['owner_id']
+        session['username'] = username

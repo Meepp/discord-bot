@@ -19,8 +19,7 @@ Game
 
 {% block script %}
 <script>
-    const ROOM_ID = "{{ room.message_id }}";
-    const USER_NAME = "{{ session_user().owner }}";
+    const ROOM_ID = "{{ room }}";
 </script>
 <script type="module" src="{{ url_for('static', filename='engine.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='wordle.js') }}"></script>

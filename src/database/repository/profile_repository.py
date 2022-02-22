@@ -1,9 +1,25 @@
+import logging
+from functools import wraps
+from time import time
+
 from discord import User
 from pymongo import ReturnDocument
 
 from src.database import mongodb as db
 from src.database.models.models import Profile
 
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        logger = logging.getLogger("timing")
+        logger.info(f"{f.__name__}: {te - ts}")
+        return result
+
+    return wrap
 
 def get_money(user: User):
     result = db['profile'].find_one({"owner_id": user.id})
@@ -28,6 +44,7 @@ def update_money(user: dict, money_update):
                                              upsert=True, return_document=ReturnDocument.AFTER)
 
 
+@timing
 def get_profile(user: User = None, user_id: int = None, username: str = None):
     if user is not None:
         return db['profile'].find_one({"owner_id": user.id})

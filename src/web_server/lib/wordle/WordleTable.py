@@ -3,17 +3,16 @@ import random
 import datetime
 import threading
 import time
+from collections import defaultdict
 from enum import Enum
 from typing import List
 
 from src.web_server import sio
 
-WORD_LISTS = {
-
-}
+WORD_LISTS = defaultdict(list)
 
 
-def filter_words(filename, word_length=5):
+def filter_words(filename):
     valid_letters = "qwertyuiopasdfghjklzxcvbnm"
 
     def is_valid_word(word):
@@ -22,23 +21,19 @@ def filter_words(filename, word_length=5):
                 return False
         return True
 
-    valid_words = []
     with open(filename, "r") as f:
         for line in f.readlines():
             line = line.strip()
             if not is_valid_word(line):
                 continue
 
-            if len(line) != word_length:
-                continue
-
-            valid_words.append(line)
-
-    WORD_LISTS[word_length] = valid_words
+            WORD_LISTS[len(line)].append(line)
 
 
+MIN_WORD_LENGTH = 2
+MAX_WORD_LENGTH = 50
 print("Initializing word lists.")
-filter_words("storage/google-10000-english.txt")
+filter_words("storage/wordlist.txt")
 print("Done initializing word lists.")
 
 
@@ -49,26 +44,31 @@ class WordlePhases(Enum):
 
 
 class WordlePlayer:
-    def __init__(self, profile: dict, socket, table):
-        self.profile = profile
+    def __init__(self, username, socket, table):
+        self.username = username
         self.socket = socket
         self.table: WordleTable = table
 
         self.n_correct_answers = 0
         self.guessed_current = False
         self.points = 0
+        self.ready = False
 
     def guessed(self, points):
         self.guessed_current = True
         self.n_correct_answers += 1
         self.points += points
 
+    def reset(self):
+        self.guessed_current = False
+
     def to_json(self):
         return {
-            "name": self.profile["owner"],
+            "name": self.username,
             "n_correct": self.n_correct_answers,
             "points": round(self.points, ndigits=1),
             "guessed": self.guessed_current,
+            "ready": self.ready,
         }
 
 
@@ -77,16 +77,15 @@ class WordleTable:
     PLAYER_MULTIPLIER = 1.123
     SPEED_MULTIPLIER = 2.413
 
-    def __init__(self, room_id, author, word_length=5):
+    def __init__(self, room_id, author, word_length=6):
         self.config = {
             "room": room_id,
             "namespace": "/wordle"
         }
-
+        self.word_length = word_length
         self.room_id = room_id
 
         self.player_list: List[WordlePlayer] = []
-        self.valid_words = WORD_LISTS[word_length]
         self.current_word = ""
 
         self.guessed_words = []
@@ -124,16 +123,20 @@ class WordleTable:
         :return:
         """
         for player in self.player_list:
-            player.guessed_current = False
+            player.reset()
+
+        self.broadcast_players()
 
         self.round += 1
 
+        self.word_length = random.randint(MIN_WORD_LENGTH, MAX_WORD_LENGTH)
+
         self.ongoing = True
         self.guessed_words = []
-        self.current_word = random.sample(self.valid_words, 1)[0]
+        self.current_word = random.sample(WORD_LISTS[self.word_length], 1)[0]
 
-        self.broadcast_players()
-        self.end_time = datetime.datetime.now() + datetime.timedelta(seconds=60)
+        seconds = (60 + max(0, self.word_length - 5) * 30)
+        self.end_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         sio.emit("start", self.get_state(), **self.config)
 
     def handle_round_end(self):
@@ -153,12 +156,11 @@ class WordleTable:
         if self.check_players_left():
             return False
 
-        self.initialize_round()
-
     def get_state(self):
         return {
             "owner": self.author,
-            "end_time": self.end_time.isoformat()
+            "end_time": self.end_time.isoformat(),
+            "word_length": self.word_length,
         }
 
     def n_players_left(self):
@@ -188,7 +190,7 @@ class WordleTable:
         if player.guessed_current:
             return
 
-        if guessed_word not in self.valid_words:
+        if guessed_word not in WORD_LISTS[self.word_length]:
             return
 
         if guessed_word == self.current_word:
@@ -224,14 +226,23 @@ class WordleTable:
         self.handle_round_end()
 
     def broadcast_players(self):
+        print("Broadcasting players")
         sio.emit("players", [player.to_json() for player in self.player_list], json=True, **self.config)
 
     def join(self, player: WordlePlayer):
 
         self.player_list.append(player)
 
-    def get_player(self, profile):
+    def remove_player(self, player):
+        self.player_list.remove(player)
+
+    def get_player(self, username, socket_id=None):
+        if socket_id is not None:
+            for player in self.player_list:
+                if player.socket == socket_id:
+                    return player
+
         for player in self.player_list:
-            if player.profile["owner_id"] == profile["owner_id"]:
+            if player.username == username:
                 return player
         return None

@@ -1,3 +1,6 @@
+from functools import wraps
+from time import time
+
 from flask import Flask
 from flask_socketio import SocketIO
 import logging
@@ -6,6 +9,19 @@ from src.web_server.lib.user_session import session_user
 
 global app
 global sio
+
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        logger = logging.getLogger("timing")
+        logger.info(f"{f.__name__}: {te - ts}")
+        return result
+
+    return wrap
 
 
 def create_logger():
@@ -32,7 +48,7 @@ def create_app():
     import src.web_server.lib.socket
 
     # disable all loggers from different files
-    logging.getLogger("geventwebsocket.server").setLevel(logging.ERROR)
+    # logging.getLogger("geventwebsocket.server").setLevel(logging.ERROR)
 
     # Set timing logging to file for websocket functions
     create_logger()
@@ -41,7 +57,6 @@ def create_app():
     app.register_blueprint(main.bp)
 
     return app
-
 
 
 def cleanup():

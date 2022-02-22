@@ -8,22 +8,21 @@ from flask import request
 from flask_socketio import join_room
 
 from database.repository import room_repository
-from src.web_server import session_user, sio
+from src.web_server import session_user, sio, timing
+from web_server.lib.user_session import session_user_set
 from web_server.lib.wordle.WordleTable import WordlePhases, WordleTable, WordlePlayer
 
 tables: Dict[int, WordleTable] = {}
 
 
-def timing(f):
-    @wraps(f)
-    def wrap(*args, **kw):
-        ts = time()
-        result = f(*args, **kw)
-        te = time()
-        logger = logging.getLogger("timing")
-        logger.info(f"{f.__name__}: {te - ts}")
-        return result
-    return wrap
+@sio.event(namespace="/wordle")
+@timing
+def disconnect():
+    for room_id, game in tables.items():
+        player = game.get_player(None, socket_id=request.sid)
+        if player:
+            game.remove_player(player)
+            game.broadcast_players()
 
 
 @sio.on("ping", namespace="/wordle")
@@ -36,37 +35,59 @@ def on_ping():
 def on_start(data):
     room_id = int(data.get("room"))
 
-    profile = session_user()
-
-    room = room_repository.get_room(room_id)
-
     table = tables[room_id]
 
-    if room['author_id'] != profile['owner_id']:
-        return
+    # Check if any player is not ready, if so, you cant start yet.
+    for player in table.player_list:
+        if player.ready is False:
+            return
 
     table.initialize_round()
+
+
+@sio.on("set_session", namespace="/wordle")
+@timing
+def on_set_session(data):
+    username = data.get("username", None)
+    print(f"{username} connected.")
+    if session_user() is None:
+        session_user_set(username)
+
+    sio.emit("set_session", username, room=request.sid, namespace="/wordle")
 
 
 @sio.on("join", namespace="/wordle")
 @timing
 def on_join(data):
     room_id = int(data.get("room"))
+
     join_room(room_id)
 
+    username = session_user()
     # Initialize table if this hasn't been done yet.
-    room = room_repository.get_room(room_id)
     if room_id not in tables:
-        tables[room_id] = WordleTable(room_id, author=room["author_id"])
+        tables[room_id] = WordleTable(room_id, author=username)
 
-    if tables[room_id].get_player(session_user()):
-        return
+    table = tables[room_id]
 
-    sio.emit("join", "message", json=True, room=room_id, namespace="/wordle")
-    # Initialize player and add to table, then inform other players
-    player = WordlePlayer(session_user(), request.sid, tables[room_id])
-    tables[room_id].join(player)
-    tables[room_id].broadcast_players()
+    # Add new player to table if it is not already in there.
+    if not table.get_player(session_user()):
+        sio.emit("join", "message", json=True, room=room_id, namespace="/wordle")
+        # Initialize player and add to table, then inform other players
+        player = WordlePlayer(username, request.sid, table)
+        table.join(player)
+
+    table.broadcast_players()
+
+
+@sio.on("ready", namespace="/wordle")
+@timing
+def on_ready(data):
+    room_id = int(data.get("room"))
+    table = tables[room_id]
+    player = table.get_player(session_user())
+    player.ready = True
+    table.broadcast_players()
 
 
 @sio.on("word", namespace="/wordle")
@@ -78,10 +99,10 @@ def on_word(data):
     table = tables[room_id]
 
     # Check if player is in this room
-    profile = session_user()
-    player = table.get_player(profile)
+    username = session_user()
+    player = table.get_player(username)
     if not player:
         print(f"{player} tried to send a word.")
         return
 
-    response = table.check_word(player, guessed_word)
+    table.check_word(player, guessed_word)

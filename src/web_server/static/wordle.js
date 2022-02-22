@@ -1,4 +1,4 @@
-import {Button, DrawableText, RollingAverage, round, View} from "./engine.js";
+import {Button, DrawableText, RollingAverage, round, View, ColorTile} from "./engine.js";
 
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");
@@ -11,9 +11,13 @@ const FPS_INTERVAL = 1000 / 60;
 const view = new View(context); // Main wrapper view
 view.width = canvas.width;
 view.height = canvas.height;
+const background = new ColorTile("#792b68");
+background.x = -20
+background.width = 5000;
+background.height = 5000;
+view.addObjects(background);
 
 
-const WORD_LENGTH = 5;
 const MAX_GUESSES = 10;
 
 class ColorTextTile extends DrawableText {
@@ -40,16 +44,62 @@ class ColorTextTile extends DrawableText {
 class Colors {
     static UNGUESSED = "#999";
     static GUESSED = "#5f5f5f";
+    static CORRECT_CHARACTER = "#b8890b";
+    static CORRECT_PLACE = "#55ae1e";
 }
+
+class PlayerInfo {
+    POINTS_OFFSET = 30;
+    READY_OFFSET = 30;
+
+    constructor(x, y, color) {
+        this._x = x;
+        this._y = y;
+
+        this.name = new DrawableText(x, y);
+        this.points = new DrawableText(x, y);
+        this.ready = new DrawableText(x, y);
+    }
+
+    set x(value) {
+        this._x = value;
+        this.name.x = value;
+        this.points.x = this.name.x + this.POINTS_OFFSET;
+        this.ready.x = this.points.x + this.READY_OFFSET;
+    }
+
+    get x() {
+        return this._x;
+    }
+
+    set y(value) {
+        this._y = value;
+        this.name.y = value;
+        this.points.x = value;
+        this.ready.x = value;
+    }
+
+    get y() {
+        return this._y;
+    }
+
+    render(context) {
+        this.name.render(context);
+        this.points.render(context);
+        this.ready.render(context);
+    }
+}
+
 
 class Wordle {
     STATS_INTERVAL = 1000 / 10;
     SQUARE_SIZE = 48;
     PADDING = 4;
+    WORD_LENGTH = 6;
 
     tiles = new Array(MAX_GUESSES);
-    guessBar = new Array(WORD_LENGTH);
-    answerBar = new Array(WORD_LENGTH);
+    guessBar = new Array(this.WORD_LENGTH);
+    answerBar = new Array(this.WORD_LENGTH);
 
     menuView = new View(context); // Player menu view
     playerView = new View(context);
@@ -75,24 +125,18 @@ class Wordle {
     endTime = new Date();
     clock = new DrawableText(0, 0);
 
-    initialize(data) {
-        console.log(data);
-        this.endTime = new Date(data.end_time);
+    initialize() {
         this.textPointerX = 0;
         this.displayPointerY = 0;
 
-
-        // Reset guess on game initialization.
-        this.correct = false;
-
-        this.started = true;
         this.gameView.addChild(this.statsView);
-        this.gameView.cameraCenter.x = this.SQUARE_SIZE * WORD_LENGTH / 2;
         this.gameView.cameraCenter.y = this.SQUARE_SIZE * MAX_GUESSES / 2;
+        this.gameView.cameraCenter.x = this.SQUARE_SIZE * this.WORD_LENGTH / 2;
         this.gameView.renderable = true;
 
-        this.clock.x = this.SQUARE_SIZE * WORD_LENGTH / 2;
         this.clock.y = -this.SQUARE_SIZE;
+        this.clock.x = this.SQUARE_SIZE * this.WORD_LENGTH / 2;
+
         this.clock.centered = true;
         this.clock.fontSize = this.SQUARE_SIZE * .8;
         this.clock.color = "black";
@@ -103,8 +147,8 @@ class Wordle {
         this.playerView.renderable = true;
 
         for (let y = 0; y < MAX_GUESSES; y++) {
-            this.tiles[y] = new Array(WORD_LENGTH);
-            for (let x = 0; x < WORD_LENGTH; x++) {
+            this.tiles[y] = new Array(this.WORD_LENGTH);
+            for (let x = 0; x < this.WORD_LENGTH; x++) {
                 this.tiles[y][x] = this.tileGenerator(x, y, "");
             }
         }
@@ -117,12 +161,67 @@ class Wordle {
         }
     }
 
+    start(data) {
+        this.WORD_LENGTH = data.word_length;
+
+        this.gameView.cameraCenter.x = this.SQUARE_SIZE * this.WORD_LENGTH / 2;
+        this.clock.x = this.SQUARE_SIZE * this.WORD_LENGTH / 2;
+
+        this.guessBar = new Array(this.WORD_LENGTH);
+        this.answerBar = new Array(this.WORD_LENGTH);
+
+        this.gameView.objects = {};
+        this.gameView.addObjects(this.clock);
+
+        for (let y = 0; y < MAX_GUESSES; y++) {
+            this.tiles[y] = new Array(this.WORD_LENGTH);
+            for (let x = 0; x < this.WORD_LENGTH; x++) {
+                this.tiles[y][x] = this.tileGenerator(x, y, "");
+            }
+        }
+
+        this.initializeBars();
+        this.initializeQwerty();
+
+        for (let y = 0; y < MAX_GUESSES; y++) {
+            game.gameView.addObjects(...game.tiles[y])
+        }
+
+        this.guessBar.forEach((tile) => {
+            tile.text = "";
+        });
+        this.answerBar.forEach((tile) => {
+            tile.text = "";
+        });
+
+        this.tiles.forEach((row) => {
+            row.forEach((tile) => {
+                tile.text = "";
+                tile.fillColor = Colors.UNGUESSED;
+            })
+        });
+
+        Object.keys(this.qwerty).forEach((letter) => {
+           this.qwerty[letter].fillColor = Colors.UNGUESSED;
+        });
+        this.endTime = new Date(data.end_time);
+        
+        this.displayPointerY = 0;
+        this.textPointerX = 0;
+    
+        // Reset guess on game initialization.
+        this.correct = false;
+        this.started = true;
+    }
+
     tileGenerator(x, y, text) {
         let tile = new ColorTextTile(x * (this.SQUARE_SIZE + this.PADDING), y * (this.SQUARE_SIZE + this.PADDING), Colors.UNGUESSED);
+        tile.color = "#000";
         tile.width = this.SQUARE_SIZE;
         tile.height = this.SQUARE_SIZE;
         tile.fontSize = this.SQUARE_SIZE * .8;
         tile.text = text;
+        tile.fontFamily = "Arial";
         return tile;
     }
 
@@ -130,7 +229,7 @@ class Wordle {
         /*
         * Initialize guess bar in which to type, and the answer bar when the game is over.
         */
-        for (let x = 0; x < WORD_LENGTH; x++) {
+        for (let x = 0; x < this.WORD_LENGTH; x++) {
             // Place input bar under board tiles
             this.guessBar[x] = this.tileGenerator(x, MAX_GUESSES + 1, "");
             this.answerBar[x] = this.tileGenerator(x, -2, "");
@@ -146,29 +245,30 @@ class Wordle {
         /*
          * Initialize qwerty keyboard layout.
          */
-        let sqSize = 24;
+        let sqSize = 36;
         let padding = 4;
+
         function kbKeyGenerator(x, y, text) {
             let tile = new ColorTextTile(x, y, Colors.UNGUESSED);
             tile.width = sqSize;
             tile.height = sqSize;
-            tile.color = "#4ee954"
-            tile.fontSize = sqSize * .8;
+            tile.color = "#000"
+            tile.fontSize = sqSize * .6;
             tile.text = text;
             return tile;
         }
 
-        const xOffset = 275;
+        const xOffset = 52 * this.WORD_LENGTH + 10;
         const yOffset = 120;
 
         this.qwerty = {};
         const kbRows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
         const kbOffsets = [0, (sqSize + padding) * 0.5, (sqSize + padding) * 1.5]
         kbRows.map((row, y) => {
-            row.split("").map((letter ,x) => {
+            row.split("").map((letter, x) => {
                 let xo = xOffset + (sqSize + padding) * x + kbOffsets[y];
                 let yo = yOffset + (sqSize + padding) * y;
-                this.qwerty[letter] = kbKeyGenerator(xo, yo, letter);
+                this.qwerty[letter] = kbKeyGenerator(xo, yo, letter.toUpperCase());
             });
         });
         let values = Object.values(this.qwerty);
@@ -186,24 +286,33 @@ class Wordle {
             return;
         }
 
-        for (let i = 0; i < WORD_LENGTH; i++) {
+        for (let i = 0; i < this.WORD_LENGTH; i++) {
+
             game.tiles[game.displayPointerY][i].fillColor = Colors.GUESSED;
         }
         data.correct_character.forEach((idx) => {
-            game.tiles[game.displayPointerY][idx].fillColor = "#b8890b";
+            if (game.qwerty[data.word.charAt(idx)].fillColor !== Colors.CORRECT_PLACE) {
+                game.qwerty[data.word.charAt(idx)].fillColor = Colors.CORRECT_CHARACTER
+            }
+
+            game.tiles[game.displayPointerY][idx].fillColor = Colors.CORRECT_CHARACTER;
         });
         data.correct_position.forEach((idx) => {
-            game.tiles[game.displayPointerY][idx].fillColor = "#55ae1e";
+            game.qwerty[data.word.charAt(idx)].fillColor = Colors.CORRECT_PLACE
+            game.tiles[game.displayPointerY][idx].fillColor = Colors.CORRECT_PLACE;
         });
         data.word.split("").map((letter, idx) => {
             game.tiles[game.displayPointerY][idx].text = letter;
-            game.qwerty[letter].fillColor = Colors.GUESSED;
+            if (game.qwerty[letter].fillColor === Colors.UNGUESSED) {
+                game.qwerty[letter].fillColor = Colors.GUESSED;
+            }
         })
 
         game.displayPointerY += 1;
     }
 
     update_players(players) {
+        console.log("Updating playerlist", players);
         this.playerView.objects = {};
         let height = 30;
         let offset = 150;
@@ -211,7 +320,9 @@ class Wordle {
             let playerText = new DrawableText(50, offset + height * i)
             playerText.fontSize = height * 0.8;
             playerText.color = player.guessed ? "#090" : "#099";
-            playerText.text = `${player.name}: ${player.points} points`;
+
+            let readyIcon = player.ready ? "X" : "O";
+            playerText.text = `${player.name}: ${player.points} points [${readyIcon}]`;
             this.playerView.addObjects(playerText);
         });
 
@@ -237,7 +348,7 @@ function handleInput() {
 
     let arr = validLetters.split("");
     arr.forEach((letter) => {
-        if (keyPressState[letter] && game.textPointerX < WORD_LENGTH) {
+        if (keyPressState[letter] && game.textPointerX < game.WORD_LENGTH) {
             game.guessBar[game.textPointerX].text = letter;
             game.textPointerX += 1;
         }
@@ -247,17 +358,25 @@ function handleInput() {
         game.guessBar[game.textPointerX].text = "";
     }
 
-    if (keyPressState["Enter"] && game.textPointerX === WORD_LENGTH) {
+    if (keyPressState["Enter"] && (game.textPointerX === game.WORD_LENGTH || game.started === false)) {
         let word = "";
-        for (let i = 0; i < WORD_LENGTH; i++) {
+        for (let i = 0; i < game.WORD_LENGTH; i++) {
             word += game.guessBar[i].text;
             game.guessBar[i].text = "";
         }
-        console.log("Sending", word);
-        socket.emit("word", {
-            word: word,
-            room: ROOM_ID
-        })
+
+        if (game.started) {
+            console.log("Emitting", word);
+            socket.emit("word", {
+                word: word,
+                room: ROOM_ID
+            })
+        } else if (word === "ready") {
+            socket.emit("ready", {
+                room: ROOM_ID
+            });
+        }
+
         game.textPointerX = 0;
     }
 
@@ -345,7 +464,7 @@ function initialize() {
 
     setInterval(function () {
         startTime = Date.now();
-        socket.emit('ping');
+        socket.emit("ping");
     }, game.STATS_INTERVAL);
 
 
@@ -356,13 +475,14 @@ function initialize() {
         game.handleWord(data);
     });
     socket.on("start", (data) => {
-        game.initialize(data)
+        game.start(data)
     });
     socket.on("players", (data) => {
         game.update_players(data);
     });
 
     socket.emit("join", {room: ROOM_ID});
+    game.initialize();
     intervalID = requestAnimationFrame(gameLoop);
 }
 
@@ -370,4 +490,12 @@ let intervalID;
 let startTime;
 let game = new Wordle();
 let socket = io("/wordle");
-initialize();
+let USER_NAME;
+
+let username = prompt("Type your username");
+socket.emit("set_session", {username: username});
+socket.on("set_session", (data) => {
+    USER_NAME = data;
+    initialize();
+});
+
