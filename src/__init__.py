@@ -49,7 +49,7 @@ class Bot(commands.Bot):
         self.esports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
 
-        # self.predictor = Predictor()
+        self.predictor = Predictor()
 
         print("Done initializing.")
 
