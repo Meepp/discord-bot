@@ -1,15 +1,36 @@
+from functools import wraps
+from time import time
+
 from flask import Flask
 from flask_socketio import SocketIO
 import logging
 from engineio.payload import Payload
-
 from src.web_server.lib.user_session import session_user
 
 global app
 global sio
 
 
-logging.basicConfig(level=logging.DEBUG)
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        logger = logging.getLogger("timing")
+        logger.info(f"{f.__name__}: {te - ts}")
+        return result
+
+    return wrap
+
+
+def create_logger():
+    logger = logging.getLogger("timing")
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler("timing.log")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)-8s  %(message)s", datefmt="(%H:%M:%S)"))
+    logger.addHandler(fh)
 
 
 def create_app():
@@ -26,19 +47,16 @@ def create_app():
 
     import src.web_server.lib.socket
 
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s %(name)s %(levelname)-8s  %(message)s',
-        datefmt='(%H:%M:%S)')
     # disable all loggers from different files
-    logging.getLogger('geventwebsocket.server').setLevel(logging.ERROR)
+    # logging.getLogger("geventwebsocket.server").setLevel(logging.ERROR)
+
+    # Set timing logging to file for websocket functions
+    create_logger()
 
     from src.web_server import main
     app.register_blueprint(main.bp)
 
-
-print("Creating app")
-create_app()
+    return app
 
 
 def cleanup():

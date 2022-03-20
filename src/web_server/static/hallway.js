@@ -7,22 +7,6 @@ context.imageSmoothingEnabled = false;
 const FPS_INTERVAL = 1000 / 60;
 const COLORS = ["blue", "red", "green", "purple", "black"];
 
-class RollingAverage {
-    constructor(n) {
-        this.values = [];
-        this.n = n;
-    }
-
-    put(value) {
-        this.values.unshift(value);
-        this.values = this.values.slice(0, this.n);
-    }
-
-    get() {
-        return this.values.reduce((a, b) => a + b, 0) / this.values.length;
-    }
-}
-
 
 class Player {
     constructor(image, deadImage) {
@@ -508,10 +492,6 @@ function HallwayHunters() {
 }
 
 
-function round(number) {
-    return Math.round(number * 100) / 100;
-}
-
 function handleInput() {
     const actions = [
         ["ArrowUp", {x: 0, y: -1}],
@@ -579,7 +559,6 @@ function gameLoop() {
             console.log(e);
         }
     }
-
 }
 
 
@@ -1112,10 +1091,7 @@ function sendMove(move) {
     socket.emit("move", data);
 }
 
-let keyState = {};
 document.addEventListener("keydown", (ev) => {
-    keyState[ev.key] = true;
-    // TODO: Refactor this to not be dumb (maybe get valid actions from server?)
     if (ev.key === "c" ||
         ev.key === "x" ||
         ev.key === "z" ||
@@ -1124,7 +1100,6 @@ document.addEventListener("keydown", (ev) => {
     }
 });
 document.addEventListener("keyup", (ev) => {
-    keyState[ev.key] = false;
     sendMove({x: 0, y: 0});
 });
 
