@@ -25,7 +25,7 @@ multidict==4.7.6
 multipledispatch==0.6.0
 numpy==1.20.3
 pandas==1.2.4
-Pillow==8.0.1
+Pillow==9.0.1
 pycparser==2.20
 pymongo==3.12.0
 PySide2==5.15.2
