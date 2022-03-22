@@ -18,11 +18,18 @@ tables: Dict[int, WordleTable] = {}
 @sio.event(namespace="/wordle")
 @timing
 def disconnect():
+    to_remove_ids = []
     for room_id, game in tables.items():
         player = game.get_player(None, socket_id=request.sid)
         if player:
             game.remove_player(player)
             game.broadcast_players()
+            if len(game.player_list) == 0:
+                to_remove_ids.append(room_id)
+
+    for remove_id in to_remove_ids:
+        print(f"Empty room {remove_id}, deleting.")
+        del tables[remove_id]
 
 
 @sio.on("ping", namespace="/wordle")

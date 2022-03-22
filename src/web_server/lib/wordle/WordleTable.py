@@ -31,7 +31,7 @@ def filter_words(filename):
 
 
 MIN_WORD_LENGTH = 2
-MAX_WORD_LENGTH = 50
+MAX_WORD_LENGTH = 12
 print("Initializing word lists.")
 filter_words("storage/wordlist.txt")
 print("Done initializing word lists.")
@@ -144,7 +144,7 @@ class WordleTable:
         Checks if the round can end, and will start a new round if this is the case.
         :return:
         """
-        if len(self.guessed_words) == 10:
+        if len(self.guessed_words) == 10 or not self.check_players_left():
             response = {
                 "player": None,
                 "word": self.current_word, "correct_position": [],
@@ -152,9 +152,6 @@ class WordleTable:
             }
             sio.emit("word", response, json=True, **self.config)
             self.ongoing = False
-
-        if self.check_players_left():
-            return False
 
     def get_state(self):
         return {
@@ -197,6 +194,9 @@ class WordleTable:
             nth_guess_points = self.n_players_left() * self.PLAYER_MULTIPLIER
             time_points = (self.end_time - datetime.datetime.now()).total_seconds() * self.SPEED_MULTIPLIER
             player.guessed(nth_guess_points + time_points)
+
+            sio.emit("correct", room=player.socket, namespace="/wordle")
+
             self.broadcast_players()
             self.handle_round_end()
             return
@@ -226,7 +226,6 @@ class WordleTable:
         self.handle_round_end()
 
     def broadcast_players(self):
-        print("Broadcasting players")
         sio.emit("players", [player.to_json() for player in self.player_list], json=True, **self.config)
 
     def join(self, player: WordlePlayer):

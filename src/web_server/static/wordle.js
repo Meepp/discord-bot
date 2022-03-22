@@ -95,7 +95,7 @@ class Wordle {
     STATS_INTERVAL = 1000 / 10;
     SQUARE_SIZE = 48;
     PADDING = 4;
-    WORD_LENGTH = 6;
+    WORD_LENGTH = 5;
 
     tiles = new Array(MAX_GUESSES);
     guessBar = new Array(this.WORD_LENGTH);
@@ -287,7 +287,6 @@ class Wordle {
         }
 
         for (let i = 0; i < this.WORD_LENGTH; i++) {
-
             game.tiles[game.displayPointerY][i].fillColor = Colors.GUESSED;
         }
         data.correct_character.forEach((idx) => {
@@ -467,6 +466,8 @@ function initialize() {
         socket.emit("ping");
     }, game.STATS_INTERVAL);
 
+    audioFiles["begin"] = new Audio(`/static/audio/begin.mp3`);
+    audioFiles["notify"] = new Audio(`/static/audio/notify.mp3`);
 
     socket.on('pong', function () {
         game.stats.ping.put(Date.now() - startTime);
@@ -475,11 +476,15 @@ function initialize() {
         game.handleWord(data);
     });
     socket.on("start", (data) => {
-        game.start(data)
+        audioFiles["notify"].play();
+        game.start(data);
     });
     socket.on("players", (data) => {
         game.update_players(data);
     });
+    socket.on("correct", () => {
+        audioFiles["begin"].play();
+    })
 
     socket.emit("join", {room: ROOM_ID});
     game.initialize();
@@ -491,8 +496,17 @@ let startTime;
 let game = new Wordle();
 let socket = io("/wordle");
 let USER_NAME;
+let audioFiles = {};
 
-let username = prompt("Type your username");
+let username = Cookies.get("username");
+if (username === undefined) {
+    while (username === null || username === undefined) {
+        username = prompt("Type your username.");
+    }
+    Cookies.set("username", username);
+}
+
+
 socket.emit("set_session", {username: username});
 socket.on("set_session", (data) => {
     USER_NAME = data;
