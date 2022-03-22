@@ -63,9 +63,9 @@ class DiamondSquare(object):
 
 
 class World(object):
-    WATER_VALUE = 1
-    GROUND_VALUE = 2
-    MOUNTAIN_VALUE = 3
+    WATER_VALUE = 0
+    GROUND_VALUE = 15
+    MOUNTAIN_VALUE = 10
 
     def __init__(self, n=5, random_factor=4, noise_factor=0.1):
         self.size = 2 ** n + 1
@@ -76,6 +76,8 @@ class World(object):
         self.diamond_star = DiamondSquare(noise_factor=noise_factor)
 
         self.ground = np.zeros((self.size, self.size), dtype=float)
+        self.capital_coordinates = []
+
         self.generate(random_factor)
 
     def generate(self, n=4):
@@ -99,24 +101,109 @@ class World(object):
         mountain = self.ground > mountain_threshold
         ground = 1 - (water + mountain)
 
-        self.ground = water * self.WATER_VALUE + ground * self.GROUND_VALUE + mountain * self.MOUNTAIN_VALUE
+        self.ground = (
+                water * self.WATER_VALUE +
+                ground * self.GROUND_VALUE +
+                mountain * self.MOUNTAIN_VALUE).astype(int)
 
         self.remove_islands(threshold=0.05)
 
-    def remove_islands(self, threshold=0.05):
-        processed = self.ground == 1
-        is_done = False
-        while not is_done:
-            is_done = True
+        self.place_capitals(n_capitals=20)
 
-            processed[]
+        self.distribute_terrain()
+        for capital in self.capital_coordinates:
+            self.ground[capital] = 60
 
+    def remove_islands(self, threshold=0.05, removal_type=GROUND_VALUE):
+        processed = self.ground == removal_type
 
+        def flood_fill(ground, x, y):
+            frontier = [(x, y)]
+            count = 0
+            while len(frontier) > 0:
+                x, y = frontier.pop(0)
+                if not (0 <= x < ground.shape[0]):
+                    continue
+                if not (0 <= y < ground.shape[1]):
+                    continue
+                if processed[x, y] == 0:
+                    continue
+
+                count += 1
+                blob[x, y] = 0
+                processed[x, y] = 0
+                frontier.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+            return count
+
+        while True:
+            start = None
+            # Blob will become a negative mask over the flood-filled island
+            blob = np.ones(processed.shape, dtype=bool)
+            for x, col in enumerate(processed):
+                for y, elem in enumerate(col):
+                    if elem == 1:
+                        blob[x, y] = 1
+                        start = (x, y)
+
+            if start is None:
+                break
+
+            island_size = flood_fill(blob, start[0], start[1])
+
+            if island_size < blob.size * threshold:
+                self.ground *= blob
+
+    def place_capitals(self, n_capitals):
+        valid_squares = self.ground == self.GROUND_VALUE
+
+        coords = list(zip(*np.where(valid_squares == 1)))
+        if len(coords) < n_capitals:
+            return
+        capitals = random.sample(coords, n_capitals)
+
+        self.capital_coordinates = capitals
+
+    def distribute_terrain(self):
+        closest = np.zeros(self.ground.shape, dtype=int)
+        distance = np.ones(self.ground.shape, dtype=int) * self.ground.size
+
+        for capital_index, (x, y) in enumerate(self.capital_coordinates):
+            frontier = [(x, y, 0)]
+            print(capital_index)
+            while len(frontier) != 0:
+                x, y, dist = frontier.pop(0)
+
+                if not (0 <= x < self.ground.shape[0]):
+                    continue
+                if not (0 <= y < self.ground.shape[1]):
+                    continue
+                # Distance does not go over water or mountains
+                if self.ground[x, y] != self.GROUND_VALUE:
+                    continue
+                if dist >= distance[x, y]:
+                    continue
+
+                closest[x, y] = capital_index
+                distance[x, y] = dist
+
+                frontier.extend([
+                    (x + 1, y, dist + 1),
+                    (x - 1, y, dist + 1),
+                    (x, y + 1, dist + 1),
+                    (x, y - 1, dist + 1),
+                    (x + 1, y + 1, dist + 1),
+                    (x - 1, y - 1, dist + 1),
+                    (x - 1, y + 1, dist + 1),
+                    (x + 1, y - 1, dist + 1)])
+
+        self.ground += closest
 
 
 def t_value(x):
     return np.exp(-x ** 2 / 2) / np.sqrt(2 * np.pi)
 
+
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     for i in range(10):
@@ -124,9 +211,7 @@ if __name__ == "__main__":
 
         world = World(n=7, random_factor=1, noise_factor=0.1)
 
-        import matplotlib.pyplot as plt
-
-        plt.imshow(world.ground, cmap='autumn', interpolation='nearest')
+        plt.imshow(world.ground, interpolation='nearest')
 
         plt.title("2-D Heat Map")
         plt.show()
