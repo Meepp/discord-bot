@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Game
+{% endblock %}
+
+{% block link %}
+<link rel="stylesheet" href="{{ url_for('static', filename='hallway.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <div id="game-wrapper" class="main-content">
+        <canvas id="canvas">
+        </canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+    const ROOM_ID = "{{ room }}";
+</script>
+<script type="module" src="{{ url_for('static', filename='engine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='world.js') }}"></script>
+{% endblock %}
