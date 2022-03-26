@@ -1,41 +1,8 @@
-import copy
-import random
-import datetime
-import threading
-import time
-from collections import defaultdict
 from enum import Enum
 from typing import List
 
 from src.web_server import sio
 from src.web_server.lib.capture.World import World
-
-WORD_LISTS = defaultdict(list)
-
-
-def filter_words(filename):
-    valid_letters = "qwertyuiopasdfghjklzxcvbnm"
-
-    def is_valid_word(word):
-        for letter in word:
-            if letter not in valid_letters:
-                return False
-        return True
-
-    with open(filename, "r") as f:
-        for line in f.readlines():
-            line = line.strip()
-            if not is_valid_word(line):
-                continue
-
-            WORD_LISTS[len(line)].append(line)
-
-
-MIN_WORD_LENGTH = 2
-MAX_WORD_LENGTH = 12
-print("Initializing word lists.")
-filter_words("storage/wordlist.txt")
-print("Done initializing word lists.")
 
 
 class CapturePhases(Enum):
@@ -65,7 +32,7 @@ class CaptureGame:
     def __init__(self, room_id, author, word_length=6):
         self.config = {
             "room": room_id,
-            "namespace": "/wordle"
+            "namespace": "/capture"
         }
         self.room_id = room_id
 
@@ -84,7 +51,7 @@ class CaptureGame:
             player.reset()
 
         self.broadcast_players()
-
+        print("Emitting state")
         sio.emit("start", self.get_state(), **self.config)
 
     def get_state(self):

@@ -63,9 +63,10 @@ class DiamondSquare(object):
 
 
 class World(object):
-    WATER_VALUE = -3
-    GROUND_VALUE = -2
-    MOUNTAIN_VALUE = -1
+    WATER_VALUE = 0
+    GROUND_VALUE = 1
+    MOUNTAIN_VALUE = 2
+    COUNTRY_START = 3
 
     def __init__(self, n=5, random_factor=4, noise_factor=0.1):
         self.size = 2 ** n + 1
@@ -118,15 +119,15 @@ class World(object):
             self.country_areas.append([])
 
         for capital_num in range(len(self.capital_coordinates)):
-            self.country_areas[capital_num] = list(zip(*np.where(self.ground == capital_num)))
+            self.country_areas[capital_num] = [(int(x), int(y)) for x, y in
+                                               zip(*np.where(self.ground == (self.COUNTRY_START + capital_num)))]
 
         # Just for display purposes
         for capital in self.capital_coordinates:
             self.ground[capital] = 60
 
         import matplotlib.pyplot as plt
-        plt.imshow(self.ground)
-        plt.show()
+        plt.imsave("test.png", self.ground)
 
     def remove_islands(self, threshold=0.05, removal_type=GROUND_VALUE):
         processed = self.ground == removal_type
@@ -209,16 +210,16 @@ class World(object):
                     (x - 1, y + 1, dist + 1),
                     (x + 1, y - 1, dist + 1)])
 
-        self.ground = closest
+        self.ground = closest + self.COUNTRY_START
 
 
 def t_value(x):
     return np.exp(-x ** 2 / 2) / np.sqrt(2 * np.pi)
 
 
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     for i in range(10):
         percent = (i + 0.0000001) / 10
 

@@ -80,6 +80,7 @@ def on_join(data):
         table.join(player)
 
     table.broadcast_players()
+    table.initialize_round()
 
 
 @sio.on("ready", namespace="/capture")

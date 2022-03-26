@@ -20,24 +20,27 @@ class PlayerInfo {
 }
 
 let nCountries = 0;
-const SQUARE_SIZE = 10;
+const SQUARE_SIZE = 4;
 let colors = ["red", "blue", "green", "orange", "purple", "yellow"]
 class Country {
-    constructor(points) {
+    constructor(points, outline) {
+        this.renderable = true;
         this.points = points;
+        this.outline = outline;
+
         this.color = colors[nCountries % colors.length];
         nCountries++;
     }
 
     render(context) {
-        context.beginPath();
-        context.moveTo(this.points[0][0], this.points[0][1]);
+        context.fillStyle = this.color;
+        context.moveTo(this.points[0][0]* SQUARE_SIZE, this.points[0][1]* SQUARE_SIZE)
         this.points.forEach((point) => {
-            context.lineTo(point[0], point[1]);
+            context.lineTo(point[0]* SQUARE_SIZE, point[1]* SQUARE_SIZE);
+            // context.fillRect(point[0] * SQUARE_SIZE, point[1] * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
         })
-        context.closePath();
-        context.fillStyle(this.color);
-        context.fill();
+        context.lineWidth = 2;
+        context.strokeStyle = this.color;
         context.stroke();
     }
 }
@@ -68,11 +71,13 @@ class Capture {
 
 
     start(data) {
+        console.log(data);
         this.countries = [];
         data.countries.forEach((points) => {
             let country = new Country(points);
             this.countries.push(country);
         });
+        this.gameView.addObjects(...this.countries)
     }
 }
 
@@ -86,8 +91,6 @@ function gameLoop() {
 
     // if enough time has elapsed, draw the next frame
     if (elapsed > FPS_INTERVAL) {
-        handleInput();
-
         // Get ready for next frame by setting then=now, but also adjust for your
         // specified fpsInterval not being a multiple of RAF's interval (16.7ms)
         then = now - (elapsed % FPS_INTERVAL);
@@ -113,8 +116,6 @@ function gameLoop() {
         game.statsText.ping.text = "Latency: " + round(game.stats.ping.get()) + " ms";
         game.statsText.frameTime.text = "Frame time: " + round(game.stats.frameTime.get()) + " ms";
 
-        game.clock.text = (Math.max(0, game.endTime - Date.now())).toLocaleString();
-
         // Compute the offset for all tiles, to center rendering on the player.
         try {
             view.render();
@@ -135,6 +136,7 @@ function initialize() {
     );
 
     view.addChild(game.gameView);
+    view.addChild(game.statsView);
 
     setInterval(function () {
         startTime = Date.now();

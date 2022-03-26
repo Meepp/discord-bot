@@ -35,5 +35,10 @@ def wordle(room_id):
     return render_template('wordle.html', room=room_id)
 
 
+@bp.route('/capture/<int:room_id>', methods=('GET',))
+def capture(room_id):
+    return render_template('capture.html', room=room_id)
+
+
 
 
