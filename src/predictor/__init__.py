@@ -246,7 +246,7 @@ class Predictor:
         # If not updating the data, attempt to fetch a model from disk.
         else:
             try:
-                self.model = joblib.load("storage/models/model0.1.joblib")
+                self.model = joblib.load("storage/models/model0.2.joblib")
             except FileNotFoundError as e:
                 print("[Predictor] No model found on disk (storage/models), creating a new model.")
             print("[Predictor] Fetched model from disk.")
@@ -255,14 +255,14 @@ class Predictor:
         self.data = get_all_data("storage/data")
 
         # Update prediction model with new data
-        if update_data or self.model is None:
+        if self.model is None:
             print("[Predictor] Preparing data.")
             game_data, game_result = prepare_data(self.data)
             print("[Predictor] Fitting model.")
             self.model = fit_model(game_data, game_result)
 
             # Store model to disk.
-            joblib.dump(self.model, "storage/models/model0.1.joblib")
+            joblib.dump(self.model, "storage/models/model0.2.joblib")
 
     def synchronized_compute_prediction(self, blue, red):
         predict_data = prepare_predict_data(self.data, blue, red)

@@ -3,8 +3,8 @@ from PIL import Image
 import discord
 from discord.ext.commands import BadArgument
 
-API_URL = "https://api.pandascore.co/lol/"
-
+API_URL_LOL = "https://api.pandascore.co/lol/"
+API_URL = "https://api.pandascore.co/"
 
 def get_match_image(opponents):
     image1 = convert_image(opponents[0]["opponent"].get("image_url"))
@@ -25,6 +25,7 @@ def get_match_image(opponents):
 
 def convert_image(image_url):
     image1 = Image.open(requests.get(image_url, stream=True).raw)
+    image1 = image1.convert("RGBA")
     image1 = image1.resize((200, 200))
     bg_image1 = Image.new("RGB", image1.size, (47, 49, 54))
     bg_image1.paste(image1, mask=image1.split()[3])  # 3 is the alpha channel
@@ -36,7 +37,7 @@ class PandaScoreAPI:
         self.key = key
 
     def league_id_from_name(self, name):
-        json_response = requests.get(f"{API_URL}/leagues?filter[name]={name}&token={self.key}").json()
+        json_response = requests.get(f"{API_URL_LOL}/leagues?filter[name]={name}&token={self.key}").json()
         for entry in json_response:
             return entry.get("id")
         return None
@@ -46,7 +47,7 @@ class PandaScoreAPI:
         if league_id is None:
             raise BadArgument("No leagues found with that name.")
         raw_response = requests.get(
-            f"{API_URL}/matches/running?filter[league_id]={league_id}&token={self.key}")
+            f"{API_URL_LOL}/matches/running?filter[league_id]={league_id}&token={self.key}")
         if raw_response.status_code == 200:
             if not raw_response.json():
                 return
@@ -55,7 +56,7 @@ class PandaScoreAPI:
 
     def get_match_by_id(self, match_id):
         raw_response = requests.get(
-            f"{API_URL}/matches?filter[id]={match_id}&token={self.key}")
+            f"{API_URL_LOL}/matches?filter[id]={match_id}&token={self.key}")
         if raw_response.status_code != 200:
             return None
         if len(raw_response.json()) == 0:
@@ -74,30 +75,45 @@ class PandaScoreAPI:
 
     def is_game_finished(self, match_id: str):
         raw_response = requests.get(
-            f"{API_URL}/matches?filter[id]={match_id}&token={self.key}")
+            f"{API_URL_LOL}/matches?filter[id]={match_id}&token={self.key}")
         match = raw_response.json()[0]
         return match.get("games")[0].get("status")
 
     def get_team_by_id(self, team_id: str):
         raw_response = requests.get(
-            f"{API_URL}/teams?filter[id]={team_id}&token={self.key}")
+            f"{API_URL_LOL}/teams?filter[id]={team_id}&token={self.key}")
         return raw_response.json()
 
     def get_team_by_acronym(self, acronym):
         raw_response = requests.get(
-            f"{API_URL}/teams?search[acronym]={acronym}&token={self.key}")
+            f"{API_URL_LOL}/teams?search[acronym]={acronym}&token={self.key}")
 
         return list(filter(lambda x: len(x.get("players")) >= 5, raw_response.json()))
 
     def get_upcoming_matches(self, league):
         if league is None:
             raw_response = requests.get(
-                f"{API_URL}/matches/upcoming?page[size]=5&page[number]=1&token={self.key}")
+                f"{API_URL_LOL}/matches/upcoming?page[size]=5&page[number]=1&token={self.key}")
         else:
             league_id = self.league_id_from_name(league)
             if league_id is None:
                 raise BadArgument("No leagues found with that name.")
             raw_response = requests.get(
-                f"{API_URL}/matches/upcoming?"
+                f"{API_URL_LOL}/matches/upcoming?"
                 f"filter[league_id]={league_id}&page[size]=5&page[number]=1&token={self.key}")
         return raw_response.json()
+
+    def get_league_by_id(self, league_id):
+        raw_response = requests.get(f"{API_URL}leagues/{league_id}?token={self.key}")
+        if raw_response.status_code == 200:
+            return raw_response.json()
+
+    def get_tournament_id_by_series_id(self, series_id):
+        raw_response = requests.get(f"{API_URL}series/{series_id}?token={self.key}")
+        if raw_response.status_code == 200:
+            return raw_response.json()['tournaments'][-1].get("id")
+
+    def get_tournament_standings_by_tournament_id(self, tournament_id):
+        raw_response = requests.get(f"{API_URL}tournaments/{tournament_id}/standings?token={self.key}")
+        if raw_response.status_code == 200:
+            return raw_response.json()

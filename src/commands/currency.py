@@ -1,5 +1,5 @@
 from pymongo import DESCENDING
-from discord import User, Forbidden, Message
+from discord import User, Forbidden, Message, Embed
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -54,9 +54,13 @@ class Currency(commands.Cog):
     @commands.command()
     async def balancetop(self, context: Context):
         collection = db['profile']
-        profiles = list(collection.find().limit(15).sort("balance", DESCENDING))
-        body = "\n".join("%s: %s" % (profile['owner'], format_money(profile['balance'])) for profile in profiles)
-        await context.channel.send("```Current top:\n%s```" % body)
+        profiles = list(collection.find().sort("balance", DESCENDING).limit(15))
+        body = ""
+        for i, profile in enumerate(profiles):
+            body += f"{i + 1}: {profile['owner']} ({format_money(profile['balance'])})\n"
+        embed = Embed(title="Current top", description=body, color=0xe2e01d)
+
+        await context.channel.send(embed=embed)
 
     @commands.command()
     async def namechange(self, context: Context, user: User):
