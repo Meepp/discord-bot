@@ -3,7 +3,7 @@ from datetime import datetime
 from bson import SON
 
 from src.database.models.models import Honor
-from database import mongodb as db
+from src.database import mongodb as db
 import pymongo
 
 

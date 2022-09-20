@@ -1,9 +1,25 @@
+import logging
+from functools import wraps
+from time import time
+
 from discord import User
 from pymongo import ReturnDocument
 
-from database import mongodb as db
-from database.models.models import Profile
+from src.database import mongodb as db
+from src.database.models.models import Profile
 
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        logger = logging.getLogger("timing")
+        logger.info(f"{f.__name__}: {te - ts}")
+        return result
+
+    return wrap
 
 def get_money(user: User):
     result = db['profile'].find_one({"owner_id": user.id})
@@ -17,11 +33,18 @@ def get_money(user: User):
     return result
 
 
-def update_money(user: dict, money_update):
-    return db['profile'].find_one_and_update(filter={"_id": user['_id']}, update={"$inc": {'balance': money_update}},
+def add_birthday(user: dict, birthday):
+    return db['profile'].find_one_and_update(filter={"_id": user['_id']}, update={"$set": {'birthday': birthday}},
                                              upsert=True, return_document=ReturnDocument.AFTER)
 
 
+def update_money(user: dict, money_update):
+    new_balance = max(user['balance'] + money_update, 0)
+    return db['profile'].find_one_and_update(filter={"_id": user['_id']}, update={"$set": {'balance': new_balance}},
+                                             upsert=True, return_document=ReturnDocument.AFTER)
+
+
+@timing
 def get_profile(user: User = None, user_id: int = None, username: str = None):
     if user is not None:
         return db['profile'].find_one({"owner_id": user.id})
@@ -32,5 +55,6 @@ def get_profile(user: User = None, user_id: int = None, username: str = None):
 
 
 def update_active_playlist(profile: dict, value):
-    return db['profile'].find_one_and_update(filter={"_id": profile['_id']}, update={"$set": {"active_playlist": value}},
+    return db['profile'].find_one_and_update(filter={"_id": profile['_id']},
+                                             update={"$set": {"active_playlist": value}},
                                              upsert=True, return_document=ReturnDocument.AFTER)

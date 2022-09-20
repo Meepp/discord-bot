@@ -3,7 +3,7 @@ from typing import List, Dict
 
 from discord import Member
 
-from database import mongodb as db
+from src.database import mongodb as db
 from src.database.models.models import Song, Playlist, PlaylistSong
 
 

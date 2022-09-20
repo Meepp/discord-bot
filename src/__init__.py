@@ -12,7 +12,7 @@ from commands.currency import Currency
 from commands.games import Games
 from commands.lolesports import Esports
 from commands.reputation import Reputation
-from database.repository import music_repository, trigger_repository
+from src.database.repository import music_repository, trigger_repository
 from league_api import LeagueAPI
 from predictor import Predictor
 from score_api import PandaScoreAPI
@@ -76,7 +76,7 @@ class Bot(commands.Bot):
 
     async def on_error(self, err, *args, **kwargs):
         channel = args[0]
-        await channel.send("An error occured")
+        await channel.send("An error occurred")
         if err == "on_command_error":
             await channel.send("Something went wrong.")
         raise

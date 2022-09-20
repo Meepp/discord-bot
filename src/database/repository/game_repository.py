@@ -1,4 +1,4 @@
-from database import mongodb as db
+from src.database import mongodb as db
 
 
 def get_match_by_id(match_id):

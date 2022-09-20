@@ -1,20 +1,41 @@
-class DefaultListDict {
-    constructor() {
-        return new Proxy({}, {
-            get: (target, name) => name in target ? target[name] : []
-        })
+/*
+ * Utility functions
+ */
+export let keyState = {};
+
+export class RollingAverage {
+    constructor(n) {
+        this.values = [];
+        this.n = n;
+    }
+
+    put(value) {
+        this.values.unshift(value);
+        this.values = this.values.slice(0, this.n);
+    }
+
+    get() {
+        return this.values.reduce((a, b) => a + b, 0) / this.values.length;
     }
 }
 
+export function round(number) {
+    return Math.round(number * 100) / 100;
+}
 
-class Point {
+
+
+/*
+ * Renderable objects.
+ */
+export class Point {
     constructor(x, y) {
         this.x = x;
         this.y = y;
     }
 }
 
-class Rectangle extends Point {
+export class Rectangle extends Point {
     constructor(x, y, width, height) {
         super(x, y);
         this.width = width;
@@ -22,14 +43,14 @@ class Rectangle extends Point {
     }
 }
 
-class Circle extends Point {
+export class Circle extends Point {
     constructor(x, y, radius) {
         super(x, y);
         this.radius = radius;
     }
 }
 
-class SpriteTile extends Rectangle {
+export class SpriteTile extends Rectangle {
     constructor(image) {
         super(0, 0, 16, 16);
         this.image = "";
@@ -50,7 +71,7 @@ class SpriteTile extends Rectangle {
     }
 }
 
-class AnimatedSpriteTile extends SpriteTile {
+export class AnimatedSpriteTile extends SpriteTile {
     constructor(images) {
         if (images.length === 0) throw Error("AnimatedSpriteTile must have at least one image.");
         super(images[0]);
@@ -67,7 +88,7 @@ class AnimatedSpriteTile extends SpriteTile {
     }
 }
 
-class CircularCooldown extends Circle {
+export class CircularCooldown extends Circle {
     /*
      * The progress property defines how far the cooldown is along.
      * Range is 0-1.
@@ -108,7 +129,7 @@ class CircularCooldown extends Circle {
 }
 
 
-class ColorTile extends Rectangle {
+export class ColorTile extends Rectangle {
     constructor(color) {
         super(0, 0, 16, 16);
         this.color = color;
@@ -123,7 +144,7 @@ class ColorTile extends Rectangle {
     }
 }
 
-class DrawableText extends Point {
+export class DrawableText extends Point {
     constructor(x, y) {
         super(x, y);
         this.text = "";
@@ -144,6 +165,7 @@ class DrawableText extends Point {
         context.lineWidth = 0.2;
 
         this.text.split("\n").map((text, i) => {
+            // TODO: Ensure textwidth cannot exceed bounding box.
             let width = context.measureText(text).width;
 
             let offset = this.centered ? width / 2 : 0;
@@ -155,7 +177,7 @@ class DrawableText extends Point {
     }
 }
 
-class Button extends Rectangle {
+export class Button extends Rectangle {
     constructor(x, y, width, height) {
         super(x, y, width, height);
         this.z = 0;
@@ -199,8 +221,10 @@ class Button extends Rectangle {
     }
 }
 
-
-class View {
+/*
+ * Main view logic + rendering.
+ */
+export class View {
     constructor(context) {
         this.cameraCenter = new Point(400, 400);
 
@@ -280,3 +304,11 @@ class View {
         this._lastInvokation = performance.now();
     }
 }
+
+
+document.addEventListener("keydown", (ev) => {
+    keyState[ev.key] = true;
+});
+document.addEventListener("keyup", (ev) => {
+    keyState[ev.key] = false;
+});

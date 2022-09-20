@@ -1,7 +1,7 @@
 from discord import Guild
 
-from database import mongodb as db
 from src.database.models.models import Trigger
+from src.database import mongodb as db
 
 
 def get_triggers(guild: Guild):

@@ -1,4 +1,4 @@
-from database import mongodb as db
+from src.database import mongodb as db
 
 
 def get_rooms():
@@ -7,7 +7,7 @@ def get_rooms():
 
 
 def get_room(room_id: int):
-    collection = db['gameRoom']
+    collection = db['room']
     return collection.find_one({"message_id": room_id})
 
 
