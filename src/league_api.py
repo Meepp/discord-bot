@@ -171,7 +171,7 @@ class LeagueAPI(commands.Cog):
         game = LeagueGame(context.author, amount, condition, context.channel.id)
         profile = profile_repository.update_money(profile, -amount)
 
-        collection.insert(game.to_mongodb())
+        collection.insert_one(game.to_mongodb())
 
         await context.channel.send(
             f"You bet {amount} to get first {condition} the next game. Balance remaining: {profile['balance']}")

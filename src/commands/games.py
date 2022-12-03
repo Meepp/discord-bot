@@ -29,11 +29,11 @@ class Games(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def poker(self, context: Context, title: str):
+    async def poker(self, context: Context, title: str = "Unknown"):
         await self.create_game_room(context, title, "poker")
 
     @commands.command()
-    async def hallway(self, context: Context, title: str):
+    async def hallway(self, context: Context, title: str = "Unknown"):
         await self.create_game_room(context, title, "hallway")
 
     @staticmethod
@@ -53,5 +53,5 @@ class Games(commands.Cog):
         # Create new room
         room = RoomModel(title, profile, game_type, datetime.now(), message.id)
         collection = db['gameRoom']
-        collection.insert(room.to_mongodb())
+        collection.insert_one(room.to_mongodb())
         await message.add_reaction(CustomEmoji.jimbo)

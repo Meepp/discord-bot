@@ -141,7 +141,7 @@ class Esports(commands.Cog):
         # TODO insert odds for team
         game = EsportGame(context.author, match_id, bet_amount, bet_team.upper(), odd, context.channel.id)
         profile_repository.update_money(profile, -bet_amount)
-        collection.insert(game.to_mongodb())
+        collection.insert_one(game.to_mongodb())
 
     @tasks.loop(seconds=300)
     async def payout_league_bet(self):

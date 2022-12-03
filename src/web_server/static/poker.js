@@ -174,7 +174,7 @@ function drawPlayerHand(i, player) {
     }
 
     context.font = "20px Arial";
-    context.fillText(player.name, 0, -36);
+    context.fillText(player.color, 0, -36);
     context.font = "16px Arial";
     context.fillText(player.state + " | " + CURRENCY + player.balance, 0, -16);
 
@@ -345,7 +345,7 @@ function initialize() {
             data.players.forEach(player => {
                 userList.append(`
                     <div class="user-entry">
-                    <div class="user-entry-name">${player.name}</div>
+                    <div class="user-entry-name">${player.color}</div>
                     <div class="user-entry-balance">${CURRENCY}${player.balance}</div>
                     <div class="user-entry-ready">${player.ready ? "Ready" : "Not Ready"}</div>
                     </div>

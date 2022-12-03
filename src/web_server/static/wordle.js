@@ -1,4 +1,5 @@
-import {Button, DrawableText, RollingAverage, round, View, ColorTile} from "./engine.js";
+import {Button, DrawableText, RollingAverage, round, View, ColorTile} from "./js/engine/engine.js";
+import {getUsername} from "./js/engine/auth.js";
 
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");
@@ -321,7 +322,7 @@ class Wordle {
             playerText.color = player.guessed ? "#090" : "#099";
 
             let readyIcon = player.ready ? "X" : "O";
-            playerText.text = `${player.name}: ${player.points} points [${readyIcon}]`;
+            playerText.text = `${player.color}: ${player.points} points [${readyIcon}]`;
             this.playerView.addObjects(playerText);
         });
 
@@ -498,14 +499,7 @@ let socket = io("/wordle");
 let USER_NAME;
 let audioFiles = {};
 
-let username = Cookies.get("username");
-if (username === undefined) {
-    while (username === null || username === undefined) {
-        username = prompt("Type your username.");
-    }
-    Cookies.set("username", username);
-}
-
+let username = getUsername();
 
 socket.emit("set_session", {username: username});
 socket.on("set_session", (data) => {

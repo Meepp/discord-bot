@@ -7,7 +7,7 @@ import time
 import joblib as joblib
 import numpy as np
 import pandas
-from pandas.core.window.indexers import BaseIndexer
+from pandas.api.indexers import BaseIndexer
 from sklearn import preprocessing
 from sklearn.linear_model import RidgeClassifier
 from sklearn.model_selection import train_test_split

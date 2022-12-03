@@ -1,9 +1,12 @@
+import math
 import random
 
 import numpy as np
 import scipy.signal
 import scipy.ndimage
 import scipy.stats
+
+import matplotlib.pyplot as plt
 
 
 class DiamondSquare(object):
@@ -62,6 +65,23 @@ class DiamondSquare(object):
                 ground[x, y] = value / div_value
 
 
+def get_neighbours(position):
+    return [
+        np.array((position[0] - 1, position[1])),
+        np.array((position[0], position[1] - 1)),
+        np.array((position[0], position[1] + 1)),
+        np.array((position[0] + 1, position[1])),
+        np.array((position[0] - 1, position[1] - 1)),
+        np.array((position[0] - 1, position[1] + 1)),
+        np.array((position[0] + 1, position[1] - 1)),
+        np.array((position[0] + 1, position[1] + 1)),
+    ]
+
+
+def euclidean_distance(previous, neighbour):
+    return math.sqrt((previous[0] - neighbour[0]) ** 2 + (previous[1] - neighbour[1]) ** 2)
+
+
 class World(object):
     WATER_VALUE = 0
     GROUND_VALUE = 1
@@ -77,8 +97,12 @@ class World(object):
         self.diamond_star = DiamondSquare(noise_factor=noise_factor)
 
         self.ground = np.zeros((self.size, self.size), dtype=float)
+        self.n_capitals = 20
+
+        # Store countries
         self.capital_coordinates = []
-        self.country_areas = []
+        self.country_areas: list = [None] * self.n_capitals
+        self.winding_edge: list = [None] * self.n_capitals
 
         self.generate(random_factor)
 
@@ -110,24 +134,26 @@ class World(object):
 
         self.remove_islands(threshold=0.05)
 
-        self.place_capitals(n_capitals=20)
+        self.place_capitals(n_capitals=self.n_capitals)
 
         self.distribute_terrain()
 
-        # Create easily accessible list of country area pixels
-        for capital in self.capital_coordinates:
-            self.country_areas.append([])
 
         for capital_num in range(len(self.capital_coordinates)):
             self.country_areas[capital_num] = [(int(x), int(y)) for x, y in
                                                zip(*np.where(self.ground == (self.COUNTRY_START + capital_num)))]
 
+        for i, country in enumerate(self.country_areas):
+            self.winding_edge[i] = self.compute_winding_edge(self.ground == (self.COUNTRY_START + i))
+
+        exit(1)
         # Just for display purposes
         for capital in self.capital_coordinates:
             self.ground[capital] = 60
 
         import matplotlib.pyplot as plt
         plt.imsave("test.png", self.ground)
+        exit(1)
 
     def remove_islands(self, threshold=0.05, removal_type=GROUND_VALUE):
         processed = self.ground == removal_type
@@ -179,7 +205,7 @@ class World(object):
         self.capital_coordinates = capitals
 
     def distribute_terrain(self):
-        closest = np.zeros(self.ground.shape, dtype=int)
+        closest = np.zeros(self.ground.shape, dtype=int) - self.COUNTRY_START
         distance = np.ones(self.ground.shape, dtype=int) * self.ground.size
 
         for capital_index, (x, y) in enumerate(self.capital_coordinates):
@@ -212,14 +238,81 @@ class World(object):
 
         self.ground = closest + self.COUNTRY_START
 
+    def compute_winding_edge(self, country_area_mask):
+        for x in range(len(country_area_mask)):
+            for y in range(len(country_area_mask[0])):
+                if country_area_mask[x, y] == 1:
+                    start = np.array((x + 1, y + 1))
+
+        shape = np.array(country_area_mask.shape) + 2
+        visited = np.zeros(shape)
+        width = country_area_mask.shape[0]
+        height = country_area_mask.shape[1]
+
+        def get_next(position, previous):
+            print("pos", position)
+            candidates = get_neighbours(position)[:4]
+
+            for candidate in candidates:
+                if visited[tuple(candidate + 1)]:
+                    continue
+                # We traverse around the area
+                if 0 <= candidate[0] < width and 0 <= candidate[1] < height and country_area_mask[tuple(candidate)]:
+                    continue
+
+                neighbours = get_neighbours(candidate)[:8]
+                nb = None
+                distance = 100000
+                for neighbour in neighbours:
+                    new_dist = euclidean_distance(previous, neighbour) if previous is not None else 0
+
+                    if 0 <= neighbour[0] < width \
+                            and 0 <= neighbour[1] < height \
+                            and country_area_mask[tuple(neighbour)] \
+                            and new_dist < distance:
+                        nb = neighbour
+                        distance = new_dist
+                        break
+
+                print(nb)
+                if nb is not None:
+                    return candidate, nb
+
+            return None, None
+
+        border = []
+
+        current = start
+        land = None
+        while visited[tuple(current)] == 0:
+            visited[tuple(current - 1)] = True
+            current, land = get_next(current, land)
+
+            if current is None:
+                break
+
+            border.append(land)
+
+            if current[0] == start[0] and current[1] == start[1]:
+                break
+
+        print("N PIXELS IN BORDER", len(border))
+
+        tst = np.zeros(visited.shape)
+        for i, pixel in enumerate(border):
+            tst[tuple(pixel)] = i
+
+        f, axarr = plt.subplots(2, 1)
+        axarr[0].imshow(tst)
+        axarr[1].imshow(country_area_mask)
+        plt.show()
+
 
 def t_value(x):
     return np.exp(-x ** 2 / 2) / np.sqrt(2 * np.pi)
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
     for i in range(10):
         percent = (i + 0.0000001) / 10
 

@@ -1,4 +1,4 @@
-import {Button, DrawableText, RollingAverage, round, View, ColorTile} from "./engine.js";
+import {Button, DrawableText, RollingAverage, round, View, ColorTile} from "./js/engine/engine.js";
 
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");

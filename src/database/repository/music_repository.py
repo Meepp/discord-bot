@@ -9,7 +9,7 @@ from src.database.models.models import Song, Playlist, PlaylistSong
 
 def add_music(song: Song):
     collection = db['song']
-    collection.insert(song.to_mongodb())
+    collection.insert_one(song.to_mongodb())
     return get_song(song.url)
 
 
@@ -91,7 +91,7 @@ def get_playlist(owner, name):
     playlist = collection.find_one({"title": name})
     if not playlist:
         print("Creating new playlist:", name)
-        playlist_id = collection.insert(Playlist(owner, name).to_mongodb())
+        playlist_id = collection.insert_one(Playlist(owner, name).to_mongodb())
         playlist = collection.find_one({"_id": playlist_id})
     return playlist
 

@@ -31,8 +31,8 @@ def teleport_command(text_message, player, game):
     else:
         raise InvalidCommand("The teleport command requires an x and y coordinate")
 
-def restart_command(game, player, room):
-    if player.discord_id == room.author_id:
+def restart_command(game, player):
+    if player.username == game.author:
         game.start()
     else:
         raise InvalidCommand("Only the room owner is allowed to restart the game")
@@ -45,7 +45,7 @@ def kill_command(text_message, player, game):
     player_to_kill = game.get_player(split_message[-1])
 
 
-def handle_developer_command(data, game, room):
+def handle_developer_command(data, game):
     text_message = data.get("message")[1:]
     profile = data.get("profile")
     player = game.get_player(profile)
@@ -54,6 +54,6 @@ def handle_developer_command(data, game, room):
     if text_message.startswith('teleport'):
         teleport_command(text_message, player, game)
     if text_message.startswith('restart'):
-        restart_command(game, profile, room)
+        restart_command(game, profile)
     if text_message.startswith('kill'):
         kill_command(text_message, player, game)

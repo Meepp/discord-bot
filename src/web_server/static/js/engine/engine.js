@@ -107,13 +107,13 @@ export class CircularCooldown extends Circle {
     }
 
     render(context) {
-        context.lineWidth = 15;
+        context.lineWidth = this.radius * 0.6;
         context.strokeStyle = this.mainColour;
         context.beginPath();
         context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
         context.stroke();
 
-        context.lineWidth = 13;
+        context.lineWidth = this.radius * 0.4;
         context.strokeStyle = this.secondaryColour;
         context.beginPath();
         context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI * this.progress);
@@ -121,8 +121,10 @@ export class CircularCooldown extends Circle {
 
         if (this.textObject !== null) {
             // TODO: Dont set these properties here.
-            this.textObject.fontSize = 25;
+            this.textObject.fontSize = this.radius * 0.75;
             this.textObject.color = "#fff";
+            this.textObject.x = this.x;
+            this.textObject.y = this.y;
             this.textObject.render(context);
         }
     }
@@ -154,7 +156,7 @@ export class DrawableText extends Point {
         this.borderColor = null;
         this.renderable = true;
         this.centered = false;
-
+        this.maxWidth = Infinity;
         this.z = 0;
     }
 
@@ -167,11 +169,18 @@ export class DrawableText extends Point {
         this.text.split("\n").map((text, i) => {
             // TODO: Ensure textwidth cannot exceed bounding box.
             let width = context.measureText(text).width;
+            if (width > this.maxWidth) {
+                let n_segments = this.maxWidth / width;
+                for (let i = 0; i < n_segments; i++) {
+                    
+                }
+            } else {
+                let offset = this.centered ? width / 2 : 0;
+                context.fillText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
+                if (this.borderColor !== null) {
+                    context.strokeText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
+                }
 
-            let offset = this.centered ? width / 2 : 0;
-            context.fillText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
-            if (this.borderColor !== null) {
-                context.strokeText(text, this.x - offset, this.y + this.fontSize * .33 + this.fontSize * i);
             }
         });
     }

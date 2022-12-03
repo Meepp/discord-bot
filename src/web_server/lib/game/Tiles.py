@@ -126,7 +126,6 @@ class ChestTile(Tile):
         super().__init__()
         self.image = "chest"
         self.player = player
-
         self.movement_allowed = False
         self.opaque = False
 

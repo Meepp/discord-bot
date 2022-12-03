@@ -24,10 +24,13 @@ def get_room(room_id, check_author=False):
 @bp.route('/<int:room_id>/game', methods=('GET',))
 def game(room_id):
     room = get_room(room_id)
-    if room['type'] == "poker":
-        return render_template('poker.html', room=room)
-    elif room['type'] == "hallway":
-        return render_template('hallway.html', room=room, classes=PlayerClass.__subclasses__())
+    return render_template('poker.html', room=room)
+
+
+@bp.route("/hallway/<int:room_id>", methods=["GET"])
+def hallway(room_id):
+    room = get_room(room_id)
+    return render_template('hallway.html', room=room, classes=PlayerClass.__subclasses__())
 
 
 @bp.route('/wordle/<int:room_id>', methods=('GET',))
@@ -38,7 +41,3 @@ def wordle(room_id):
 @bp.route('/capture/<int:room_id>', methods=('GET',))
 def capture(room_id):
     return render_template('capture.html', room=room_id)
-
-
-
-

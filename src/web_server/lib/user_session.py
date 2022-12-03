@@ -2,10 +2,8 @@ from typing import Optional
 
 from flask import session, g as flaskg
 
-from database.repository import profile_repository
 
-
-def session_user() -> Optional[dict]:
+def session_user() -> Optional[str]:
     """
     Return the current authenticated user.
     :return: the current authenticated user.

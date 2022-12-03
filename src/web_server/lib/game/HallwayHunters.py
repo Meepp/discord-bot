@@ -6,11 +6,10 @@ import random
 from typing import List, Optional, Set
 
 from src.web_server import sio
-from src.web_server.lib.game.PlayerClasses import Demolisher, PlayerClass
+from src.web_server.lib.game.PlayerClasses import Demolisher, PlayerClass, PlayerState, Wizard
 from src.web_server.lib.game.Tiles import UnknownTile, Tile, ChestTile
 from src.web_server.lib.game.Utils import Point
 from src.web_server.lib.game.generator import generate_board
-
 
 print(f"Imported {__name__}")
 
@@ -21,9 +20,10 @@ class Phases(Enum):
 
 
 class HallwayHunters:
-    def __init__(self, room_id):
+    def __init__(self, room_id, username):
         self.tick_rate = 60
         self.room_id = room_id
+        self.author = username
         self.phase = Phases.NOT_YET_STARTED
         self.player_list: List[PlayerClass] = []
         self.size = 93
@@ -57,30 +57,29 @@ class HallwayHunters:
         class_pool = PlayerClass.__subclasses__()
         random.shuffle(class_pool)
         for i, player in enumerate(self.player_list):
-            new_player = player.convert_class(class_pool[i])
-            self.set_player(player.profile, new_player)
+            new_player = player.convert_class(Wizard)
+            self.set_player(player.username, new_player)
 
-        # Copy player list for target selection to ensure no duplicate targets
-        player_pool = self.player_list[:]
-        random.shuffle(player_pool)
+        spawn_point = random.choice(self.spawn_points)
+        spawn_point_modifier = [
+            Point(0, 0),
+            Point(1, 0),
+            Point(-1, 0),
+            Point(1, 1),
+            Point(-1, 1)
+        ]
         for i, player in enumerate(self.player_list):
-            # Generate a target for each player
-            target = player_pool[(player_pool.index(player) + 1) % len(player_pool)]
-            player.target = target
             player.class_name = class_pool[i].__name__
+            print(f"Player {player.username} is {class_pool[i].__name__}")
 
-            print("Player %s is %s" % (player.profile['owner'], class_pool[i].__name__))
-
-            spawn_point = self.spawn_points[i % len(self.spawn_points)]
-            player.change_position(spawn_point)
+            player.change_position(spawn_point + spawn_point_modifier[i])
             player.start()
-
-            # Connect chest to player
-            chest = ChestTile(player)
-            self.board[spawn_point.x][spawn_point.y + 1] = chest
-            chest.image = "chest_%s" % player.name
-
             sio.emit("game_state", self.export_board(player), room=player.socket, namespace="/hallway")
+
+        # Connect chest to player
+        chest = ChestTile(self.player_list[0])
+        self.board[spawn_point.x][spawn_point.y + 1] = chest
+        chest.image = "chest_%s" % self.player_list[0].color
 
         self.finished = False
         self.game_lock.acquire()
@@ -101,7 +100,6 @@ class HallwayHunters:
                 self.spent_time += diff
                 self.ticks += 1.
                 if self.ticks % self.tick_rate == 0:
-                    # print("Avg. Server FPS: ", 1. / (self.spent_time / self.ticks))
                     self.spent_time = 0.000001
                     self.ticks = 0
 
@@ -111,6 +109,34 @@ class HallwayHunters:
             self.game_lock.acquire()
             self.game_lock.wait()
             self.game_lock.release()
+
+    def process_turn(self):
+        for player in self.player_list:
+            if player.action_state == PlayerState.NOT_READY:
+                return
+        for player in self.player_list:
+            player.action_state = PlayerState.PROCESSING
+
+        # Everybody is ready, process all movement actions, followed by actions
+        for player in self.player_list:
+            if player.movement_timer == 0:
+                try:
+                    player.move()
+                except:
+                    pass
+
+        # Check if everybody has finished their movement
+        for player in self.player_list:
+            if len(player.movement_queue) != 0 or player.movement_timer != 0:
+                return
+
+        # If all movement has been processed, process all queued spells
+
+        for player in self.player_list:
+            print("Done with turn now...")
+            # Do end-of-turn stat updates and allow for new inputs.
+            player.finish_turn()
+            player.action_state = PlayerState.NOT_READY
 
     def tick(self):
         for tile in list(self.animations):
@@ -124,21 +150,25 @@ class HallwayHunters:
             # Maybe check if this is allowed, maybe not
             player.tick()
 
+        # If all players are ready, we can stop this preparation and go to next turn
+        self.process_turn()
+
         self.update_players()
 
         # After having sent the update to all players, empty board changes list
         self.board_changes = []
 
-    def add_player(self, profile: dict, socket_id):
+    def add_player(self, username: str, socket_id):
         for player in self.player_list:
-            if player.profile['owner_id'] == profile['owner_id']:
+            if player.username == username:
                 # If the user is already in the list, overwrite the socket id to the newest one.
                 player.socket = socket_id
+                print("Already found player, overwriting socket id")
                 return player
 
-        player = Demolisher(profile, socket_id, self)
+        player = Demolisher(username, socket_id, self)
 
-        player.name = self.color_pool.pop()
+        player.color = self.color_pool.pop()
         if self.phase == Phases.NOT_YET_STARTED and len(self.player_list) < 8:
             self.player_list.append(player)
         return player
@@ -150,14 +180,23 @@ class HallwayHunters:
     def export_board(self, player: PlayerClass, reduced=False):
         data = {
             "started": self.phase == Phases.STARTED,
-            "player_data": player.to_json(),
-            "visible_players": [player.to_json() for player in player.get_visible_players()],
-            "all_players": [player.to_json(reduced=True) for player in self.player_list],
+            "player_data": player.personal_data_json(),
+            "all_players": [player.to_json() for player in self.player_list],
         }
 
         # If this players line of sight changed, send new data.
         if player.updated:
-            data.update({"visible_tiles": player.get_visible_tiles()})
+            visible_tiles = []
+            for p in self.player_list:
+                visible_tiles.extend(p.visible_tiles)
+
+            data.update({
+                "visible_tiles": [{
+                    "x": p.x,
+                    "y": p.y,
+                    "tile": self.board[p.x][p.y].to_json()
+                } for p in list(set(visible_tiles))]
+            })
             player.updated = False
 
         if not reduced:
@@ -167,22 +206,23 @@ class HallwayHunters:
 
         return data
 
-    def set_color(self, profile: dict, color: str):
+    def set_color(self, username: str, color: str):
         if color not in self.color_pool:
             print("Color not available")
-            return   # TODO: Notify player this colour is taken.
+            return  # TODO: Notify player this colour is taken.
+        player = self.get_player(username)
+        assert player is not None
         self.color_pool.remove(color)
-        player = self.get_player(profile)
-        self.color_pool.append(player.name)
-        print("Set player color to", color)
-        player.name = color
+        self.color_pool.append(player.color)  # Add back previous color
+        print(self.color_pool)
+        player.color = color
 
-    def get_player(self, profile: dict = None, socket_id=None) -> Optional[PlayerClass]:
+    def get_player(self, username: str = None, socket_id=None) -> Optional[PlayerClass]:
         combined_list = self.player_list[:]
 
-        if profile is not None:
+        if username is not None:
             for player in combined_list:
-                if player.profile['owner_id'] == profile['owner_id']:
+                if player.username == username:
                     return player
             return None
         elif socket_id is not None:
@@ -191,15 +231,16 @@ class HallwayHunters:
                     return player
             return None
 
-    def set_player(self, profile, new_player):
+    def set_player(self, username, new_player):
         for i, player in enumerate(self.player_list):
-            if player.profile['owner_id'] == profile['owner_id']:
+            if player.username == username:
                 self.player_list[i] = new_player
                 return
 
-    def remove_player(self, profile: dict):
-        player = self.get_player(profile)
-        self.color_pool.append(player.name)
+    def remove_player(self, username: str):
+        player = self.get_player(username)
+        self.color_pool.append(player.color)
+        print("Disconnecting player, current pool:", self.color_pool)
 
         if player in self.player_list:
             self.player_list.remove(player)
@@ -217,7 +258,7 @@ class HallwayHunters:
 
     def check_readies(self):
         for player in self.player_list:
-            if not player.ready:
+            if player.action_state == PlayerState.NOT_READY:
                 return False
         return True
 

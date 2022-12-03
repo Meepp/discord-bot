@@ -14,18 +14,18 @@ Game
         <canvas id="canvas">
         </canvas>
     </div>
-    <div id="right-column" class="secondary-content">
-        <div class="custom-title flex-title">Chat</div>
-        <div id="chat-wrapper">
-            <ul id="messages"></ul>
-            <form id="messageform" method="post">
-                <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>
-                <input id="roomid" type="hidden" value="{{ room.message_id }}"/>
-                <input id="username" type="hidden" value="{{ session_user().owner }}"/>
-                <button class="custom-input custom-button">Send</button>
-            </form>
-        </div>
-    </div>
+{#    <div id="right-column" class="secondary-content">#}
+{#        <div class="custom-title flex-title">Chat</div>#}
+{#        <div id="chat-wrapper">#}
+{#            <ul id="messages"></ul>#}
+{#            <form id="messageform" method="post">#}
+{#                <input class="custom-input" id="m" autocomplete="off" placeholder="Message"/>#}
+{#                <input id="roomid" type="hidden" value="{{ room.message_id }}"/>#}
+{#                <input id="username" type="hidden" value="{{ session_user().owner }}"/>#}
+{#                <button class="custom-input custom-button">Send</button>#}
+{#            </form>#}
+{#        </div>#}
+{#    </div>#}
 </div>
 {% endblock %}
 
@@ -33,11 +33,15 @@ Game
 {% block script %}
 <script>
     const ROOM_ID = "{{ room.message_id }}";
-    const USER_NAME = "{{ session_user().owner }}";
+    let USER_NAME;
     const PLAYER_CLASSES = [{% for cls in classes %}
         ["{{ cls.__name__ }}", "{{ cls.info }}"],
     {% endfor %}];
 </script>
-<script src="{{ url_for('static', filename='engine.js') }}"></script>
-<script src="{{ url_for('static', filename='hallway.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/engine/engine.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/engine/auth.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/hallway/resources.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/hallway/player.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/hallway/hallway.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/hallway/main.js') }}"></script>
 {%     endblock %}

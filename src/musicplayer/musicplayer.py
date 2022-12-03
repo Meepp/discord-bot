@@ -78,7 +78,7 @@ class Playlist(commands.Cog):
                         try:
                             song = songs[int(number)]
                             ps = PlaylistSong(playlist, song)
-                            collection.insert(ps.to_mongodb())
+                            collection.insert_one(ps.to_mongodb())
                             await context.channel.send(
                                 f":white_check_mark: Successfully added {song['title']} to {playlist}")
                         except IndexError:
@@ -381,11 +381,12 @@ class MusicPlayer(commands.Cog):
 
         # Check if the song is in db, if not, add it to the db
         if song is None:
-            collection = db['song']
+            # collection = db['song']
 
             video_title = self.get_title(url)
             song = Song(message.author, video_title, url)
-            collection.insert(song.to_mongodb())
+            music_repository.add_music(song)
+            # collection.insert_one(song.to_mongodb())
 
         self.queue.put((message, url))
 

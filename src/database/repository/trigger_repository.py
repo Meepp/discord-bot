@@ -32,7 +32,7 @@ def add_trigger(trigger: Trigger):
         return "Trigger length has to be 3 < n < 50"
 
     try:
-        collection.insert(trigger.to_mongodb())
+        collection.insert_one(trigger.to_mongodb())
     except:  # TODO error handle
         return "This trigger already exists."
     return None

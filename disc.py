@@ -1,6 +1,8 @@
 import os
 import pathlib
 
+import discord
+from src import bot
 
 
 def create_directories():
@@ -12,7 +14,11 @@ def create_directories():
 
 def main():
     create_directories()
-    from src import bot
+    bot.initialize()
+
+    # Use event handlers for emotes etc.
+    import src.event_handlers.messages  # noqa
+    await bot.add_cogs()
     bot.run(bot.token)
 
 
