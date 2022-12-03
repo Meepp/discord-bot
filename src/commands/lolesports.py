@@ -123,6 +123,12 @@ class Esports(commands.Cog):
         elif subcommand == "bet":
             await message.channel.send(self.bet_match(context, arg_id, bet_team, bet_amount))
 
+        elif subcommand == "standings":
+            if arg_id is None:
+                return await message.channel.send("Please specify a league for which you want to know the standings")
+            standings = self.get_standings(arg_id)
+            await message.channel.send(embed=standings)
+
         elif subcommand == "team":
             returned_team = self.get_team(arg_id)
             if isinstance(returned_team, Embed):
@@ -157,7 +163,7 @@ class Esports(commands.Cog):
                 if self.panda_score_api.is_game_finished(game['game_id']) == "finished":
                     information = self.process_game_result(user, game)
                     if information is not None:
-                        await self.bot.get_channel(game['channel_id']).send("`%s`" % information)
+                        await self.bot.get_channel(game['channel_id']).send(f"||{information}||")
         except Exception as e:
             print(e)
 
@@ -170,10 +176,18 @@ class Esports(commands.Cog):
             winnings = round(game['amount'] * game['odd'], 2)
             profile = profile_repository.update_money(profile, winnings)
             information = f"{profile['owner']} won {winnings} on the bet {match.get('name')}"
+            correct_bet = True
         else:
             information = f"{profile['owner']} lost {game['amount']} on the bet {match.get('name')}"
+            correct_bet = False
         collection = db['esportGame']
         collection.find_one_and_delete({"_id": game['_id']})
+        log_collection = db['esportGameLog']
+        log_game = EsportGame(user, game['game_id'], game['amount'], game['team'], game['odd'],
+                              game['channel_id']).to_mongodb()
+        log_game['timestamp'] = datetime.now()
+        log_game['correct_bet'] = correct_bet
+        log_collection.insert(log_game)
 
         return information
 
@@ -201,19 +215,20 @@ class Esports(commands.Cog):
         team = teams[0]
         embed = Embed(title=f" {team.get('name', '')} - :flag_{team.get('location').lower()}:", color=0xFF5733)
         embed.set_author(name=f"{team.get('acronym')}")
-        embed.set_thumbnail(
-            url=team.get('image_url'))
+        embed.set_thumbnail(url=team.get('image_url'))
         player_list = ""
 
         for player in sorted(team.get('players'), key=self.sortlaners):
             player_list += f":flag_{player.get('nationality').lower()}: " + str(
                 player.get('first_name')) + ", " + f"**{player.get('name')}**" + ", " \
-                    + str(player.get("last_name")) + f" ({player.get('role').capitalize()})" + "\n"
+                           + str(player.get("last_name")) + f" ({player.get('role').capitalize()})" + "\n"
         embed.add_field(name="Player Roster", value=player_list, inline=False)
 
         return embed
 
     def get_upcoming_matches(self, league):
+        if league is not None:
+            league = league.upper()
         matches = self.panda_score_api.get_upcoming_matches(league)
 
         match_list = ""
@@ -222,8 +237,11 @@ class Esports(commands.Cog):
             match_list += scheduled_at + " " + str(match.get("id")) + " - " + match.get(
                 "name") + "\n"
 
-        embed = Embed(title="Upcoming matches", color=0xFF5733, description=match_list)
-
+        if league is not None:
+            embed = Embed(title=f"Upcoming matches for {league}", color=0xFF5733, description=match_list)
+        else:  # TODO Create different embed that shows the league in which these
+            # games are played in case no league specified
+            embed = Embed(title=f"Upcoming matches", color=0xFF5733, description=match_list)
         return embed
 
     @staticmethod
@@ -234,3 +252,20 @@ class Esports(commands.Cog):
             return f"Today at {scheduled_at.strftime('%H:%M')}"
         else:
             return scheduled_at.strftime("%d/%m/%Y, %H:%M")
+
+    def get_standings(self, league_name):
+        league_name = league_name.upper()
+        league_id = self.panda_score_api.league_id_from_name(league_name)
+        league = self.panda_score_api.get_league_by_id(league_id)
+        latest_series = league['series'][-1]
+        tournament_id = self.panda_score_api.get_tournament_id_by_series_id(latest_series['id'])
+        standings = self.panda_score_api.get_tournament_standings_by_tournament_id(tournament_id)
+
+        out = ""
+        for team in standings:
+            out += f"{team.get('rank')}: {team.get('team').get('name')} ({team.get('wins')}W - {team.get('losses')}L)\n"
+        embed = Embed(title=f"Standings", description=out, color=0xFF5733)
+        embed.set_author(name=f"{league.get('name')} - {latest_series.get('full_name')}",
+                         icon_url=league.get('image_url'))
+
+        return embed

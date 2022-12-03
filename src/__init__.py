@@ -33,8 +33,6 @@ class Bot(commands.Bot):
 
         self.triggers = dict()
 
-        print("Done initializing.")
-
     def initialize(self):
         self.music_player = MusicPlayer(self)
         self.youtube_api = YoutubeAPI(self.config["DEFAULT"]["YoutubeAPIKey"])
@@ -47,10 +45,13 @@ class Bot(commands.Bot):
 
         self.esports = Esports(self, self.panda_score_api)
 
-        # exit(1)
         self.league_api.payout_games.start()
         self.esports.payout_league_bet.start()
         self.token = self.config["DEFAULT"]["DiscordAPIKey"]
+
+        # self.predictor = Predictor()
+
+        print("Done initializing.")
 
     def get_voice_by_guild(self, guild):
         for voice in self.voice_clients:
@@ -118,3 +119,5 @@ class Bot(commands.Bot):
 intents = discord.Intents.default()
 intents.members = True
 bot = Bot("config.conf", intents=intents)
+
+import src.event_handlers.messages  # noqa
