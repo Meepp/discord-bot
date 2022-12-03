@@ -24,7 +24,6 @@ export function round(number) {
 }
 
 
-
 /*
  * Renderable objects.
  */
@@ -85,6 +84,70 @@ export class AnimatedSpriteTile extends SpriteTile {
         this.frame = (this.frame + 1) % (this.images.length * this.frameTime);
         this.setImage(this.images[Math.floor(this.frame / this.frameTime)]);
         super.render(context);
+    }
+}
+
+
+export class DirectionalAnimatedSpriteTile extends SpriteTile {
+    constructor(imN, imE, imS, imW) {
+        for (let im in [imN, imE, imS, imW]) {
+            if (im.length === 0) throw Error("All orientation animations must have at least one image.");
+        }
+        super(imS[0]);
+
+        this.orientations = {
+            0: new AnimatedSpriteTile(imN),
+            90: new AnimatedSpriteTile(imE),
+            180: new AnimatedSpriteTile(imS),
+            270: new AnimatedSpriteTile(imW),
+        };
+
+        // TODO: Pass this to all orientations
+        this.frame = 0;
+        this.frameTime = 6; // N ticks per frame
+        this.orientation = 180;
+
+        console.log(this.orientations);
+    }
+
+    render(context) {
+        let currentAnimation = this.orientations[this.orientation];
+
+        this.frame = (this.frame + 1) % (currentAnimation.images.length * this.frameTime);
+        let frame_idx = Math.floor(this.frame / this.frameTime);
+        this.setImage(currentAnimation.images[frame_idx]);
+        super.render(context);
+    }
+}
+
+export class FilledCircle extends Circle {
+    constructor(x, y, radius) {
+        super(x, y, radius);
+        this.color = "#418eb0";
+
+        this.renderable = true;
+
+        this.textObject = new DrawableText(x, y);
+        this.textObject.color = "#fff";
+        this.textObject.centered = true;
+        this.textObject.renderable = true;
+
+        this.z = 0;
+    }
+
+    render(context) {
+        context.fillStyle = this.color;
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+        context.fill();
+
+        if (this.textObject !== null) {
+            // TODO: Dont set these properties here.
+            this.textObject.fontSize = this.radius * 1.2;
+            this.textObject.x = this.x;
+            this.textObject.y = this.y;
+            this.textObject.render(context);
+        }
     }
 }
 
@@ -167,12 +230,12 @@ export class DrawableText extends Point {
         context.lineWidth = 0.2;
 
         this.text.split("\n").map((text, i) => {
-            // TODO: Ensure textwidth cannot exceed bounding box.
             let width = context.measureText(text).width;
+            // TODO: Ensure textwidth cannot exceed bounding box.
             if (width > this.maxWidth) {
                 let n_segments = this.maxWidth / width;
                 for (let i = 0; i < n_segments; i++) {
-                    
+
                 }
             } else {
                 let offset = this.centered ? width / 2 : 0;

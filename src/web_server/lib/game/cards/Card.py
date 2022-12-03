@@ -26,7 +26,7 @@ class Card:
         self.radius = radius
         self.mana_cost = mana_cost
         self.damage = damage
-        self.damage_type = DamageTypes.from_txt(damage_type)
+        self.damage_type = damage_type
 
 
 # TODO: Move this to a nice initializer

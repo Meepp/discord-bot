@@ -1,6 +1,6 @@
 [{
   "name": "spear",
-  "description": "This spear will stab you!",
+  "description": "This spear will\nstab you!",
   "ability_range": 10,
   "radius": 0,
   "mana_cost": 1,
@@ -8,7 +8,7 @@
   "damage_type": "prc"
 },{
   "name": "heal",
-  "description": "This will heal you and all allies within 3 squares of yourself.",
+  "description": "This will heal you\nand all allies within\n3 squares of yourself.",
   "ability_range": 0,
   "radius": 3,
   "mana_cost": 3,

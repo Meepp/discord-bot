@@ -302,6 +302,8 @@ function start() {
     initializeMenu();
     game.initializePlayers();
     game.initializeCards();
+    game.initializeEnemies();
+    game.initializeEntityAnimations();
 
     // Initialize player sprites
     for (let key in game.players) {
@@ -357,6 +359,10 @@ function start() {
     menuView.renderable = true;
 }
 
+function onCardClick(i, evt) {
+    sendAction(String(i));
+}
+
 function initialize() {
     let tileSet = new TileSet();
 
@@ -368,7 +374,7 @@ function initialize() {
         loadImages("/static/images/tiles/background.png", setBackground).then(() => {
             start();
         }));
-    game = new HallwayHunters(gameView, UIView, tileSet);
+    game = new HallwayHunters(gameView, UIView, tileSet, onCardClick);
 
     socket.on("join", (data) => {
         console.log(`${data} joined the room.`);
@@ -388,7 +394,7 @@ function initialize() {
     // Keylisteners for user input
     document.addEventListener("keydown", (ev) => {
         const VALID_ACTIONS = [
-           "1", "2", "3", "4", "5", "6", "7", "8", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
+            "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
         ];
         if (VALID_ACTIONS.indexOf(ev.key) !== -1) {
             sendAction(ev.key);

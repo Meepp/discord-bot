@@ -1,49 +1,25 @@
 import copy
-import json
 import random
 from typing import Optional, List
 
 from src.web_server.lib.game.Items import Item, CollectorItem
-from src.web_server.lib.game.Tiles import GroundTile, LadderTile, ChestTile
-from src.web_server.lib.game.Utils import Point, PlayerAngles, direction_to_point, line_of_sight_endpoints, \
+from src.web_server.lib.game.Tiles import GroundTile, ChestTile
+from src.web_server.lib.game.Utils import Point, EntityDirections, line_of_sight_endpoints, \
     point_interpolator
 from src.web_server.lib.game.exceptions import InvalidAction
-from web_server.lib.game.cards.Card import available_cards, Card
+from src.web_server.lib.game.cards.Card import available_cards, Card
+from src.web_server.lib.game.entities.Spell import SpellEntity
+from src.web_server.lib.game.entities.movable_entity import MovableEntity
+from src.web_server.lib.game.entities.Enemies import EnemyClass
+from src.web_server.lib.game.entities.Passive import Passive
 
 DEMOLISHER_COOLDOWN = 30  # Seconds
 SPY_COOLDOWN = 30  # Seconds
 SCOUT_COOLDOWN = 30  # Seconds
 MRMOLE_COOLDOWN = 10  # Seconds
 
-MOVEMENT_COOLDOWN = 8  # Ticks
 SPRINT_COOLDOWN = 10 * 60  # Ticks
 KILL_COOLDOWN = 10 * 60  # Ticks
-
-
-class Passive(object):
-    def __init__(self, time, callback, name="", args=()):
-        self.name = name
-        self.total_time = time
-        self.time = time
-        self.callback = callback
-        self.args = args
-
-    def tick(self):
-        self.time -= 1
-        if self.time == 0:
-            self.callback(*self.args)
-
-    def to_json(self):
-        """
-        Converts the passive to json, maybe for later to display all active passives
-
-        :return:
-        """
-        return {
-            "name": self.name,
-            "time": self.time,
-            "total_time": self.total_time,
-        }
 
 
 class PlayerState:
@@ -52,11 +28,12 @@ class PlayerState:
     NOT_READY = 2
 
 
-class PlayerClass:
+class PlayerClass(MovableEntity):
     STARTING_HAND_SIZE = 4
+    MAX_HAND_SIZE = 8
 
     def __init__(self, username: str, socket_id, game):
-        # TODO: Refactor rename   name -> color
+        super().__init__(username, game)
         self.MAX_MOVEMENT = 10
         self.color = ""
         self.username = username
@@ -68,15 +45,13 @@ class PlayerClass:
         self.dead = False
         self.can_move = True
 
-        self.updated = True
-
-        self.movement_cooldown = MOVEMENT_COOLDOWN  # Ticks
+        self.movement_cooldown = 8  # Ticks
         self.movement_timer = 0
         self.movement_queue = []
         self.moving = False
 
         self.action_state = PlayerState.NOT_READY
-        self.direction = PlayerAngles.DOWN
+        self.direction = EntityDirections.DOWN
 
         # The item you are holding
         self.item: Optional[Item] = None
@@ -88,7 +63,7 @@ class PlayerClass:
 
         self.visible_tiles = []
 
-        from src.web_server.lib.game.HallwayHunters import HallwayHunters
+        from web_server.lib.game.HallwayHunters import HallwayHunters
         self.game: HallwayHunters = game
 
         self.socket = socket_id
@@ -106,80 +81,52 @@ class PlayerClass:
         self.class_deck = []
         self.cards = []
         self.hand: List[Card] = []
+        self.queued_spell = None
 
     def start(self):
+        super().start()
+
         self.stored_items = []
-        self.movement_timer = 0
-        self.direction = PlayerAngles.DOWN
+        self.direction = EntityDirections.DOWN
         self.visible_tiles = self.compute_line_of_sight()
         self.generate_item()
+        self.queued_spell = None
 
         self.cards = copy.deepcopy(self.class_deck)
         random.shuffle(self.cards)
-        print([c.name for c in self.cards])
         self.hand.extend([self.cards.pop() for _ in range(self.STARTING_HAND_SIZE)])
 
     def die(self):
         self.passives = []
         self.dead = True
         self.can_move = False
+        self.queued_spell = None
+
         self.drop_item()
+        self.movement_queue.clear()
+        self.movement_timer = 0
         self.game.broadcast("%s died" % self.username)
 
     def tick(self):
+        super().tick()
+
         for passive in self.passives[:]:
             passive.tick()
             if passive.time == 0:
                 self.passives.remove(passive)
 
-        self.movement_timer = max(0, self.movement_timer - 1)
-
-        last_direction = self.direction
-
-        # Dont recompute if the player didnt move or turn
-        # TODO: Update line of sight only when player is done moving (not in the middle of animation)
-        if self.position != self.last_position or self.direction != last_direction:
+        if self.position != self.last_position or self.direction != self.direction:
             self.update_line_of_sight()
 
-        self.last_position = self.position
-
     def update_line_of_sight(self):
-        self.updated = True
+        self.game.updated_line_of_sight = True
         self.visible_tiles = self.compute_line_of_sight()
 
-    def change_position(self, point):
-        self.position = self.spawn_position = point
+    def movement_action(self):
+        attempted_move = super().movement_action()
 
-    def move(self):
-        if not self.can_move:
-            return
-
-        if len(self.movement_queue) == 0:
-            self.moving = False
-            return
-
-        move = self.movement_queue.pop(0)
-
-        # Set the correct player model direction based on input
-        if move.x == 1:
-            self.direction = PlayerAngles.RIGHT
-        elif move.x == -1:
-            self.direction = PlayerAngles.LEFT
-        elif move.y == 1:
-            self.direction = PlayerAngles.DOWN
-        elif move.y == -1:
-            self.direction = PlayerAngles.UP
-
-        # Compute temporary position based on next move
-        new_position = move + self.position
-        # Check move validity
-        if new_position.x > self.game.size - 1 or \
-                new_position.y > self.game.size - 1 or \
-                new_position.x < 0 or new_position.y < 0:
-            raise InvalidAction("You cannot move out of bounds.")
-
+        new_position = self.position + attempted_move
         tile = self.game.board[new_position.x][new_position.y]
-
         # TODO: Synchronize animations server side maybe
         if isinstance(tile, ChestTile) \
                 and tile.player == self \
@@ -199,22 +146,25 @@ class PlayerClass:
         # Reset the movement timer
         self.movement_timer = self.movement_cooldown
 
-        # Move suggestion includes the ladder logic from Mole person
-        if isinstance(tile, LadderTile) and tile.other_ladder is not None:
-            self.position = tile.other_ladder.position
-            self.direction = PlayerAngles.UP
-        else:
-            self.position = self.position + move
-
         # Pickup item
-        # TODO: Can add check of self.objective back here
         ground_item = self.game.board[self.position.x][self.position.y].item
         if ground_item is not None and self.item is None:
             if isinstance(ground_item, CollectorItem):
                 self.item = ground_item
                 self.game.board[self.position.x][self.position.y].item = None
 
-        self.moving = True
+    def collide(self, other):
+        if isinstance(other, EnemyClass):
+            other: EnemyClass
+            self.hp -= other.damage
+            if self.hp <= 0:
+                self.die()
+
+        if isinstance(other, SpellEntity):
+            other: SpellEntity
+            if other.card.damage_type == "heal":
+                self.hp += other.card.damage
+            self.hp = max(self.hp, self.max_hp)
 
     def prepare_action(self, action, extra=None):
         # We cannot do new actions while processing the queued actions
@@ -247,6 +197,9 @@ class PlayerClass:
             self.suggest_move(Point(1, 0))
 
     def suggest_move(self, move: Point):
+        if not self.can_move:
+            return
+
         # Remove the last move from the stack if moving in the opposite direction
         if len(self.movement_queue) > 0 and \
                 ((self.movement_queue[-1].x == -move.x and move.x != 0) or
@@ -259,14 +212,9 @@ class PlayerClass:
 
         self.movement_queue.append(move)
 
-    def get_interpolated_position(self):
-        progress = self.movement_timer / self.movement_cooldown
-
-        position = self.position + (-1 * direction_to_point(self.direction)) * progress
-        return position
-
     def to_json(self):
-        state = {
+        state = super().to_json()
+        state.update({
             "color": self.color,
             "username": self.username,
             "dead": self.dead,
@@ -276,14 +224,11 @@ class PlayerClass:
             "mana": self.mana,
             "max_hp": self.max_hp,
             "max_mana": self.max_mana,
-            "position": self.get_interpolated_position().to_json(),
-            "direction": self.direction.value,
-            "moving": self.moving,
             "item": self.item.to_json() if self.item else None,
             "hand": [],
             "movement_queue": [move.to_json() for move in self.movement_queue],
             "class_name": self.class_name,
-        }
+        })
         return state
 
     def personal_data_json(self):
@@ -353,11 +298,29 @@ class PlayerClass:
             self.update_line_of_sight()
 
     def suggest_card(self, n_action):
-        pass
+        if n_action >= len(self.hand):
+            return
 
-    def finish_turn(self):
-        self.hand.append(self.cards.pop())
+        if self.queued_spell == n_action:
+            self.queued_spell = None
+        else:
+            self.queued_spell = n_action
+
+    def post_movement_action(self):
+        if self.queued_spell is not None:
+            # TODO: Generate unique id for this spell.
+            self.game.entities.append(SpellEntity(self, self.hand[self.queued_spell], "ashdioahd", self.game))
+
+        # Only draw new card when less than 8 are in hand.
+        if len(self.hand) != self.MAX_HAND_SIZE:
+            self.hand.append(self.cards.pop())
+
         self.mana = min(self.mana + self.mana_regen, self.max_mana)
+
+    def damage(self, damage):
+        self.hp -= damage
+        if self.hp <= 0:
+            self.die()
 
 
 class Demolisher(PlayerClass):
@@ -391,6 +354,5 @@ class Wizard(PlayerClass):
         super().__init__(username, socket_id, game)
 
         self.class_deck = []
-        self.class_deck.extend([available_cards["fireball"]] * 10)
-        self.class_deck.extend([available_cards["spear"]] * 5)
-        print(self.class_deck)
+        # self.class_deck.extend([available_cards["fireball"]] * 10)
+        self.class_deck.extend([available_cards["spear"]] * 20)

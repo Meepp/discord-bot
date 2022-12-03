@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from database.repository import room_repository
-from src.web_server.lib.game.PlayerClasses import PlayerClass
+from web_server.lib.game.entities.PlayerClasses import PlayerClass
 from src.web_server.lib.user_session import session_user
 
 bp = Blueprint('poker', __name__)

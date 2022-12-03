@@ -101,6 +101,24 @@ export class TileSet {
             this.tiles["rubbish_" + i] = context.getImageData((i + 15) * S, 7 * S, S, S);
         }
 
+        // Load all enemies into the tiles object
+        for (let i = 0; i < 3; i++) {
+            this.tiles["slime_east_" + i] = context.getImageData(i * S, 16 * S, S, S);
+            this.tiles["slime_west_" + i] = context.getImageData((i + 3) * S, 16 * S, S, S);
+            this.tiles["slime_south_" + i] = context.getImageData((i + 6) * S, 16 * S, S, S);
+            this.tiles["slime_north_" + i] = context.getImageData((i + 9) * S, 16 * S, S, S);
+        }
+
+        // Load all spells into the tiles object
+        for (let i = 0; i < 2; i++) {
+            this.tiles["spear_270_" + i] = context.getImageData((19 + i + 0) * S, 12 * S, S, S);
+            this.tiles["spear_0_" + i] = context.getImageData((19 + i + 2) * S, 12 * S, S, S);
+            this.tiles["spear_180_" + i] = context.getImageData((19 + i + 4) * S, 12 * S, S, S);
+            this.tiles["spear_90_" + i] = context.getImageData((19 + i + 6) * S, 12 * S, S, S);
+        }
+
+
+        // Load all images into canvas to be used later
         for (const [title, data] of Object.entries(this.tiles)) {
             canvas.width = data.width;
             canvas.height = data.height;

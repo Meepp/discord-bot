@@ -1,18 +1,23 @@
 import {
     DrawableText,
     RollingAverage,
-    Point, Rectangle, ColorTile, SpriteTile
+    Point, Rectangle, ColorTile, SpriteTile, DirectionalAnimatedSpriteTile
 } from "../engine/engine.js";
 import {COLORS} from "./resources.js";
-import {Card, Player} from "./player.js";
+import {Card, CARDBACK_COLOR, CARDBACK_SELECTED_COLOR, DAMAGE_COLOR, Player} from "./player.js";
 
 
 export class HallwayHunters {
-    constructor(view, UIView, tileSet) {
+    constructor(view, UIView, tileSet, callback) {
         this.view = view;
         this.UIView = UIView;
         this.tileSet = tileSet;
         this.cards = [];
+        this.enemies = [];
+        this.enemySprites = [];
+        this.entitySprites = [];
+        this.entities = [];
+        this.cardCallback = callback;
     }
 
     state = {
@@ -54,6 +59,8 @@ export class HallwayHunters {
         },
         visible_tiles: [
             {x: 0, y: 0, tile: {}}
+        ],
+        visible_enemies: [
         ],
         board: [],
 
@@ -103,9 +110,48 @@ export class HallwayHunters {
         for (const player of Object.values(this.players)) {
             player.renderable = false;
         }
+        // Unrender entities that are not visible
+        for (const entity of Object.values(this.entities)) {
+            entity.renderable = false;
+        }
+
+        // Update player objects
         data.all_players.forEach(player => {
             this.players[player.color].renderable = true;
             this.players[player.color].update(player);
+        });
+
+        // Add enemy objects to view, and update those that exist
+        data.visible_enemies.forEach(enemy => {
+            let enemyObj = this.enemies[enemy.uid];
+            console.log(enemy.uid);
+            if (enemyObj === undefined) {
+                let src = this.enemySprites[enemy.sprite_name];
+                enemyObj = Object.assign(Object.create(Object.getPrototypeOf(src)), src)
+                enemyObj.z = 3;
+                this.view.addObjects(enemyObj);
+                this.enemies[enemy.uid] = enemyObj;
+            }
+            enemyObj.renderable = !enemy.dead;
+            enemyObj.x = enemy.position.x * 16;
+            enemyObj.y = enemy.position.y * 16;
+            enemyObj.orientqation = enemy.direction;
+        });
+
+        data.visible_entities.forEach(entity => {
+            console.log(entity.position.x, entity.position.y)
+            let entityObj = this.entities[entity.uid];
+            if (entityObj === undefined) {
+                let src = this.entitySprites[entity.sprite_name];
+                entityObj = Object.assign(Object.create(Object.getPrototypeOf(src)), src)
+                entityObj.z = 4;
+                this.view.addObjects(entityObj);
+                this.entities[entity.uid] = entityObj;
+            }
+            entityObj.renderable = true;
+            entityObj.x = entity.position.x * 16;
+            entityObj.y = entity.position.y * 16;
+            entityObj.orientation = entity.direction;
         });
 
         const readyStates = ["Ready", "Processing...", "Not Ready"]
@@ -113,10 +159,35 @@ export class HallwayHunters {
         this.state.all_players.forEach(player => {
             const p = this.players[player.color];
             p.score = player.stored_items.length;
-            p.scoreText.text = player.username + " " + readyStates[p.data.ready]
-            sum.x += player.position.x;
-            sum.y += player.position.y;
+            p.scoreText.text = player.username + " " + readyStates[p.data.ready];
+
+            if (!player.dead) {
+                sum.x += player.position.x;
+                sum.y += player.position.y;
+            }
         });
+
+        /*
+         * Render card logic
+         * First disable all cards renderability, followed by updating every card with the new value and setting the
+         *  renderability to true for all cards which you have.
+         */
+
+        this.cards.forEach(card => {
+            card.renderable = false;
+        });
+        this.state.player_data.hand.forEach((card, index) => {
+            let cardObject = this.cards[index];
+            cardObject.cardName.text = card.name;
+            cardObject.cardDescription.text = card.description;
+            cardObject.manaCost.textObject.text = String(card.mana_cost);
+            cardObject.damage.colour = DAMAGE_COLOR[card.damage_type];
+            cardObject.damage.textObject.text = String(card.damage);
+            cardObject.range.textObject.text = String(card.ability_range);
+            cardObject.radius.textObject.text = String(card.radius);
+            cardObject.renderable = true;
+            // cardObject.cardName.text = card.name;
+        })
 
         // Update new camera center based on average position between all players
         let newCameraCenter = new Point(
@@ -234,7 +305,14 @@ export class HallwayHunters {
             const w = 100;
             const h = 144;
             const padding = 4;
-            this.cards.push(new Card(padding + i * (w + padding), this.view.height - h + padding, w, h));
+            let card = new Card(padding + i * (w + padding), this.view.height - h + padding, w, h);
+            card.cardBack.setOnClick(canvas, (evt) => {
+                // Reset color for all cards except for the selected one
+                this.cards.forEach(card => card.cardBack.color = CARDBACK_COLOR);
+                card.cardBack.color = CARDBACK_SELECTED_COLOR;
+                this.cardCallback(i, evt);
+            });
+            this.cards.push(card);
             this.UIView.addObjects(this.cards[i]);
         }
     }
@@ -262,6 +340,46 @@ export class HallwayHunters {
                 ]);
             });
             this.players[colour] = player;
+        });
+    }
+
+    /*
+     * This function should get called to initialize all animatedspritetiles for the enemies
+     */
+    initializeEnemies() {
+        let directionLists = [];
+        ["north", "east", "south", "west"].forEach(d => {
+            directionLists.push([
+                this.tileSet.tiles[`slime_${d}_0`],
+                this.tileSet.tiles[`slime_${d}_1`],
+                this.tileSet.tiles[`slime_${d}_0`],
+                this.tileSet.tiles[`slime_${d}_2`],
+            ])
+        });
+        this.enemySprites["slime"] = new DirectionalAnimatedSpriteTile(
+            directionLists[0],
+            directionLists[1],
+            directionLists[2],
+            directionLists[3]
+        );
+    }
+
+    initializeEntityAnimations() {
+        ["spear"].forEach(spell => {
+            let directionLists = [];
+            ["0", "90", "180", "270"].forEach(d => {
+                directionLists.push([
+                    this.tileSet.tiles[`${spell}_${d}_0`],
+                    this.tileSet.tiles[`${spell}_${d}_1`],
+                ])
+            });
+
+            this.entitySprites[spell] = new DirectionalAnimatedSpriteTile(
+                directionLists[0],
+                directionLists[1],
+                directionLists[2],
+                directionLists[3]
+            );
         });
     }
 }

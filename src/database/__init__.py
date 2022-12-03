@@ -23,5 +23,5 @@ class MongoDB:
     def set_config(self, name):
         self.config.read(name)
 
-mongodb = MongoDB(f"{os.path.dirname(os.path.realpath(__file__))}\..\..\config.conf").db
 
+mongodb = MongoDB(f"{os.path.dirname(os.path.realpath(__file__))}\..\..\config.conf").db

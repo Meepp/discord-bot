@@ -13,6 +13,7 @@ if __name__ == "__main__":
     app.secret_key = bot.config["WEBSERVER"]["SECRET"]
     host = bot.config["WEBSERVER"]["IP"]
     port = int(bot.config["WEBSERVER"]["Port"])
+    print(f"Spawning webserver on {host}:{port}")
     http_server = WebSocketServer((host, port), app, debug=False)
     try:
         http_server.serve_forever(stop_timeout=1)

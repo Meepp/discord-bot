@@ -4,38 +4,91 @@ import {
     round,
     SpriteTile,
     Point,
-    CircularCooldown, ColorTile,
+    CircularCooldown, ColorTile, FilledCircle, Button,
 } from "../engine/engine.js";
 
 
+export const MANA_COLOR = "rgba(64,121,239,0.8)";
+export const RANGE_COLOR = "#2da128";
+export const RADIUS_COLOR = "#9f9730";
+export const HP_COLOR = "rgba(245,44,44,0.8)";
+export const DAMAGE_COLOR = {
+    "prc": "rgba(210,82,82,0.8)",
+    "heal": "rgba(153,222,72,0.8)",
+    "fire": "rgba(110,16,16,0.8)"
+}
+export const CARDBACK_HOVER_COLOR = "#c0ae7b";
+export const CARDBACK_COLOR = "#dcc995";
+export const CARDBACK_SELECTED_COLOR = "#fcedcb";
+
 export class Card {
     constructor(x, y, w, h) {
-        this.cardBack = new ColorTile("#dcc995");
+        this.cardBack = new Button(x, y, w, h);
+        this.cardBack.color = CARDBACK_COLOR;
+        this.cardBack.hoverColor = CARDBACK_HOVER_COLOR;
 
         this.cardName = new DrawableText(0, 0);
         this.cardName.text = "Card Text placeholder"
+        this.cardName.centered = true;
+        this.cardName.color = "rgb(70,53,37)"
+
         this.cardDescription = new DrawableText(0, 0);
         this.cardDescription.text = "Card description placeholder"
+        this.cardDescription.color = "rgb(143,108,76)"
+        this.cardDescription.centered = true;
+
+        // Create info balls at the top
+        let ringRadius = 10;
+        this.manaCost = new FilledCircle(0, 0, ringRadius);
+        this.damage = new FilledCircle(0, 0, ringRadius);
+        this.range = new FilledCircle(0, 0, ringRadius);
+        this.radius = new FilledCircle(0, 0, ringRadius);
+        this.manaCost.color = MANA_COLOR;
+        this.manaCost.textObject.color = "#000";
+        this.damage.color = HP_COLOR;
+        this.damage.textObject.color = "#000";
+        this.range.color = RANGE_COLOR;
+        this.range.textObject.color = "#000";
+        this.radius.color = RADIUS_COLOR;
+        this.radius.textObject.color = "#000";
+
 
         this.x = x;
         this.y = y;
+        this.padding = 2;
         this.width = w;
         this.height = h;
         this.renderable = true;
     }
 
     render(context) {
-        this.cardBack.x = this.x;
-        this.cardBack.y = this.y;
-        this.cardBack.width = this.width;
-        this.cardBack.height = this.height;
-
-        this.cardName.x = this.x;
-        this.cardName.y = this.y;
-        this.cardDescription.x = this.x;
-        this.cardDescription.y = this.y;
-
+        // Render cardback
         this.cardBack.render(context);
+
+        // Calculate ring positions
+        let ringSize = (this.manaCost.radius + this.padding);
+
+        this.manaCost.x = this.x + ringSize;
+        this.damage.x = this.x - ringSize + this.width;
+        this.range.x = this.x + (ringSize * 3);
+        this.radius.x = this.x - (ringSize * 3) + this.width;
+        this.manaCost.y = this.damage.y = this.range.y = this.radius.y = this.y + ringSize;
+
+        // Render rings
+        this.manaCost.render(context);
+        this.damage.render(context);
+        this.range.render(context);
+        this.radius.render(context);
+
+        // Calculate text positions
+        let textOffset = (ringSize + this.padding) * 2;
+        let cardMidWidth = this.x + this.padding + this.width / 2;
+
+        this.cardName.x = this.cardDescription.x = cardMidWidth;
+        this.cardName.y = this.y + textOffset;
+        this.cardDescription.y = this.y + this.cardName.fontSize + textOffset + this.padding;
+
+        // Render text
         this.cardName.render(context);
         this.cardDescription.render(context);
     }
@@ -77,12 +130,12 @@ export class Player {
 
         this.hp = new CircularCooldown(0, 0, 6);
         this.hp.mainColour = "rgb(0,0,0)"
-        this.hp.secondaryColour = "rgba(245,44,44,0.8)"
+        this.hp.secondaryColour = HP_COLOR;
         this.hp.textObject.renderable = true;
 
         this.mana = new CircularCooldown(0, 0, 6);
         this.mana.mainColour = "rgb(0,0,0)"
-        this.mana.secondaryColour = "rgba(64,121,239,0.8)"
+        this.mana.secondaryColour = MANA_COLOR;
         this.mana.textObject.renderable = true;
 
         this.hand = [];
