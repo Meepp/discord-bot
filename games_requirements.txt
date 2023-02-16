@@ -47,7 +47,7 @@ threadpoolctl==2.2.0
 torch==1.8.1
 typing-extensions==3.7.4.3
 urllib3==1.26.2
-Werkzeug==1.0.1
+Werkzeug==2.2.3
 yarl==1.5.1
 youtube-dl==2021.6.6
 youtube-python==1.0.13
